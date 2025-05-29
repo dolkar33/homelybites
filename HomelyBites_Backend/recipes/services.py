@@ -23,6 +23,7 @@ class SpoonacularService:
             "offset": offset,
             "addRecipeInformation": True,
             "fillIngredients": True,
+            "includeNutrition": True,
         }
         
         if query:
@@ -48,7 +49,7 @@ class SpoonacularService:
         
         params = {
             "apiKey": self.api_key,
-            "includeNutrition": False,
+            "includeNutrition": True,
         }
         
         response = requests.get(endpoint, params=params)
@@ -88,10 +89,24 @@ class SpoonacularService:
         # Process instructions
         if 'analyzedInstructions' in recipe_data and recipe_data['analyzedInstructions']:
             steps = recipe_data['analyzedInstructions'][0].get('steps', [])
-            instructions_list = [f"{step['number']}. {step['step']}" for step in steps]
+            instructions_list = [step['step'] for step in steps]
             recipe.instructions = "\n".join(instructions_list)
         else:
             recipe.instructions = recipe_data.get('instructions', '')
+        
+        # Process nutritional information
+        nutrition_data = recipe_data.get('nutrition', {}).get('nutrients', [])
+        for nutrient in nutrition_data:
+            if nutrient.get('name') == 'Calories':
+                recipe.calories = f"{nutrient.get('amount', '')} {nutrient.get('unit', '')}"
+            elif nutrient.get('name') == 'Fat':
+                recipe.fat = f"{nutrient.get('amount', '')} {nutrient.get('unit', '')}"
+            elif nutrient.get('name') == 'Sugar':
+                recipe.sugar = f"{nutrient.get('amount', '')} {nutrient.get('unit', '')}"
+            elif nutrient.get('name') == 'Protein':
+                recipe.protein = f"{nutrient.get('amount', '')} {nutrient.get('unit', '')}"
+            elif nutrient.get('name') == 'Carbohydrates':
+                recipe.carbohydrates = f"{nutrient.get('amount', '')} {nutrient.get('unit', '')}"
         
         recipe.save()
         
@@ -115,6 +130,7 @@ class SpoonacularService:
         params = {
             "apiKey": self.api_key,
             "number": number,
+            "includeNutrition": True,
         }
         
         if tags:

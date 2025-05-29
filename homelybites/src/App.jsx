@@ -9,6 +9,7 @@ import ContactUs from "./pages/ContactUs";
 import AboutUs from "./pages/AboutUs";
 import CommunityPage from "./pages/CommunityPage";
 import Post from "./pages/Post";
+import RecipeDetailPage from "./pages/RecipeDetailPage";
 
 
 
@@ -26,6 +27,7 @@ function App() {
       <Route path="/aboutus" element={<AboutUs/>} />
       <Route path="/community" element={<CommunityPage />} />
       <Route path="/post" element={<Post />} />
+      <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
       {/* Redirect any unknown paths to the landing page */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

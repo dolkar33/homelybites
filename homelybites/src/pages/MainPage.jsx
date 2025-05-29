@@ -1,43 +1,66 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import RecipeCard from "../components/RecipeCard";
 import CategoryButton from "../components/CategoryButton";
+import { recipeAPI } from "../services/api";
 
 const categories = [
-  "Breakfast",
-  "Quick and Easy",
-  "Lunches",
-  "Desserts",
-  "Healthy",
-  "Drinks",
-];
-
-const recipes = [
-  {
-    image: "/Images/HomePageImage/Image-1.png",
-    title: "White Pasta",
-    description: "White pasta is a smooth, soft Italian dish.",
-  },
-  {
-    image: "/Images/HomePageImage/Image-2.png",
-    title: "White Pasta",
-    description: "White pasta is a smooth, soft Italian dish.",
-  },
-  {
-    image: "/Images/HomePageImage/Image-3.png",
-    title: "White Pasta",
-    description: "White pasta is a smooth, soft Italian dish.",
-  },
-  {
-    image: "/Images/HomePageImage/Image-4.png",
-    title: "White Pasta",
-    description: "White pasta is a smooth, soft Italian dish.",
-  },
+  "breakfast",
+  "quick-and-easy",
+  "lunch",
+  "dessert",
+  "healthy",
+  "drinks",
 ];
 
 const MainPage = () => {
   const [activeCategory, setActiveCategory] = useState(categories[0]);
+  const [recipes, setRecipes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      try {
+        setLoading(true);
+        const response = await recipeAPI.getRecipes({ category: activeCategory });
+        setRecipes(response.data.results || []);
+        setError(null);
+      } catch (err) {
+        setError('Failed to fetch recipes. Please try again later.');
+        console.error('Error fetching recipes:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecipes();
+  }, [activeCategory]);
+
+  const renderRecipeCards = (recipeList) => {
+    if (loading) {
+      return <div className="text-center py-4">Loading recipes...</div>;
+    }
+
+    if (error) {
+      return <div className="text-red-500 text-center py-4">{error}</div>;
+    }
+
+    if (!recipeList.length) {
+      return <div className="text-center py-4">No recipes found for this category.</div>;
+    }
+
+    return recipeList.map((recipe, index) => (
+      <RecipeCard
+        key={recipe.id || index}
+        image={recipe.image_url || recipe.image}
+        title={recipe.title}
+        description={recipe.description || `Ready in ${recipe.readyInMinutes || recipe.prep_time} minutes`}
+        slug={recipe.slug}
+      />
+    ));
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -69,7 +92,7 @@ const MainPage = () => {
                 active={activeCategory === cat}
                 onClick={() => setActiveCategory(cat)}
               >
-                {cat}
+                {cat.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
               </CategoryButton>
             ))}
           </div>
@@ -81,9 +104,7 @@ const MainPage = () => {
             Recipes You Would Love
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {recipes.map((r, i) => (
-              <RecipeCard key={i} {...r} />
-            ))}
+            {renderRecipeCards(recipes)}
           </div>
         </div>
         {/* What others are cooking */}
@@ -92,9 +113,7 @@ const MainPage = () => {
             What others are cooking
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {recipes.map((r, i) => (
-              <RecipeCard key={i} {...r} />
-            ))}
+            {renderRecipeCards(recipes)}
           </div>
         </div>
       </div>
