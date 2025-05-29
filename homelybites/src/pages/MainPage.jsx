@@ -46,7 +46,7 @@ const MainPage = () => {
       <div className="max-w-5xl mx-auto w-full px-4 mt-6">
         <div className="rounded-3xl overflow-hidden w-full h-48 md:h-64 flex items-center justify-center bg-[#FDEBED] relative mb-8">
           <img
-            src="/Images/HomePageImage/frontpage.jpg"
+            src="/Images/HomePageImage/salad.jpg"
             alt="hero salad"
             className="object-cover w-full h-full"
             style={{ objectPosition: "center center" }}

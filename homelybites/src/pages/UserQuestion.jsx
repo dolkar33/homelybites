@@ -63,7 +63,7 @@ const UserQuestion = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      navigate("/"); // Navigate to the home/main page
+      navigate("/Home"); // Navigate to the home/main page
     }
   };
 

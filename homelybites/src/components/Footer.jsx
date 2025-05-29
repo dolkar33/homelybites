@@ -5,13 +5,9 @@ const Footer = () => (
     <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6 text-base">
       <span>© 2025 HomelyBites</span>
       <span className="hidden md:inline">|</span>
-      <a href="#" className="hover:underline">
-        Privacy Policy
-      </a>
+      <p>Privacy Policy</p>
       <span className="hidden md:inline">|</span>
-      <a href="#" className="hover:underline">
-        Terms & Conditions
-      </a>
+      <p>Terms & Conditions</p>
     </div>
   </footer>
 );
