@@ -81,43 +81,43 @@ const Login = () => {
         }
 
         try {
-            // Simulate API call with localStorage check
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            console.log('Stored users:', users); // Debug log
-            console.log('Login attempt:', { email, password }); // Debug log
-            
-            const user = users.find(u => u.email === email && u.password === password);
-            console.log('Found user:', user); // Debug log
-            
-            // Artificial delay to simulate network request
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
-            if (user) {
-                // Store logged in user info in localStorage
-                localStorage.setItem('currentUser', JSON.stringify({
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    email: user.email,
-                    isLoggedIn: true
-                }));
-                
-                // Show success toast first
-                setShowSuccessToast(true);
-                
-                // Redirect to MainPage after a short delay
-                setTimeout(() => {
-                    navigate('/userquestion');
-                }, 1500);
-                
-                // Auto hide toast after 5 seconds
-                setTimeout(() => {
-                    setShowSuccessToast(false);
-                }, 5000);
-            } else {
-                setError('Invalid email or password');
+            const response = await fetch('http://localhost:8000/api/login/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: email,
+                    password: password
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Invalid credentials');
             }
+
+            // Store tokens and user info in localStorage
+            localStorage.setItem('access_token', data.access);
+            localStorage.setItem('refresh_token', data.refresh);
+            localStorage.setItem('currentUser', JSON.stringify(data.user));
+            
+            // Show success toast
+            setShowSuccessToast(true);
+            
+            // Redirect to MainPage after a short delay
+            setTimeout(() => {
+                navigate('/userquestion');
+            }, 1500);
+            
+            // Auto hide toast after 5 seconds
+            setTimeout(() => {
+                setShowSuccessToast(false);
+            }, 5000);
+            
         } catch (err) {
-            setError('Login failed. Please try again');
+            setError(err.message || 'Login failed. Please try again');
             console.error('Login error:', err);
         } finally {
             setLoading(false);

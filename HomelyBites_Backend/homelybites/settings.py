@@ -157,5 +157,9 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = True  # For development only, set specific origins in production
 CORS_ALLOW_CREDENTIALS = True
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Your React app's URL
+]
+
 # Spoonacular API settings
 SPOONACULAR_API_KEY = '28757902a1544a44b3466566d399895d'

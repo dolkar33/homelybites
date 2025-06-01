@@ -10,6 +10,7 @@ import ContactUs from "./pages/ContactUs";
 import AboutUs from "./pages/AboutUs";
 import CommunityPage from "./pages/CommunityPage";
 import Post from "./pages/Post";
+import AdminDashboard from './pages/AdminDashboard';
 import RecipePage from "./pages/RecipePage";
 
 // Custom hook to check authentication status
@@ -115,6 +116,7 @@ function App() {
       <Route path="/aboutus" element={<AboutUs />} />
       <Route path="/community" element={<CommunityPage />} />
       <Route path="/post" element={<Post />} />
+      <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/recipepage" element={<RecipePage />} />
   
       <Route path="*" element={<Navigate to="/" replace />} />

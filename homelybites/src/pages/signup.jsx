@@ -185,35 +185,30 @@ const SignUp = () => {
         }
         
         try {
-            // Get existing users from localStorage
-            const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-            
-            // Check if email already exists
-            if (existingUsers.some(user => user.email.toLowerCase() === email.toLowerCase())) {
-                setError('Email is already registered');
-                setLoading(false);
-                return;
+            const response = await fetch('http://localhost:8000/api/register/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: email,
+                    email: email,
+                    password: password,
+                    password2: confirmPassword,
+                    first_name: firstName,
+                    last_name: lastName
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || 'Registration failed');
             }
-            
-            // Artificial delay to simulate network request
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
-            // Create new user object
-            const newUser = {
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                email: email.toLowerCase().trim(),
-                password: password, // In real app, this should be hashed
-                createdAt: new Date().toISOString()
-            };
-            
-            // Add new user to existing users array
-            const updatedUsers = [...existingUsers, newUser];
-            
-            // Save updated users array to localStorage
-            localStorage.setItem('users', JSON.stringify(updatedUsers));
-            
-            console.log('User registered successfully:', { email: newUser.email, firstName: newUser.firstName });
+
+            // Store tokens in localStorage
+            localStorage.setItem('access_token', data.access);
+            localStorage.setItem('refresh_token', data.refresh);
             
             // Show success toast
             setShowSuccessToast(true);
@@ -229,7 +224,7 @@ const SignUp = () => {
             }, 1500);
             
         } catch (err) {
-            setError('Registration failed. Please try again');
+            setError(err.message || 'Registration failed. Please try again');
             console.error('Registration error:', err);
         } finally {
             setLoading(false);

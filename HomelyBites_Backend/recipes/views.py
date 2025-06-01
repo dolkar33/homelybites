@@ -12,8 +12,12 @@ from .serializers import (
     CategorySerializer, 
     UserProfileSerializer, 
     UserRecipeInteractionSerializer,
-    UserSerializer
+    UserSerializer,
+    UserRegistrationSerializer,
+    UserLoginSerializer
 )
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -272,8 +276,101 @@ def import_from_spoonacular(request):
         else:
             return Response(results, status=400)
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    """Register a new user."""
+    serializer = UserRegistrationSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name
+            },
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'message': 'User registered successfully'
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_user(request):
+    """Login a user and return JWT tokens."""
+    serializer = UserLoginSerializer(data=request.data)
+    if serializer.is_valid():
+        user = authenticate(
+            username=serializer.validated_data['username'],
+            password=serializer.validated_data['password']
+        )
+        if user:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name
+                },
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'message': 'Login successful'
+            })
+        return Response({
+            'error': 'Invalid credentials'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 def homepage(request):
     """Render the homepage."""
     return render(request, 'homepage.html')
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def list_users(request):
+    """List all users (admin only)."""
+    users = User.objects.all().values('id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login')
+    return Response(list(users))
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def recommend_recipes(request):
+    user_profile = UserProfile.objects.get(user=request.user)
+    dietary_pref = user_profile.dietary_preference
+    allergies = user_profile.allergies.split(',') if user_profile.allergies else []
+    dislikes = user_profile.dislikes.split(',') if user_profile.dislikes else []
+
+    # Filter recipes based on dietary preference
+    recipes = Recipe.objects.all()
+    if dietary_pref:
+        recipes = recipes.filter(categories__name__icontains=dietary_pref)
+    # Exclude recipes with ingredients the user is allergic to or dislikes
+    for allergy in allergies:
+        recipes = recipes.exclude(ingredients__icontains=allergy.strip())
+    for dislike in dislikes:
+        recipes = recipes.exclude(ingredients__icontains=dislike.strip())
+
+    recipes = recipes.distinct()
+    serializer = RecipeListSerializer(recipes, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def my_profile(request):
+    user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+    if request.method == 'GET':
+        serializer = UserProfileSerializer(user_profile)
+        return Response(serializer.data)
+    elif request.method == 'PUT':
+        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
 
