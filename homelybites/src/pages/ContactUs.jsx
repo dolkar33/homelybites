@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { User, Phone, Mail, MapPin } from "lucide-react";
+import axios from "axios";
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,7 @@ const ContactPage = () => {
     subject: "",
     message: "",
   });
+  const [status, setStatus] = useState({ type: "", message: "" });
 
   const handleInputChange = (e) => {
     setFormData({
@@ -19,8 +21,18 @@ const ContactPage = () => {
     });
   };
 
-  const handleSubmit = () => {
-    console.log("Form submitted:", formData);
+  const handleSubmit = async () => {
+    try {
+      setStatus({ type: "loading", message: "Sending message..." });
+      const response = await axios.post("http://localhost:8000/api/contact-messages/", formData);
+      setStatus({ type: "success", message: "Message sent successfully! We'll get back to you soon." });
+      setFormData({ name: "", email: "", subject: "", message: "" });
+    } catch (error) {
+      setStatus({ 
+        type: "error", 
+        message: error.response?.data?.message || "Failed to send message. Please try again." 
+      });
+    }
   };
 
   return (
@@ -84,6 +96,15 @@ const ContactPage = () => {
             {/* Contact Form */}
             <div className="flex-1">
               <div className="space-y-8">
+                {status.message && (
+                  <div className={`p-4 rounded-lg ${
+                    status.type === "success" ? "bg-green-100 text-green-700" :
+                    status.type === "error" ? "bg-red-100 text-red-700" :
+                    "bg-blue-100 text-blue-700"
+                  }`}>
+                    {status.message}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-8">
                   <div>
                     <div className="block text-greyy text-md mb-1">
@@ -144,9 +165,12 @@ const ContactPage = () => {
 
                 <button
                   onClick={handleSubmit}
-                  className="bg-red-400 text-white px-8 py-3 rounded-full text-lg font-medium hover:bg-red-500 transition-colors"
+                  disabled={status.type === "loading"}
+                  className={`bg-red-400 text-white px-8 py-3 rounded-full text-lg font-medium hover:bg-red-500 transition-colors ${
+                    status.type === "loading" ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
-                  Send Message
+                  {status.type === "loading" ? "Sending..." : "Send Message"}
                 </button>
               </div>
             </div>

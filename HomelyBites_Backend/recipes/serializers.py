@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, ContactMessage
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -39,3 +39,9 @@ class UserRecipeInteractionSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserRecipeInteraction
         fields = ['id', 'user', 'recipe', 'interaction_type', 'rating', 'timestamp']
+
+class ContactMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactMessage
+        fields = ['id', 'name', 'email', 'subject', 'message', 'created_at']
+        read_only_fields = ['created_at']

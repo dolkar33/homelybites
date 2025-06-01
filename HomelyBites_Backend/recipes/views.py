@@ -5,14 +5,15 @@ from rest_framework import viewsets, status, generics, filters, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, ContactMessage
 from .serializers import (
     RecipeSerializer, 
     RecipeListSerializer,
     CategorySerializer, 
     UserProfileSerializer, 
     UserRecipeInteractionSerializer,
-    UserSerializer
+    UserSerializer,
+    ContactMessageSerializer
 )
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -272,6 +273,19 @@ def import_from_spoonacular(request):
         else:
             return Response(results, status=400)
 
+class ContactMessageViewSet(viewsets.ModelViewSet):
+    queryset = ContactMessage.objects.all()
+    serializer_class = ContactMessageSerializer
+    permission_classes = [AllowAny]  # Allow anyone to submit contact messages
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(
+            {"message": "Thank you for your message. We will get back to you soon!"},
+            status=status.HTTP_201_CREATED
+        )
 
 def homepage(request):
     """Render the homepage."""
