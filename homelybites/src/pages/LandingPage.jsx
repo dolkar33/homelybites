@@ -5,8 +5,7 @@ import Footer from "../components/Footer";
 
 const LandingPage = () => (
   <div className="min-h-screen flex flex-col">
-    <Navbar />
-
+    <Navbar showLoginButtons={true} showUserProfile={false} />
     <main className="flex-1 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto w-full px-8 py-8 relative">
       {/* Left: Text */}
       <div className="max-w-xl pt-8 pb-16 z-20">
