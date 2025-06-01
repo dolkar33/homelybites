@@ -11,6 +11,7 @@ import AboutUs from "./pages/AboutUs";
 import CommunityPage from "./pages/CommunityPage";
 import Post from "./pages/Post";
 import RecipePage from "./pages/RecipePage";
+import RecentRecipes from "./pages/RecentRecipes";
 
 // Custom hook to check authentication status
 const useAuth = () => {
@@ -116,6 +117,7 @@ function App() {
       <Route path="/community" element={<CommunityPage />} />
       <Route path="/post" element={<Post />} />
       <Route path="/recipepage" element={<RecipePage />} />
+      <Route path="/recent" element={<RecentRecipes />} />
   
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
