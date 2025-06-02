@@ -218,7 +218,7 @@ const Login = () => {
                 placeholder="Email Address"
                 value={email}
                 onChange={handleEmailChange}
-                className="w-full px-4 py-4 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
+                className="w-full px-4 py-4 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
             </div>
@@ -229,7 +229,7 @@ const Login = () => {
                 placeholder="Enter Password"
                 value={password}
                 onChange={handlePasswordChange}
-                className="w-full px-4 py-4 pr-12 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
+                className="w-full px-4 py-4 pr-12 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
               <button
@@ -291,8 +291,7 @@ const Login = () => {
 
             <button
               type="submit"
-              style={{ backgroundColor: "#FC7D7D" }}
-              className="w-full py-3 text-white rounded-full hover:bg-pink-500 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 hover:opacity-80"
+              className="w-full py-3 text-white bg-accent rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80"
               disabled={loading}
             >
               {loading ? "Logging in..." : "Login"}
@@ -303,8 +302,7 @@ const Login = () => {
             Don't have an account?{" "}
             <button
               onClick={handleSignUp}
-              style={{ color: "#FC7D7D" }}
-              className="hover:opacity-60"
+              className="hover:opacity-6 text-accent"
             >
               SignUp Now
             </button>
@@ -329,12 +327,12 @@ const Login = () => {
                 }
             `}</style> */}
 
-      <div className="md:inline md:w-1/2  bg-gradient-to-br from-pink-100 to-pink-200">
+      <div className="md:inline-block md:w-1/2 ">
         <div className="h-full w-full md:flex md:justify-end relative overflow-visible">
           <img
             src="/src/img/chef.png"
             alt="Chef Illustration"
-            className="absolute inset-0 w-full h-full object-fill file:shadow-lg"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         </div>
       </div>

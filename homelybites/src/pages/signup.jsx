@@ -499,7 +499,7 @@ const SignUp = () => {
                 value={confirmPassword}
                 onChange={handleConfirmPasswordChange}
                 onFocus={clearError}
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
               <button
@@ -548,7 +548,7 @@ const SignUp = () => {
             <button
               onClick={handleSignUp}
               disabled={loading}
-              className="w-full py-3 sm:py-4 text-sm sm:text-base text-white rounded-lg hover:bg-pink-500 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 hover:opacity-80 bg-accent"
+              className="w-full py-3 sm:py-4 text-sm sm:text-base text-white rounded-  hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 bg-accent"
             >
               {loading ? "Creating Account..." : "Sign Up"}
             </button>
@@ -567,15 +567,15 @@ const SignUp = () => {
       </div>
 
       {/* Right side - Image */}
-     <div className="hidden md:block md:w-1/2 bg-gradient-to-br from-pink-100 to-pink-200">
-  <div className="h-full w-full relative overflow-hidden">
-    <img
-      src="/src/img/chef.png"
-      alt="Chef Illustration"
-      className="absolute inset-0 w-full h-full object-cover file:shadow-lg"
-    />
-  </div>
-</div>
+      <div className="hidden md:block md:w-1/2 bg-gradient-to-br from-pink-100 to-pink-200">
+        <div className="h-full w-full relative overflow-hidden">
+          <img
+            src="/src/img/chef.png"
+            alt="Chef Illustration"
+            className="absolute inset-0 w-full h-full object-cover file:shadow-lg"
+          />
+        </div>
+      </div>
     </div>
   );
 };
