@@ -376,6 +376,7 @@ const CommunityPage = () => {
       </div>
 
       <Footer />
+      
     </div>
   );
 };

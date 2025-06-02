@@ -99,18 +99,14 @@ const SignUp = () => {
       return { isValid: false, message: "Please enter a valid email format" };
     }
 
-    // Extract domain from email
-    const domain = email.split("@")[1]?.toLowerCase();
-
-    // Check if domain is in our list of valid domains
-    if (!validEmailDomains.includes(domain)) {
-      return {
-        isValid: false,
-        message: `Please use a valid email provider (e.g., ${validEmailDomains
-          .slice(0, 3)
-          .join(", ")}, etc.)`,
-      };
-    }
+        const domain = email.split('@')[1]?.toLowerCase();
+        
+        if (!validEmailDomains.includes(domain)) {
+            return { 
+                isValid: false, 
+                message: `Please use a valid email provider (e.g., ${validEmailDomains.slice(0, 3).join(', ')}, etc.)` 
+            };
+        }
 
     return { isValid: true, message: "" };
   };
