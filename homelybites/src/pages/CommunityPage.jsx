@@ -11,7 +11,7 @@ import {
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
-<Navbar />;
+
 const CommunityPage = () => {
   // Mock data - easy to replace with API calls later
   const [posts, setPosts] = useState([

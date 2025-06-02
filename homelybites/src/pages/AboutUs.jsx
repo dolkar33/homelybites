@@ -23,7 +23,7 @@ const AboutUs = () => {
               <p className="text-gray-700 font-inter leading-relaxed text-sm sm:text-base lg:text-lg xl:text-xl text-justify selection:bg-accent selection:text-white max-w-prose mx-auto lg:mx-0">
                 Our Mission is to provide a tailored recipes which is tasty, healthy and also make people taste home wherever and whenever they want. We not only aim to make people use home ingredients and reduce food waste. 
                 <span className="text-accent font-sans font-extrabold block mt-4 sm:inline sm:mt-0 sm:ml-2">
-                  "YApping is left to be filled here"
+                  "YApping is left to be filled here".
                 </span>
               </p>
             </div>
@@ -45,7 +45,7 @@ const AboutUs = () => {
                   {/* Overlay element */}
                   <div className="absolute top-3 right-3 sm:top-4 sm:right-4 lg:top-6 lg:right-6 bg-white/95 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-4 shadow-lg transform hover:scale-105 transition-all duration-300">
                     <div className="text-xs sm:text-sm lg:text-base text-gray-800 font-medium whitespace-nowrap">
-                      Recipe Cooking Tutorial
+                      Our Websites Tutorial
                     </div>
                   </div>
                 </div>

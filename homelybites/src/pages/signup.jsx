@@ -259,10 +259,10 @@ const SignUp = () => {
     <div className="flex min-h-screen w-full bg-white relative">
       {/* Success Toast Notification */}
       {showSuccessToast && (
-        <div className="fixed top-4 right-4 bg-white border-l-4 border-pink-400 p-3 sm:p-4 rounded shadow-md z-50 flex items-center animate-pulse">
+        <div className="fixed top-4 right-4 bg-white border-l-4 border-accent p-3 sm:p-4 rounded shadow-md z-50 flex items-center animate-pulse">
           <div className="mr-2">
             <svg
-              className="h-5 w-5 sm:h-6 sm:w-6 text-pink-400"
+              className="h-5 w-5 sm:h-6 sm:w-6 text-accent"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -286,7 +286,7 @@ const SignUp = () => {
           </div>
           <button
             onClick={() => setShowSuccessToast(false)}
-            className="ml-3 sm:ml-4 text-pink-400 hover:text-pink-600"
+            className="ml-3 sm:ml-4 text-accent hover:text-accent"
           >
             <svg
               className="h-4 w-4 sm:h-5 sm:w-5"
@@ -335,7 +335,7 @@ const SignUp = () => {
                   value={firstName}
                   onChange={handleFirstNameChange}
                   onFocus={clearError}
-                  className="w-full px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
+                  className="w-full px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                   required
                 />
               </div>
@@ -346,7 +346,7 @@ const SignUp = () => {
                   value={lastName}
                   onChange={handleLastNameChange}
                   onFocus={clearError}
-                  className="w-full px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
+                  className="w-full px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                   required
                 />
               </div>
@@ -359,7 +359,7 @@ const SignUp = () => {
                 value={email}
                 onChange={handleEmailChange}
                 onFocus={clearError}
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
             </div>
@@ -371,7 +371,7 @@ const SignUp = () => {
                 value={password}
                 onChange={handlePasswordChange}
                 onFocus={clearError}
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
+                className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
               <button
@@ -544,7 +544,7 @@ const SignUp = () => {
             <button
               onClick={handleSignUp}
               disabled={loading}
-              className="w-full py-3 sm:py-4 text-sm sm:text-base text-white rounded-  hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 bg-accent"
+              className="w-full py-3 sm:py-4 text-sm sm:text-base text-white rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 bg-accent"
             >
               {loading ? "Creating Account..." : "Sign Up"}
             </button>
@@ -563,8 +563,8 @@ const SignUp = () => {
       </div>
 
       {/* Right side - Image */}
-      <div className="hidden md:block md:w-1/2 bg-gradient-to-br from-pink-100 to-pink-200">
-        <div className="h-full w-full relative overflow-hidden">
+      <div className="hidden md:block md:w-1/2 ">
+        <div className="h-full w-80% relative overflow-hidden">
           <img
             src="/src/img/chef.png"
             alt="Chef Illustration"
