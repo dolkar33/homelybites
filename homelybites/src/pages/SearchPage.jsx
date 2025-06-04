@@ -281,7 +281,7 @@ const RecipeSearchPage = () => {
           <div className="flex flex-col lg:flex-row gap-4 xl:gap-6">
             {/* Filter Section Starting  */}
             <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 mb-6">
-              <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8">
+              <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 lg:mb-8">
                   Filters
                 </h2>
@@ -385,8 +385,7 @@ const RecipeSearchPage = () => {
                 {/* Clear Filters Button */}
                 <button
                   onClick={clearFilters}
-                  className="w-full py-2 sm:py-3 lg:py-4 px-4 text-sm sm:text-base lg:text-lg bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium"
-                >
+                  className="w-full py-2 sm:py-3 lg:py-4 px-4 text-sm sm:text-base lg:text-lg bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium">
                   Clear Filters
                 </button>
               </div>
@@ -412,8 +411,7 @@ const RecipeSearchPage = () => {
                   />
                   <button
                     onClick={addIngredient}
-                    className="px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 text-sm sm:text-base lg:text-lg bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium"
-                  >
+                    className="px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 text-sm sm:text-base lg:text-lg bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium">
                     Add
                   </button>
                 </div>
@@ -423,13 +421,11 @@ const RecipeSearchPage = () => {
                   {selectedIngredients.map((ingredient) => (
                     <span
                       key={ingredient}
-                      className="inline-flex items-center px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-full"
-                    >
+                      className="inline-flex items-center px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-full">
                       {ingredient}
                       <button
                         onClick={() => removeIngredient(ingredient)}
-                        className="ml-2 hover:bg-red-500 rounded-full p-1"
-                      >
+                        className="ml-2 hover:bg-red-500 rounded-full p-1">
                         <X
                           size={12}
                           className="sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4"
@@ -473,8 +469,7 @@ const RecipeSearchPage = () => {
                   {recipes.map((recipe) => (
                     <div
                       key={recipe.id}
-                      className="bg-white rounded-lg shadow-lg p-3 sm:p-4 lg:p-6 hover:shadow-xl transition-shadow flex gap-3 sm:gap-4 lg:gap-6"
-                    >
+                      className="bg-white rounded-lg shadow-lg p-3 sm:p-4 lg:p-6 hover:shadow-xl transition-shadow flex gap-3 sm:gap-4 lg:gap-6">
                       <div className="flex-shrink-0">
                         <img
                           src={recipe.image}
@@ -491,14 +486,14 @@ const RecipeSearchPage = () => {
                             </h3>
                             <button
                               onClick={() => toggleFavorite(recipe.id)}
-                              className="flex-shrink-0 p-1 hover:bg-gray-50 rounded-full transition-colors"
+                              className="flex-shrink-0 p-1 hover:bg-gray-200 rounded-full transition-colors"
                             >
                               <Heart
                                 size={30}
                                 className={`${
                                   favorites.has(recipe.id)
                                     ? "fill-red-500 text-red-500"
-                                    : "text-gray-400"
+                                    : "text-gray-600"
                                 }`}
                               />
                             </button>

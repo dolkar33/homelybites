@@ -139,7 +139,7 @@ const Login = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-full bg-white relative">
+    <div className="flex flex-col md:flex-row h-[100vh] w-full bg-white relative">
       {/* Success Toast Notification - with pink theme (#FC7D7D) */}
       {showSuccessToast && (
         <div
@@ -192,50 +192,50 @@ const Login = () => {
       )}
 
       {/* Left side - Login Form */}
-      <div className="w-full md:w-1/2 flex flex-col justify-start pt-12 px-8">
+      <div className="w-full md:w-1/2 flex flex-col justify-start pt-[8vh] px-[4vw] h-[60vh] md:h-[100vh]">
         <div className="w-full max-w-md mx-auto">
-          <div className="flex flex-col items-center mb-12">
+          <div className="flex flex-col items-center mb-[6vh]">
             <img
               src="/Images/logo/logo-fyp.svg"
               alt="HomelyBites Logo"
-              className="w-32 h-32"
+              className="w-[16vh] h-[16vh]"
             />
-            <h2 className="text-2xl font-bold font-amaranth mt-6 text-gray-800">
+            <h2 className="text-[3vh] font-bold font-amaranth mt-[2vh] text-gray-800">
               Welcome, Login!
             </h2>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            <div className="mb-[2vh] p-[1.5vh] bg-red-100 text-red-700 rounded-lg">
               {error}
             </div>
           )}
 
           <form onSubmit={handleLogin} className="w-full">
-            <div className="mb-8">
+            <div className="mb-[4vh]">
               <input
                 type="email"
                 placeholder="Email Address"
                 value={email}
                 onChange={handleEmailChange}
-                className="w-full px-4 py-4 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-[2vw] py-[2vh] border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
             </div>
 
-            <div className="mb-1 relative">
+            <div className="mb-[0.5vh] relative">
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter Password"
                 value={password}
                 onChange={handlePasswordChange}
-                className="w-full px-4 py-4 pr-12 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-[2vw] py-[2vh] pr-[6vw] border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+                className="absolute inset-y-0 right-0 flex items-center pr-[1vw] text-gray-500 hover:text-gray-700"
               >
                 {showPassword ? (
                   // Eye with slash (hide password)
@@ -279,7 +279,7 @@ const Login = () => {
               </button>
             </div>
 
-            <div className="text-right mb-8 mt-2">
+            <div className="text-right mb-[4vh] mt-[1vh] sm:text-[3vh] md:text-[2vh]">
               <button
                 type="button"
                 onClick={handleForgotPassword}
@@ -291,14 +291,14 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full py-3 text-white bg-accent rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80"
+              className="w-full py-[1.5vh] text-white bg-accent rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 text-[3vh] "
               disabled={loading}
             >
               {loading ? "Logging in..." : "Login"}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
+          <div className="mt-[3vh] text-center text-xs text-gray-600 sm:text-[3vh] md:text-[2vh] xl:text-[2.5vh] ">
             Don't have an account?{" "}
             <button
               onClick={handleSignUp}
@@ -310,24 +310,7 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Add custom animation for toast */}
-      {/* <style jsx>{`
-                @keyframes fadeInDown {
-                    from {
-                        opacity: 0;
-                        transform: translate3d(0, -20px, 0);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translate3d(0, 0, 0);
-                    }
-                }
-                .animate-fade-in-down {
-                    animation: fadeInDown 0.5s ease-out;
-                }
-            `}</style> */}
-
-      <div className="md:inline-block md:w-1/2 ">
+      <div className="hidden md:inline-block md:w-1/2 h-[40vh] md:h-[100vh]">
         <div className="h-full w-full md:flex md:justify-end relative overflow-visible">
           <img
             src="/src/img/chef.png"

@@ -142,7 +142,7 @@ const ContactPage = () => {
 
                 <button
                   onClick={handleSubmit}
-                  className="bg-red-400 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-full text-sm sm:text-lg font-medium hover:bg-red-500 transition-colors w-full sm:w-auto"
+                  className="bg-red-400 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-full text-sm sm:text-lg font-medium hover:bg-accent transition-colors w-full sm:w-auto"
                 >
                   Send Message
                 </button>
