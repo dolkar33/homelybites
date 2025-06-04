@@ -122,7 +122,7 @@ const ContactPage = () => {
                     name="subject"
                     value={formData.subject}
                     onChange={handleInputChange}
-                    className="w-full border-b-2 border-gray-300 bg-transparent pb-2 text-sm sm:text-lg focus:outline-none focus:border-red-400"
+                    className="w-full border-b-2 border-gray-300 bg-transparent pb-2 text-sm sm:text-md focus:outline-none focus:border-red-400"
                   />
                 </div>
 
@@ -136,13 +136,13 @@ const ContactPage = () => {
                     value={formData.message}
                     onChange={handleInputChange}
                     rows="4"
-                    className="w-full border-b-2 border-gray-300 bg-transparent pb-2 text-sm sm:text-lg focus:outline-none focus:border-red-400 resize-none"
+                    className="w-full border-b-2 border-gray-300 bg-transparent pb-2 text-sm sm:text-md focus:outline-none focus:border-red-400 resize-none"
                   />
                 </div>
 
                 <button
                   onClick={handleSubmit}
-                  className="bg-red-400 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-full text-sm sm:text-lg font-medium hover:bg-accent transition-colors w-full sm:w-auto"
+                  className="bg-red-400 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-full text-sm sm:text-md font-medium hover:bg-accent transition-colors w-full sm:w-auto"
                 >
                   Send Message
                 </button>
