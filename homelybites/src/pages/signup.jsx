@@ -99,14 +99,16 @@ const SignUp = () => {
       return { isValid: false, message: "Please enter a valid email format" };
     }
 
-        const domain = email.split('@')[1]?.toLowerCase();
-        
-        if (!validEmailDomains.includes(domain)) {
-            return { 
-                isValid: false, 
-                message: `Please use a valid email provider (e.g., ${validEmailDomains.slice(0, 3).join(', ')}, etc.)` 
-            };
-        }
+    const domain = email.split("@")[1]?.toLowerCase();
+
+    if (!validEmailDomains.includes(domain)) {
+      return {
+        isValid: false,
+        message: `Please use a valid email provider (e.g., ${validEmailDomains
+          .slice(0, 3)
+          .join(", ")}, etc.)`,
+      };
+    }
 
     return { isValid: true, message: "" };
   };
@@ -307,27 +309,27 @@ const SignUp = () => {
       )}
 
       {/* Left side - SignUp Form */}
-      <div className="w-full md:w-1/2 flex flex-col justify-start pt-8 sm:pt-12 px-4 sm:px-6 md:px-8">
+      <div className="w-full md:w-1/2 flex flex-col justify-start pt-[5vh] sm:pt-[6vh] px-4 sm:px-6 md:px-8 h-[100vh]">
         <div className="w-full max-w-md mx-auto">
-          <div className="flex flex-col items-center mb-8 sm:mb-12">
+          <div className="flex flex-col items-center mb-[4vh] sm:mb-[5vh]">
             <img
               src="/Images/logo/logo-fyp.svg"
               alt="HomelyBites Logo"
-              className="w-24 h-24 sm:w-32 sm:h-32"
+              className="w-[12vh] h-[12vh] sm:w-[16vh] sm:h-[16vh]"
             />
-            <h2 className="text-xl sm:text-2xl font-bold mt-4 sm:mt-6 text-gray-800">
+            <h2 className="text-xl sm:text-2xl font-bold mt-[2vh] sm:mt-[3vh] text-gray-800">
               Get Started
             </h2>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm sm:text-base">
+            <div className="mb-[2vh] p-3 bg-red-100 text-red-700 rounded-lg text-sm sm:text-base">
               {error}
             </div>
           )}
 
           <div className="w-full">
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4 mb-[3vh]">
               <div className="w-full sm:w-1/2">
                 <input
                   type="text"
@@ -335,7 +337,7 @@ const SignUp = () => {
                   value={firstName}
                   onChange={handleFirstNameChange}
                   onFocus={clearError}
-                  className="w-full px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                   required
                 />
               </div>
@@ -346,32 +348,32 @@ const SignUp = () => {
                   value={lastName}
                   onChange={handleLastNameChange}
                   onFocus={clearError}
-                  className="w-full px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                   required
                 />
               </div>
             </div>
 
-            <div className="mb-6">
+            <div className="mb-[3vh]">
               <input
                 type="email"
                 placeholder="Email Address"
                 value={email}
                 onChange={handleEmailChange}
                 onFocus={clearError}
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
             </div>
 
-            <div className="mb-4 relative">
+            <div className="mb-[2vh] relative">
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter Password"
                 value={password}
                 onChange={handlePasswordChange}
                 onFocus={clearError}
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
               <button
@@ -419,11 +421,11 @@ const SignUp = () => {
 
             {/* Password Strength Indicator */}
             {password && !isPasswordStrong() && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">
+              <div className="mb-[2vh] p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs sm:text-sm font-medium text-gray-700 mb-[1vh]">
                   Password Requirements:
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-[0.5vh]">
                   <div
                     className={`flex items-center text-xs sm:text-sm ${
                       passwordStrength.hasMinLength
@@ -488,14 +490,14 @@ const SignUp = () => {
               </div>
             )}
 
-            <div className="mb-6 relative">
+            <div className="mb-[3vh] relative">
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={handleConfirmPasswordChange}
                 onFocus={clearError}
-                className="w-full px-3 sm:px-4 py-3 sm:py-4 pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
                 required
               />
               <button
@@ -544,12 +546,12 @@ const SignUp = () => {
             <button
               onClick={handleSignUp}
               disabled={loading}
-              className="w-full py-3 sm:py-4 text-sm sm:text-base text-white rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 bg-accent"
+              className="w-full py-[1.5vh] sm:py-[2vh] text-sm sm:text-base text-white rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 bg-accent"
             >
               {loading ? "Creating Account..." : "Sign Up"}
             </button>
 
-            <div className="mt-6 text-center text-xs sm:text-sm text-gray-600">
+            <div className="mt-[3vh] text-center text-xs sm:text-sm text-gray-600">
               Already have an account?{" "}
               <button
                 onClick={navigateToLogin}
@@ -563,12 +565,12 @@ const SignUp = () => {
       </div>
 
       {/* Right side - Image */}
-      <div className="hidden md:block md:w-1/2 ">
-        <div className="h-full w-80% relative overflow-hidden">
+      <div className="hidden md:inline-block md:w-1/2 h-[100vh]">
+        <div className="h-full w-full md:flex md:justify-end relative overflow-visible">
           <img
             src="/src/img/chef.png"
             alt="Chef Illustration"
-            className="absolute inset-0 w-full h-full object-cover file:shadow-lg"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         </div>
       </div>
