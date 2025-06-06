@@ -1,11 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as yup from 'yup';
+import axiosInstance from '../config/axiosInstance';
+
+// Yup validation schema
+const validationSchema = yup.object({
+    username: yup
+        .string()
+        .required('Username is required')
+        .min(3, 'Username must be at least 3 characters')
+        .max(20, 'Username must not exceed 20 characters')
+        .matches(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
+    
+    password: yup
+        .string()
+        .required('Password is required')
+        .min(1, 'Password cannot be empty')
+});
 
 const Login = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [loginData, setLoginData] = useState({
+        username: '',
+        password: ''
+    });
     const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState('');
+    const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [showSuccessToast, setShowSuccessToast] = useState(false);
     const navigate = useNavigate();
@@ -24,36 +43,65 @@ const Login = () => {
                 setShowSuccessToast(false);
             }, 5000);
         }
-
-        // Add test users for development (remove this in production)
-        const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-        if (existingUsers.length === 0) {
-            const testUsers = [
-                {
-                    firstName: 'John',
-                    lastName: 'Doe',
-                    email: 'john@example.com',
-                    password: 'password123'
-                },
-                {
-                    firstName: 'Jane',
-                    lastName: 'Smith',
-                    email: 'jane@example.com',
-                    password: 'test123'
-                }
-            ];
-            localStorage.setItem('users', JSON.stringify(testUsers));
-        }
     }, []);
 
-    const handleEmailChange = (e) => {
-        setEmail(e.target.value);
-        setError(''); // Clear error when user types
+    const handleInput = (e) => {
+        const { name, value } = e.target;
+        setLoginData((prevData) => ({
+            ...prevData,
+            [name]: value
+        }));
+
+        // Clear specific field error when user starts typing
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
+        }
+
+        // Clear general error when user starts typing
+        if (errors.general) {
+            setErrors(prev => ({
+                ...prev,
+                general: ''
+            }));
+        }
     };
-    
-    const handlePasswordChange = (e) => {
-        setPassword(e.target.value);
-        setError(''); // Clear error when user types
+
+    const validateForm = async () => {
+        try {
+            await validationSchema.validate(loginData, { abortEarly: false });
+            setErrors({});
+            return true;
+        } catch (validationErrors) {
+            const errorMap = {};
+            validationErrors.inner.forEach(error => {
+                errorMap[error.path] = error.message;
+            });
+            setErrors(errorMap);
+            return false;
+        }
+    };
+
+    const validateField = async (fieldName, value) => {
+        try {
+            await validationSchema.validateAt(fieldName, { ...loginData, [fieldName]: value });
+            setErrors(prev => ({
+                ...prev,
+                [fieldName]: ''
+            }));
+        } catch (error) {
+            setErrors(prev => ({
+                ...prev,
+                [fieldName]: error.message
+            }));
+        }
+    };
+
+    const handleBlur = (e) => {
+        const { name, value } = e.target;
+        validateField(name, value);
     };
 
     const togglePasswordVisibility = () => {
@@ -62,49 +110,41 @@ const Login = () => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        setLoading(true);
-        setError('');
         
-        // Basic validation
-        if (!email || !password) {
-            setError('Please enter both email and password');
-            setLoading(false);
+        const isValid = await validateForm();
+        if (!isValid) {
             return;
         }
 
-        // Email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            setError('Please enter a valid email address');
-            setLoading(false);
-            return;
-        }
-
+        setLoading(true);
+        setErrors({});
+        
         try {
-            // Simulate API call with localStorage check
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            console.log('Stored users:', users); // Debug log
-            console.log('Login attempt:', { email, password }); // Debug log
-            
-            const user = users.find(u => u.email === email && u.password === password);
-            console.log('Found user:', user); // Debug log
-            
-            // Artificial delay to simulate network request
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
-            if (user) {
-                // Store logged in user info in localStorage
+            const response = await axiosInstance.post('api/login/', {
+                username: loginData.username,
+                password: loginData.password,
+            });
+
+            if (response.status === 200) {
+                // Store user data from response
+                const userData = response.data.user || response.data;
+                
+                // Store logged in user info (adjust based on your API response structure)
                 localStorage.setItem('currentUser', JSON.stringify({
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    email: user.email,
+                    ...userData,
                     isLoggedIn: true
                 }));
+
+                // Store token if provided - using consistent 'authToken' key
                 
-                // Show success toast first
+                    localStorage.setItem('authToken', response.data.access);
+                    localStorage.setItem('refreshToken', response.data.refresh);
+                    
+                
+                // Show success toast
                 setShowSuccessToast(true);
                 
-                // Redirect to MainPage after a short delay
+                // Redirect to main page after a short delay
                 setTimeout(() => {
                     navigate('/userquestion');
                 }, 1500);
@@ -113,12 +153,31 @@ const Login = () => {
                 setTimeout(() => {
                     setShowSuccessToast(false);
                 }, 5000);
-            } else {
-                setError('Invalid email or password');
             }
-        } catch (err) {
-            setError('Login failed. Please try again');
-            console.error('Login error:', err);
+        } catch (error) {
+            console.error('Login error:', error);
+            
+            // Handle different error scenarios
+            if (error.response) {
+                // Server responded with error status
+                if (error.response.status === 401) {
+                    // Clear any existing tokens on 401
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('currentUser');
+                }
+                
+                const errorMessage = error.response?.data?.message || 
+                                   error.response?.data?.error || 
+                                   error.response?.data?.detail ||
+                                   'Invalid username or password';
+                setErrors({ general: errorMessage });
+            } else if (error.request) {
+                // Request was made but no response received
+                setErrors({ general: 'Network error. Please check your connection and try again.' });
+            } else {
+                // Something else happened
+                setErrors({ general: 'Login failed. Please try again.' });
+            }
         } finally {
             setLoading(false);
         }
@@ -129,8 +188,10 @@ const Login = () => {
     };
 
     const handleForgotPassword = () => {
+        // Navigate to forgot password page or show modal
         // For now, just alert the user
         alert('Password reset functionality will be implemented soon!');
+        // navigate('/forgot-password');
     };
 
     return (
@@ -167,32 +228,41 @@ const Login = () => {
                         <h2 className="text-2xl font-bold font-amaranth mt-6 text-gray-800">Welcome, Login!</h2>
                     </div>
                     
-                    {error && (
+                    {errors.general && (
                         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-                            {error}
+                            {errors.general}
                         </div>
                     )}
                     
                     <form onSubmit={handleLogin} className="w-full">
                         <div className="mb-8">
                             <input 
-                                type="email" 
-                                placeholder="Email Address"
-                                value={email}
-                                onChange={handleEmailChange}
-                                className="w-full px-4 py-4 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
-                                required
+                                type="text" 
+                                name="username"
+                                placeholder="Username"
+                                value={loginData.username}
+                                onChange={handleInput}
+                                onBlur={handleBlur}
+                                className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
+                                    errors.username ? 'border-red-400' : 'border-gray-400'
+                                }`}
                             />
+                            {errors.username && (
+                                <p className="mt-1 text-sm text-red-600">{errors.username}</p>
+                            )}
                         </div>
                         
                         <div className="mb-1 relative">
                             <input 
                                 type={showPassword ? "text" : "password"}
+                                name="password"
                                 placeholder="Enter Password"
-                                value={password}
-                                onChange={handlePasswordChange}
-                                className="w-full px-4 py-4 pr-12 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
-                                required
+                                value={loginData.password}
+                                onChange={handleInput}
+                                onBlur={handleBlur}
+                                className={`w-full px-4 py-4 pr-12 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
+                                    errors.password ? 'border-red-400' : 'border-gray-400'
+                                }`}
                             />
                             <button
                                 type="button"
@@ -212,6 +282,9 @@ const Login = () => {
                                     </svg>
                                 )}
                             </button>
+                            {errors.password && (
+                                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                            )}
                         </div>
                         
                         <div className="text-right mb-8 mt-2">
@@ -226,9 +299,9 @@ const Login = () => {
 
                         <button 
                             type="submit" 
-                            style={{ backgroundColor: '#FC7D7D' }}
-                            className="w-full py-3 text-white rounded-full hover:bg-pink-500 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 hover:opacity-80"
                             disabled={loading}
+                            style={{ backgroundColor: '#FC7D7D' }}
+                            className="w-full py-3 text-white rounded-full hover:bg-pink-500 transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 hover:opacity-80 disabled:opacity-50"
                         >
                             {loading ? 'Logging in...' : 'Login'}
                         </button>

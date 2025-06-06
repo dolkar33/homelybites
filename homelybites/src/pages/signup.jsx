@@ -1,85 +1,163 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as yup from 'yup';
+import axiosInstance from '../config/axiosInstance';
+
+// Yup validation schema
+const validationSchema = yup.object({
+    first_name: yup
+        .string()
+        .required('First name is required')
+        .min(2, 'First name must be at least 2 characters')
+        .max(50, 'First name must not exceed 50 characters')
+        .matches(/^[a-zA-Z\s]+$/, 'First name can only contain letters and spaces'),
+    
+    last_name: yup
+        .string()
+        .required('Last name is required')
+        .min(2, 'Last name must be at least 2 characters')
+        .max(50, 'Last name must not exceed 50 characters')
+        .matches(/^[a-zA-Z\s]+$/, 'Last name can only contain letters and spaces'),
+    
+    username: yup
+        .string()
+        .required('Username is required')
+        .min(3, 'Username must be at least 3 characters')
+        .max(20, 'Username must not exceed 20 characters')
+        .matches(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores')
+        .matches(/^[a-zA-Z]/, 'Username must start with a letter'),
+    
+    email: yup
+        .string()
+        .required('Email is required')
+        .email('Please enter a valid email format')
+        .test('valid-domain', 'Please use a valid email provider (e.g., gmail.com, yahoo.com, outlook.com)', function(value) {
+            if (!value) return false;
+            const validDomains = [
+                'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com',
+                'aol.com', 'protonmail.com', 'yandex.com', 'mail.com', 'zoho.com',
+                'live.com', 'msn.com', 'yahoo.co.uk', 'googlemail.com'
+            ];
+            const domain = value.split('@')[1]?.toLowerCase();
+            return validDomains.includes(domain);
+        }),
+    
+    password: yup
+        .string()
+        .required('Password is required')
+        .min(8, 'Password must be at least 8 characters')
+        .matches(/[a-z]/, 'Password must contain at least one lowercase letter')
+        .matches(/[A-Z]/, 'Password must contain at least one uppercase letter')
+        .matches(/\d/, 'Password must contain at least one number')
+        .matches(/[!@#$%^&*(),.?":{}|<>]/, 'Password must contain at least one special character'),
+    
+    password2: yup
+        .string()
+        .required('Please confirm your password')
+        .oneOf([yup.ref('password')], 'Passwords do not match')
+});
 
 const SignUp = () => {
     const navigate = useNavigate();
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showSuccessToast, setShowSuccessToast] = useState(false);
-    const [passwordStrength, setPasswordStrength] = useState({
-        hasLowercase: false,
-        hasUppercase: false,
-        hasNumber: false,
-        hasSpecialChar: false,
-        hasMinLength: false
+    const [errors, setErrors] = useState({});
+    const [registerData, setRegisterData] = useState({
+        first_name: '',
+        last_name: '',
+        username: '',
+        email: '',
+        password: '',
+        password2: ''
     });
 
-    // Valid email domains
-    const validEmailDomains = [
-        'gmail.com',
-        'yahoo.com',
-        'hotmail.com',
-        'outlook.com',
-        'icloud.com',
-        'aol.com',
-        'protonmail.com',
-        'yandex.com',
-        'mail.com',
-        'zoho.com',
-        'live.com',
-        'msn.com',
-        'yahoo.co.uk',
-        'googlemail.com'
-    ];
+    const handleInput = (e) => {
+        const { name, value } = e.target;
+        setRegisterData((prevData) => ({
+            ...prevData,
+            [name]: value
+        }));
 
-    const clearError = () => {
-        if (error) {
-            setError('');
+        // Clear specific field error when user starts typing
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
         }
     };
 
-    const handleFirstNameChange = (e) => {
-        setFirstName(e.target.value);
-        clearError();
+    const validateForm = async () => {
+        try {
+            await validationSchema.validate(registerData, { abortEarly: false });
+            setErrors({});
+            return true;
+        } catch (validationErrors) {
+            const errorMap = {};
+            validationErrors.inner.forEach(error => {
+                errorMap[error.path] = error.message;
+            });
+            setErrors(errorMap);
+            return false;
+        }
     };
-    
-    const handleLastNameChange = (e) => {
-        setLastName(e.target.value);
-        clearError();
+
+    const validateField = async (fieldName, value) => {
+        try {
+            await validationSchema.validateAt(fieldName, { ...registerData, [fieldName]: value });
+            setErrors(prev => ({
+                ...prev,
+                [fieldName]: ''
+            }));
+        } catch (error) {
+            setErrors(prev => ({
+                ...prev,
+                [fieldName]: error.message
+            }));
+        }
     };
-    
-    const handleEmailChange = (e) => {
-        setEmail(e.target.value);
-        clearError();
+
+    const handleBlur = (e) => {
+        const { name, value } = e.target;
+        validateField(name, value);
     };
-    
-    const handlePasswordChange = (e) => {
-        const newPassword = e.target.value;
-        setPassword(newPassword);
-        clearError();
+
+    const handleRegister = async (e) => {
+        e.preventDefault();
         
-        // Check password strength
-        setPasswordStrength({
-            hasLowercase: /[a-z]/.test(newPassword),
-            hasUppercase: /[A-Z]/.test(newPassword),
-            hasNumber: /\d/.test(newPassword),
-            hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword),
-            hasMinLength: newPassword.length >= 8
-        });
+        const isValid = await validateForm();
+        if (!isValid) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await axiosInstance.post('api/register/', {
+                first_name: registerData.first_name,
+                last_name: registerData.last_name,
+                username: registerData.username,
+                email: registerData.email,
+                password: registerData.password,
+                password2: registerData.password2,
+            });
+
+            if (response.status === 200 || response.status === 201) {
+                setShowSuccessToast(true);
+                setTimeout(() => {
+                    navigate('/login');
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            const errorMessage = error.response?.data?.message || 'Registration failed. Please try again';
+            setErrors({ general: errorMessage });
+        } finally {
+            setLoading(false);
+        }
     };
-    
-    const handleConfirmPasswordChange = (e) => {
-        setConfirmPassword(e.target.value);
-        clearError();
-    };
-    
+
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword);
     };
@@ -92,149 +170,23 @@ const SignUp = () => {
         navigate('/login');
     };
 
-    const validateEmail = (email) => {
-        // Basic email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return { isValid: false, message: 'Please enter a valid email format' };
-        }
-
-        const domain = email.split('@')[1]?.toLowerCase();
+    // Password strength checker for visual feedback
+    const getPasswordStrength = (password) => {
+        if (!password) return { score: 0, requirements: [] };
         
-        if (!validEmailDomains.includes(domain)) {
-            return { 
-                isValid: false, 
-                message: `Please use a valid email provider (e.g., ${validEmailDomains.slice(0, 3).join(', ')}, etc.)` 
-            };
-        }
-
-        return { isValid: true, message: '' };
+        const requirements = [
+            { test: password.length >= 8, text: 'At least 8 characters' },
+            { test: /[a-z]/.test(password), text: 'One lowercase letter (a-z)' },
+            { test: /[A-Z]/.test(password), text: 'One uppercase letter (A-Z)' },
+            { test: /\d/.test(password), text: 'One number (0-9)' },
+            { test: /[!@#$%^&*(),.?":{}|<>]/.test(password), text: 'One special character (!@#$%^&*)' }
+        ];
+        
+        const score = requirements.filter(req => req.test).length;
+        return { score, requirements };
     };
 
-    const validatePassword = (password) => {
-        const requirements = {
-            minLength: password.length >= 8,
-            hasLowercase: /[a-z]/.test(password),
-            hasUppercase: /[A-Z]/.test(password),
-            hasNumber: /\d/.test(password),
-            hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
-        };
-        
-        return requirements;
-    };
-
-    const isPasswordStrong = () => {
-        const { hasLowercase, hasUppercase, hasNumber, hasSpecialChar, hasMinLength } = passwordStrength;
-        return hasLowercase && hasUppercase && hasNumber && hasSpecialChar && hasMinLength;
-    };
-  
-
-    const handleSignUp = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-        
-        // Basic validation
-        if (!firstName || !lastName || !email || !password || !confirmPassword) {
-            setError('Please complete all required fields');
-            setLoading(false);
-            return;
-        }
-        
-        // Enhanced email validation
-        const emailValidation = validateEmail(email);
-        if (!emailValidation.isValid) {
-            setError(emailValidation.message);
-            setLoading(false);
-            return;
-        }
-        
-        // Strong password validation
-        const passwordRequirements = validatePassword(password);
-        if (!passwordRequirements.minLength) {
-            setError('Password must be at least 8 characters long');
-            setLoading(false);
-            return;
-        }
-        if (!passwordRequirements.hasLowercase) {
-            setError('Password must contain at least one lowercase letter');
-            setLoading(false);
-            return;
-        }
-        if (!passwordRequirements.hasUppercase) {
-            setError('Password must contain at least one uppercase letter');
-            setLoading(false);
-            return;
-        }
-        if (!passwordRequirements.hasNumber) {
-            setError('Password must contain at least one number');
-            setLoading(false);
-            return;
-        }
-        if (!passwordRequirements.hasSpecialChar) {
-            setError('Password must contain at least one special character (!@#$%^&*()_+-=[]{};\':"|,.<>?/)');
-            setLoading(false);
-            return;
-        }
-        
-        // Password match validation
-        if (password !== confirmPassword) {
-            setError('Passwords do not match');
-            setLoading(false);
-            return;
-        }
-        
-        try {
-            // Get existing users from localStorage
-            const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-            
-            // Check if email already exists
-            if (existingUsers.some(user => user.email.toLowerCase() === email.toLowerCase())) {
-                setError('Email is already registered');
-                setLoading(false);
-                return;
-            }
-            
-            // Artificial delay to simulate network request
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
-            // Create new user object
-            const newUser = {
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                email: email.toLowerCase().trim(),
-                password: password, // In real app, this should be hashed
-                createdAt: new Date().toISOString()
-            };
-            
-            // Add new user to existing users array
-            const updatedUsers = [...existingUsers, newUser];
-            
-            // Save updated users array to localStorage
-            localStorage.setItem('users', JSON.stringify(updatedUsers));
-            
-            console.log('User registered successfully:', { email: newUser.email, firstName: newUser.firstName });
-            
-            // Show success toast
-            setShowSuccessToast(true);
-            
-            // Auto hide toast after 5 seconds
-            setTimeout(() => {
-                setShowSuccessToast(false);
-            }, 5000);
-            
-            // Navigate to login with success parameter after successful registration
-            setTimeout(() => {
-                navigate('/login?registered=true');
-            }, 1500);
-            
-        } catch (err) {
-            setError('Registration failed. Please try again');
-            console.error('Registration error:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const passwordStrength = getPasswordStrength(registerData.password);
 
     return (
         <div className="flex h-screen w-full bg-white relative">
@@ -269,59 +221,93 @@ const SignUp = () => {
                         <h2 className="text-2xl font-bold mt-6 text-gray-800">Get Started</h2>
                     </div>
                     
-                    {error && (
+                    {errors.general && (
                         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-                            {error}
+                            {errors.general}
                         </div>
                     )}
                     
-                    <div className="w-full">
+                    <form onSubmit={handleRegister} className="w-full">
                         <div className="flex gap-4 mb-6">
                             <div className="w-1/2">
                                 <input 
                                     type="text" 
+                                    name="first_name"
                                     placeholder="First Name"
-                                    value={firstName}
-                                    onChange={handleFirstNameChange}
-                                    onFocus={clearError}
-                                    className="w-full px-4 py-4 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
-                                    required
+                                    value={registerData.first_name}
+                                    onChange={handleInput}
+                                    onBlur={handleBlur}
+                                    className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
+                                        errors.first_name ? 'border-red-400' : 'border-gray-400'
+                                    }`}
                                 />
+                                {errors.first_name && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.first_name}</p>
+                                )}
                             </div>
                             <div className="w-1/2">
                                 <input 
                                     type="text" 
+                                    name="last_name"
                                     placeholder="Last Name"
-                                    value={lastName}
-                                    onChange={handleLastNameChange}
-                                    onFocus={clearError}
-                                    className="w-full px-4 py-4 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
-                                    required
+                                    value={registerData.last_name}
+                                    onChange={handleInput}
+                                    onBlur={handleBlur}
+                                    className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
+                                        errors.last_name ? 'border-red-400' : 'border-gray-400'
+                                    }`}
                                 />
+                                {errors.last_name && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.last_name}</p>
+                                )}
                             </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <input 
+                                type="text" 
+                                name="username"
+                                placeholder="Username"
+                                value={registerData.username}
+                                onChange={handleInput}
+                                onBlur={handleBlur}
+                                className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
+                                    errors.username ? 'border-red-400' : 'border-gray-400'
+                                }`}
+                            />
+                            {errors.username && (
+                                <p className="mt-1 text-sm text-red-600">{errors.username}</p>
+                            )}
                         </div>
                         
                         <div className="mb-6">
                             <input 
                                 type="email" 
+                                name="email"
                                 placeholder="Email Address"
-                                value={email}
-                                onChange={handleEmailChange}
-                                onFocus={clearError}
-                                className="w-full px-4 py-4 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
-                                required
+                                value={registerData.email}
+                                onChange={handleInput}
+                                onBlur={handleBlur}
+                                className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
+                                    errors.email ? 'border-red-400' : 'border-gray-400'
+                                }`}
                             />
+                            {errors.email && (
+                                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                            )}
                         </div>
                         
                         <div className="mb-4 relative">
                             <input 
                                 type={showPassword ? "text" : "password"}
+                                name="password"
                                 placeholder="Enter Password"
-                                value={password}
-                                onChange={handlePasswordChange}
-                                onFocus={clearError}
-                                className="w-full px-4 py-4 pr-12 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
-                                required
+                                value={registerData.password}
+                                onChange={handleInput}
+                                onBlur={handleBlur}
+                                className={`w-full px-4 py-4 pr-12 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
+                                    errors.password ? 'border-red-400' : 'border-gray-400'
+                                }`}
                             />
                             <button
                                 type="button"
@@ -339,33 +325,22 @@ const SignUp = () => {
                                     </svg>
                                 )}
                             </button>
+                            {errors.password && (
+                                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                            )}
                         </div>
 
                         {/* Password Strength Indicator */}
-                        {password && !isPasswordStrong() && (
+                        {registerData.password && passwordStrength.score < 5 && (
                             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                                 <p className="text-sm font-medium text-gray-700 mb-2">Password Requirements:</p>
                                 <div className="space-y-1">
-                                    <div className={`flex items-center text-xs ${passwordStrength.hasMinLength ? 'text-green-600' : 'text-red-500'}`}>
-                                        <span className="mr-2">{passwordStrength.hasMinLength ? '✓' : '✗'}</span>
-                                        At least 8 characters
-                                    </div>
-                                    <div className={`flex items-center text-xs ${passwordStrength.hasLowercase ? 'text-green-600' : 'text-red-500'}`}>
-                                        <span className="mr-2">{passwordStrength.hasLowercase ? '✓' : '✗'}</span>
-                                        One lowercase letter (a-z)
-                                    </div>
-                                    <div className={`flex items-center text-xs ${passwordStrength.hasUppercase ? 'text-green-600' : 'text-red-500'}`}>
-                                        <span className="mr-2">{passwordStrength.hasUppercase ? '✓' : '✗'}</span>
-                                        One uppercase letter (A-Z)
-                                    </div>
-                                    <div className={`flex items-center text-xs ${passwordStrength.hasNumber ? 'text-green-600' : 'text-red-500'}`}>
-                                        <span className="mr-2">{passwordStrength.hasNumber ? '✓' : '✗'}</span>
-                                        One number (0-9)
-                                    </div>
-                                    <div className={`flex items-center text-xs ${passwordStrength.hasSpecialChar ? 'text-green-600' : 'text-red-500'}`}>
-                                        <span className="mr-2">{passwordStrength.hasSpecialChar ? '✓' : '✗'}</span>
-                                        One special character (!@#$%^&*)
-                                    </div>
+                                    {passwordStrength.requirements.map((req, index) => (
+                                        <div key={index} className={`flex items-center text-xs ${req.test ? 'text-green-600' : 'text-red-500'}`}>
+                                            <span className="mr-2">{req.test ? '✓' : '✗'}</span>
+                                            {req.text}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -373,12 +348,14 @@ const SignUp = () => {
                         <div className="mb-8 relative">
                             <input 
                                 type={showConfirmPassword ? "text" : "password"}
+                                name="password2"
                                 placeholder="Confirm Password"
-                                value={confirmPassword}
-                                onChange={handleConfirmPasswordChange}
-                                onFocus={clearError}
-                                className="w-full px-4 py-4 pr-12 border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300"
-                                required
+                                value={registerData.password2}
+                                onChange={handleInput}
+                                onBlur={handleBlur}
+                                className={`w-full px-4 py-4 pr-12 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
+                                    errors.password2 ? 'border-red-400' : 'border-gray-400'
+                                }`}
                             />
                             <button
                                 type="button"
@@ -396,18 +373,20 @@ const SignUp = () => {
                                     </svg>
                                 )}
                             </button>
+                            {errors.password2 && (
+                                <p className="mt-1 text-sm text-red-600">{errors.password2}</p>
+                            )}
                         </div>
 
                         <button 
-                            type="button"
-                            onClick={handleSignUp}
+                            type="submit"
                             disabled={loading}
                             style={{ backgroundColor: '#FC7D7D' }}
                             className="w-full py-3 text-white rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 hover:opacity-90 disabled:opacity-50"
                         >
                             {loading ? 'Creating Account...' : 'Sign Up'}
                         </button>
-                    </div>
+                    </form>
                     
                    <div className="mt-6 text-center text-sm text-gray-600">
                         Already have an account?{' '}
