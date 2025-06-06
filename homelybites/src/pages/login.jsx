@@ -104,9 +104,9 @@ const Login = () => {
         validateField(name, value);
     };
 
-    const togglePasswordVisibility = () => {
-        setShowPassword(!showPassword);
-    };
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -183,9 +183,9 @@ const Login = () => {
         }
     };
 
-    const handleSignUp = () => {
-        navigate('/signup');
-    };
+  const handleSignUp = () => {
+    navigate("/signup");
+  };
 
     const handleForgotPassword = () => {
         // Navigate to forgot password page or show modal
@@ -335,15 +335,19 @@ const Login = () => {
                 .animate-fade-in-down {
                     animation: fadeInDown 0.5s ease-out;
                 }
-            `}</style>
-            
-            <div className="hidden md:block md:w-1/2 bg-pink-200">
-                <div className="h-full flex items-center justify-center">
-                    <img src="/src/img/chef.png" alt="Chef Illustration" className="max-w-full max-h-full" />
-                </div>
-            </div>
+            `}</style> */}
+
+      <div className="md:inline-block md:w-1/2 ">
+        <div className="h-full w-full md:flex md:justify-end relative overflow-visible">
+          <img
+            src="/src/img/chef.png"
+            alt="Chef Illustration"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default Login;

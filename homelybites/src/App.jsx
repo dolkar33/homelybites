@@ -10,7 +10,7 @@ import ContactUs from "./pages/ContactUs";
 import AboutUs from "./pages/AboutUs";
 import CommunityPage from "./pages/CommunityPage";
 import Post from "./pages/Post";
-import RecipePage from "./pages/RecipePage";
+import RecipeSearchPage from "./pages/SearchPage";import RecipePage from "./pages/RecipePage";
 import RecentRecipes from "./pages/RecentRecipes";
 
 // Custom hook to check authentication status
@@ -116,6 +116,7 @@ function App() {
       <Route path="/aboutus" element={<AboutUs />} />
       <Route path="/community" element={<CommunityPage />} />
       <Route path="/post" element={<Post />} />
+      <Route path="/recipe" element={<RecipeSearchPage/>} />
       <Route path="/recipepage" element={<RecipePage />} />
       <Route path="/recent" element={<RecentRecipes />} />
   

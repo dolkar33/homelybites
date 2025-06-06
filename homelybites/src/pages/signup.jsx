@@ -162,13 +162,13 @@ const SignUp = () => {
         setShowPassword(!showPassword);
     };
 
-    const toggleConfirmPasswordVisibility = () => {
-        setShowConfirmPassword(!showConfirmPassword);
-    };
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
 
-    const navigateToLogin = () => {
-        navigate('/login');
-    };
+  const navigateToLogin = () => {
+    navigate("/login");
+  };
 
     // Password strength checker for visual feedback
     const getPasswordStrength = (password) => {
