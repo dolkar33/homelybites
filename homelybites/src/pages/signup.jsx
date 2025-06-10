@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '../config/axiosInstance';
 
 // Yup validation schema
@@ -61,100 +64,34 @@ const SignUp = () => {
     const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [showSuccessToast, setShowSuccessToast] = useState(false);
-    const [errors, setErrors] = useState({});
-    const [registerData, setRegisterData] = useState({
-        first_name: '',
-        last_name: '',
-        username: '',
-        email: '',
-        password: '',
-        password2: ''
+    const [generalError, setGeneralError] = useState('');
+
+    // React Hook Form setup
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+        watch,
+        reset
+    } = useForm({
+        resolver: yupResolver(validationSchema),
+        defaultValues: {
+            first_name: '',
+            last_name: '',
+            username: '',
+            email: '',
+            password: '',
+            password2: ''
+        }
     });
 
-    const handleInput = (e) => {
-        const { name, value } = e.target;
-        setRegisterData((prevData) => ({
-            ...prevData,
-            [name]: value
-        }));
+    // Watch password for strength indicator
+    const watchPassword = watch('password', '');
 
-        // Clear specific field error when user starts typing
-        if (errors[name]) {
-            setErrors(prev => ({
-                ...prev,
-                [name]: ''
-            }));
-        }
-    };
-
-    const validateForm = async () => {
-        try {
-            await validationSchema.validate(registerData, { abortEarly: false });
-            setErrors({});
-            return true;
-        } catch (validationErrors) {
-            const errorMap = {};
-            validationErrors.inner.forEach(error => {
-                errorMap[error.path] = error.message;
-            });
-            setErrors(errorMap);
-            return false;
-        }
-    };
-
-    const validateField = async (fieldName, value) => {
-        try {
-            await validationSchema.validateAt(fieldName, { ...registerData, [fieldName]: value });
-            setErrors(prev => ({
-                ...prev,
-                [fieldName]: ''
-            }));
-        } catch (error) {
-            setErrors(prev => ({
-                ...prev,
-                [fieldName]: error.message
-            }));
-        }
-    };
-
-    const handleBlur = (e) => {
-        const { name, value } = e.target;
-        validateField(name, value);
-    };
-
-    const handleRegister = async (e) => {
-        e.preventDefault();
-        
-        const isValid = await validateForm();
-        if (!isValid) {
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const response = await axiosInstance.post('api/register/', {
-                first_name: registerData.first_name,
-                last_name: registerData.last_name,
-                username: registerData.username,
-                email: registerData.email,
-                password: registerData.password,
-                password2: registerData.password2,
-            });
-
-            if (response.status === 200 || response.status === 201) {
-                setShowSuccessToast(true);
-                setTimeout(() => {
-                    navigate('/login');
-                }, 2000);
-            }
-        } catch (error) {
-            console.error('Registration error:', error);
-            const errorMessage = error.response?.data?.message || 'Registration failed. Please try again';
-            setErrors({ general: errorMessage });
-        } finally {
-            setLoading(false);
+    // Clear general error when user starts typing
+    const handleInputChange = () => {
+        if (generalError) {
+            setGeneralError('');
         }
     };
 
@@ -162,13 +99,13 @@ const SignUp = () => {
         setShowPassword(!showPassword);
     };
 
-  const toggleConfirmPasswordVisibility = () => {
-    setShowConfirmPassword(!showConfirmPassword);
-  };
+    const toggleConfirmPasswordVisibility = () => {
+        setShowConfirmPassword(!showConfirmPassword);
+    };
 
-  const navigateToLogin = () => {
-    navigate("/login");
-  };
+    const navigateToLogin = () => {
+        navigate("/login");
+    };
 
     // Password strength checker for visual feedback
     const getPasswordStrength = (password) => {
@@ -186,125 +123,195 @@ const SignUp = () => {
         return { score, requirements };
     };
 
-    const passwordStrength = getPasswordStrength(registerData.password);
+    const passwordStrength = getPasswordStrength(watchPassword);
+
+    const onSubmit = async (data) => {
+        setGeneralError('');
+        
+        try {
+            const response = await axiosInstance.post('api/register/', {
+                first_name: data.first_name,
+                last_name: data.last_name,
+                username: data.username,
+                email: data.email,
+                password: data.password,
+                password2: data.password2,
+            });
+
+            if (response.status === 200 || response.status === 201) {
+                // Show success toast
+                toast.success('Account created successfully! Redirecting to login...', {
+                    duration: 3000,
+                    position: 'top-right',
+                    style: {
+                        background: '#fff',
+                        color: '#333',
+                        border: '1px solid #FC7D7D',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    },
+                    iconTheme: {
+                        primary: '#FC7D7D',
+                        secondary: '#fff',
+                    },
+                });
+
+                // Reset form
+                reset();
+                
+                // Navigate to login with success parameter
+                setTimeout(() => {
+                    navigate('/login?registered=true');
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            
+            // Handle different error scenarios
+            if (error.response) {
+                // Server responded with error status
+                const errorMessage = error.response?.data?.message || 
+                                   error.response?.data?.error || 
+                                   error.response?.data?.detail ||
+                                   'Registration failed. Please try again';
+                setGeneralError(errorMessage);
+                toast.error(errorMessage, {
+                    duration: 4000,
+                    position: 'top-right',
+                    style: {
+                        background: '#fff',
+                        color: '#333',
+                        border: '1px solid #ef4444',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    },
+                });
+            } else if (error.request) {
+                // Request was made but no response received
+                const networkError = 'Network error. Please check your connection and try again.';
+                setGeneralError(networkError);
+                toast.error(networkError, {
+                    duration: 4000,
+                    position: 'top-right',
+                    style: {
+                        background: '#fff',
+                        color: '#333',
+                        border: '1px solid #ef4444',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    },
+                });
+            } else {
+                // Something else happened
+                const generalError = 'Registration failed. Please try again.';
+                setGeneralError(generalError);
+                toast.error(generalError, {
+                    duration: 4000,
+                    position: 'top-right',
+                    style: {
+                        background: '#fff',
+                        color: '#333',
+                        border: '1px solid #ef4444',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                    },
+                });
+            }
+        }
+    };
 
     return (
-        <div className="flex h-screen w-full bg-white relative">
-            {/* Success Toast Notification */}
-            {showSuccessToast && (
-                <div className="fixed top-4 right-4 bg-white border-l-4 border-pink-400 p-4 rounded shadow-md z-50 flex items-center animate-pulse">
-                    <div className="mr-2">
-                        <svg className="h-6 w-6 text-pink-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p className="font-bold text-gray-800">Success!</p>
-                        <p className="text-gray-600">Account created successfully!</p>
-                    </div>
-                    <button 
-                        onClick={() => setShowSuccessToast(false)}
-                        className="ml-4 text-pink-400 hover:text-pink-600"
-                    >
-                        <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            )}
+        <div className="flex h-screen w-full bg-white overflow-hidden">
+            {/* Toast Container */}
+            <Toaster />
             
             {/* Left side - SignUp Form */}
-            <div className="w-full md:w-1/2 flex flex-col justify-start pt-12 px-8">
+            <div className="w-full md:w-1/2 flex flex-col justify-start pt-8 px-8 overflow-y-auto">
                 <div className="w-full max-w-md mx-auto">
-                    <div className="flex flex-col items-center mb-12">
-                        <img src="/Images/logo/logo-fyp.svg" alt="HomelyBites Logo" className="w-32 h-32" />
-                        <h2 className="text-2xl font-bold mt-6 text-gray-800">Get Started</h2>
+                    <div className="flex flex-col items-center mb-6">
+                        <img src="/Images/logo/logo-fyp.svg" alt="HomelyBites Logo" className="w-24 h-24" />
+                        <h2 className="text-2xl font-bold mt-4 text-gray-800">Get Started</h2>
                     </div>
                     
-                    {errors.general && (
+                    {generalError && (
                         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-                            {errors.general}
+                            {generalError}
                         </div>
                     )}
                     
-                    <form onSubmit={handleRegister} className="w-full">
-                        <div className="flex gap-4 mb-6">
+                    <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+                        <div className="flex gap-3 mb-4">
                             <div className="w-1/2">
                                 <input 
                                     type="text" 
-                                    name="first_name"
                                     placeholder="First Name"
-                                    value={registerData.first_name}
-                                    onChange={handleInput}
-                                    onBlur={handleBlur}
+                                    {...register('first_name', {
+                                        onChange: handleInputChange
+                                    })}
                                     className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
                                         errors.first_name ? 'border-red-400' : 'border-gray-400'
                                     }`}
                                 />
                                 {errors.first_name && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.first_name}</p>
+                                    <p className="mt-1 text-xs text-red-600">{errors.first_name.message}</p>
                                 )}
                             </div>
                             <div className="w-1/2">
                                 <input 
                                     type="text" 
-                                    name="last_name"
                                     placeholder="Last Name"
-                                    value={registerData.last_name}
-                                    onChange={handleInput}
-                                    onBlur={handleBlur}
+                                    {...register('last_name', {
+                                        onChange: handleInputChange
+                                    })}
                                     className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
                                         errors.last_name ? 'border-red-400' : 'border-gray-400'
                                     }`}
                                 />
                                 {errors.last_name && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.last_name}</p>
+                                    <p className="mt-1 text-xs text-red-600">{errors.last_name.message}</p>
                                 )}
                             </div>
                         </div>
 
-                        <div className="mb-6">
+                        <div className="mb-4">
                             <input 
                                 type="text" 
-                                name="username"
                                 placeholder="Username"
-                                value={registerData.username}
-                                onChange={handleInput}
-                                onBlur={handleBlur}
+                                {...register('username', {
+                                    onChange: handleInputChange
+                                })}
                                 className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
                                     errors.username ? 'border-red-400' : 'border-gray-400'
                                 }`}
                             />
                             {errors.username && (
-                                <p className="mt-1 text-sm text-red-600">{errors.username}</p>
+                                <p className="mt-1 text-xs text-red-600">{errors.username.message}</p>
                             )}
                         </div>
                         
-                        <div className="mb-6">
+                        <div className="mb-4">
                             <input 
                                 type="email" 
-                                name="email"
                                 placeholder="Email Address"
-                                value={registerData.email}
-                                onChange={handleInput}
-                                onBlur={handleBlur}
+                                {...register('email', {
+                                    onChange: handleInputChange
+                                })}
                                 className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
                                     errors.email ? 'border-red-400' : 'border-gray-400'
                                 }`}
                             />
                             {errors.email && (
-                                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                                <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
                             )}
                         </div>
                         
-                        <div className="mb-4 relative">
+                        <div className="mb-3 relative">
                             <input 
                                 type={showPassword ? "text" : "password"}
-                                name="password"
                                 placeholder="Enter Password"
-                                value={registerData.password}
-                                onChange={handleInput}
-                                onBlur={handleBlur}
+                                {...register('password', {
+                                    onChange: handleInputChange
+                                })}
                                 className={`w-full px-4 py-4 pr-12 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
                                     errors.password ? 'border-red-400' : 'border-gray-400'
                                 }`}
@@ -312,7 +319,7 @@ const SignUp = () => {
                             <button
                                 type="button"
                                 onClick={togglePasswordVisibility}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none"
                             >
                                 {showPassword ? (
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -326,33 +333,32 @@ const SignUp = () => {
                                 )}
                             </button>
                             {errors.password && (
-                                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                                <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
                             )}
                         </div>
 
-                        {/* Password Strength Indicator */}
-                        {registerData.password && passwordStrength.score < 5 && (
-                            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                                <p className="text-sm font-medium text-gray-700 mb-2">Password Requirements:</p>
-                                <div className="space-y-1">
+                        {/* Password Strength Indicator - Compact Version */}
+                        {watchPassword && passwordStrength.score < 5 && (
+                            <div className="mb-3 p-2 bg-gray-50 rounded-lg">
+                                <p className="text-xs font-medium text-gray-700 mb-1">Password Requirements:</p>
+                                <div className="grid grid-cols-2 gap-1">
                                     {passwordStrength.requirements.map((req, index) => (
                                         <div key={index} className={`flex items-center text-xs ${req.test ? 'text-green-600' : 'text-red-500'}`}>
-                                            <span className="mr-2">{req.test ? '✓' : '✗'}</span>
-                                            {req.text}
+                                            <span className="mr-1 text-xs">{req.test ? '✓' : '✗'}</span>
+                                            <span className="text-xs">{req.text}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
                         
-                        <div className="mb-8 relative">
+                        <div className="mb-6 relative">
                             <input 
                                 type={showConfirmPassword ? "text" : "password"}
-                                name="password2"
                                 placeholder="Confirm Password"
-                                value={registerData.password2}
-                                onChange={handleInput}
-                                onBlur={handleBlur}
+                                {...register('password2', {
+                                    onChange: handleInputChange
+                                })}
                                 className={`w-full px-4 py-4 pr-12 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
                                     errors.password2 ? 'border-red-400' : 'border-gray-400'
                                 }`}
@@ -360,7 +366,7 @@ const SignUp = () => {
                             <button
                                 type="button"
                                 onClick={toggleConfirmPasswordVisibility}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none"
                             >
                                 {showConfirmPassword ? (
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,21 +380,21 @@ const SignUp = () => {
                                 )}
                             </button>
                             {errors.password2 && (
-                                <p className="mt-1 text-sm text-red-600">{errors.password2}</p>
+                                <p className="mt-1 text-xs text-red-600">{errors.password2.message}</p>
                             )}
                         </div>
 
                         <button 
                             type="submit"
-                            disabled={loading}
+                            disabled={isSubmitting}
                             style={{ backgroundColor: '#FC7D7D' }}
                             className="w-full py-3 text-white rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 hover:opacity-90 disabled:opacity-50"
                         >
-                            {loading ? 'Creating Account...' : 'Sign Up'}
+                            {isSubmitting ? 'Creating Account...' : 'Sign Up'}
                         </button>
                     </form>
                     
-                   <div className="mt-6 text-center text-sm text-gray-600">
+                    <div className="mt-4 mb-6 text-center text-sm text-gray-600">
                         Already have an account?{' '}
                         <button 
                             onClick={navigateToLogin}

@@ -18,19 +18,5 @@ instance.interceptors.request.use(async (config) => {
   return config;
 });
 
-// Optional: Add response interceptor to handle token expiration
-instance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token is invalid or expired
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('currentUser');
-      // Optionally redirect to login
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
 
 export default instance;

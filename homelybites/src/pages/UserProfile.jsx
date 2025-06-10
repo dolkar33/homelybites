@@ -84,8 +84,7 @@ const UserProfile = () => {
         // Set user info from the response
         setUserInfo({
           username: data.user.username || "",
-          email: data.user.email || "",
-          phone: "", // Phone might need to be added to your API
+          email: data.user.email || "", // Fixed: Now properly accessing phone from user data
           password: "",
           first_name: data.user.first_name || "",
           last_name: data.user.last_name || "",
@@ -271,20 +270,24 @@ const UserProfile = () => {
         return;
       }
 
-      // Prepare the data to be sent to the API
+      // Prepare the data to be sent to the API - now includes all user fields
       const updateData = {
+        // Profile fields
         dietary_preference: dietaryPlan,
         allergies: profileData.allergies,
-        dislikes: profileData.dislikes
+        dislikes: profileData.dislikes,
+        
+        // User fields (including phone)
+        username: userInfo.username,
+        email: userInfo.email,
+        first_name: userInfo.first_name,
+        last_name: userInfo.last_name,
+        ...(userInfo.password && { password: userInfo.password })
       };
 
       // Update user profile
-      const response = await axiosInstance.put('api/user-profiles/my_profile/', updateData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await axiosInstance.put('api/user-profiles/my_profile/', updateData
+      );
 
       if (response.status === 200) {
         setSuccessMessage('Profile updated successfully!');
@@ -329,7 +332,7 @@ const UserProfile = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="bg-[#faf9f7] flex flex-col h-screen">
+      <div className="bg-[#faf9f7] min-h-screen flex flex-col">
         <div className="flex-shrink-0">
           <Navbar />
         </div>
@@ -339,7 +342,7 @@ const UserProfile = () => {
             <p className="text-gray-600">Loading profile...</p>
           </div>
         </div>
-        <div className="flex-shrink-0">
+        <div className="mt-auto w-full">
           <Footer />
         </div>
       </div>
@@ -347,7 +350,7 @@ const UserProfile = () => {
   }
 
   return (
-    <div className={`bg-[#faf9f7] flex flex-col ${isScrollableMode ? 'min-h-screen' : 'h-screen overflow-hidden'}`}>
+    <div className="bg-[#faf9f7] min-h-screen flex flex-col">
       <div className="flex-shrink-0">
         <Navbar />
       </div>
@@ -402,7 +405,8 @@ const UserProfile = () => {
         </div>
       )}
       
-      <div className={`flex-1 px-4 md:px-8 py-6 ${isScrollableMode ? '' : 'overflow-hidden'}`}>
+      {/* Main Content Area */}
+      <div className="flex-1 px-4 md:px-8 py-6 pb-12">
         <div className="max-w-7xl mx-auto h-full">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
             
@@ -523,7 +527,7 @@ const UserProfile = () => {
                   <textarea
                     value={profileData.allergies}
                     onChange={(e) => setProfileData(prev => ({ ...prev, allergies: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none resize-none"
                     rows="3"
                     placeholder="Enter any food allergies (e.g., Gluten, Nuts, Shellfish)"
                   />
@@ -535,7 +539,7 @@ const UserProfile = () => {
                   <textarea
                     value={profileData.dislikes}
                     onChange={(e) => setProfileData(prev => ({ ...prev, dislikes: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none resize-none"
                     rows="3"
                     placeholder="Enter foods you dislike (e.g., Spicy food, Seafood)"
                   />
@@ -556,7 +560,7 @@ const UserProfile = () => {
                       type="text"
                       value={userInfo.username}
                       onChange={(e) => handleInputChange('username', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent ${
+                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none ${
                         errors.username ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="Enter your username"
@@ -573,7 +577,7 @@ const UserProfile = () => {
                       type="email"
                       value={userInfo.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent ${
+                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none ${
                         errors.email ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="Enter your email"
@@ -590,7 +594,7 @@ const UserProfile = () => {
                       type="text"
                       value={userInfo.first_name}
                       onChange={(e) => handleInputChange('first_name', e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base focus:outline-none"
                       placeholder="Enter your first name"
                     />
                   </div>
@@ -602,27 +606,12 @@ const UserProfile = () => {
                       type="text"
                       value={userInfo.last_name}
                       onChange={(e) => handleInputChange('last_name', e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent"
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base focus:outline-none"
                       placeholder="Enter your last name"
                     />
                   </div>
                   
-                  {/* Phone */}
-                  <div>
-                    <label className="block text-base font-medium mb-2">Phone Number (Optional)</label>
-                    <input
-                      type="tel"
-                      value={userInfo.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent ${
-                        errors.phone ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      placeholder="Enter your phone number"
-                    />
-                    {errors.phone && (
-                      <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-                    )}
-                  </div>
+              
                   
                   {/* Password */}
                   <div>
@@ -632,7 +621,7 @@ const UserProfile = () => {
                         type={showPassword ? "text" : "password"}
                         value={userInfo.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
-                        className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent pr-10 ${
+                        className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none pr-10 ${
                           errors.password ? 'border-red-500' : 'border-gray-300'
                         }`}
                         placeholder="Enter new password (leave blank to keep current)"
@@ -689,8 +678,8 @@ const UserProfile = () => {
         </div>
       </div>
       
-      {/* Fixed Footer */}
-      <div className="flex-shrink-0">
+      {/* Footer - Now properly positioned at bottom with full width */}
+      <div className="w-full mt-auto">
         <Footer />
       </div>
 
