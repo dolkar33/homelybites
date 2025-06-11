@@ -30,6 +30,13 @@ class Recipe(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     spoonacular_id = models.IntegerField(null=True, blank=True)
+
+    # Nutritional Information fields
+    calories = models.CharField(max_length=50, blank=True, null=True)
+    fat = models.CharField(max_length=50, blank=True, null=True)
+    sugar = models.CharField(max_length=50, blank=True, null=True)
+    protein = models.CharField(max_length=50, blank=True, null=True)
+    carbohydrates = models.CharField(max_length=50, blank=True, null=True)
     
     def __str__(self):
         return self.title
@@ -56,4 +63,17 @@ class UserRecipeInteraction(models.Model):
     
     class Meta:
         unique_together = ('user', 'recipe', 'interaction_type')
+
+class ContactMessage(models.Model):
+    name = models.CharField(max_length=200)
+    email = models.EmailField()
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"Message from {self.name} - {self.subject}"
+    
+    class Meta:
+        ordering = ['-created_at']
         

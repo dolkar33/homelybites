@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, ContactMessage
 
 # Register your models here.
 
@@ -30,3 +30,10 @@ class UserRecipeInteractionAdmin(admin.ModelAdmin):
     list_display = ('user', 'recipe', 'interaction_type', 'rating', 'timestamp')
     list_filter = ('interaction_type', 'timestamp')
     search_fields = ('user__username', 'recipe__title')
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ('name', 'email', 'subject', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('name', 'email', 'subject', 'message')
+    readonly_fields = ('created_at',)

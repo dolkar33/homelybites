@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { User, Phone, Mail, MapPin } from "lucide-react";
+import axios from "axios";
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +11,7 @@ const ContactPage = () => {
     subject: "",
     message: "",
   });
+  const [status, setStatus] = useState({ type: "", message: "" });
 
   const handleInputChange = (e) => {
     setFormData({
@@ -18,8 +20,18 @@ const ContactPage = () => {
     });
   };
 
-  const handleSubmit = () => {
-    console.log("Form submitted:", formData);
+  const handleSubmit = async () => {
+    try {
+      setStatus({ type: "loading", message: "Sending message..." });
+      const response = await axios.post("http://localhost:8000/api/contact-messages/", formData);
+      setStatus({ type: "success", message: "Message sent successfully! We'll get back to you soon." });
+      setFormData({ name: "", email: "", subject: "", message: "" });
+    } catch (error) {
+      setStatus({ 
+        type: "error", 
+        message: error.response?.data?.message || "Failed to send message. Please try again." 
+      });
+    }
   };
 
   return (
@@ -144,7 +156,7 @@ const ContactPage = () => {
                   onClick={handleSubmit}
                   className="bg-red-400 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-full text-sm sm:text-lg font-medium hover:bg-red-500 transition-colors w-full sm:w-auto"
                 >
-                  Send Message
+                  {status.type === "loading" ? "Sending..." : "Send Message"}
                 </button>
               </div>
             </div>
