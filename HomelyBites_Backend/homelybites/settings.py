@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'recipes',
+    'community',
+    'recent_recipes',
 ]
 
 MIDDLEWARE = [

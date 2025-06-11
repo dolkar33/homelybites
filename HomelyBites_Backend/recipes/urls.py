@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import RecipeViewSet, CategoryViewSet, UserProfileViewSet, UserRegistrationView, import_from_spoonacular,homepage, ContactMessageViewSet
 
 router = DefaultRouter()
-router.register(r'recipes', RecipeViewSet)
+router.register(r'', RecipeViewSet)
 router.register(r'categories', CategoryViewSet)
 router.register(r'profiles', UserProfileViewSet)
 router.register(r'contact-messages', ContactMessageViewSet)
