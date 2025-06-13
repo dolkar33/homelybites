@@ -7,10 +7,10 @@ import { recipeAPI } from "../services/api";
 
 const categories = [
   "breakfast",
-  "salad",
+  "soup",
   "lunch",
   "dessert",
-  "healthy",
+  "salad",
   "drink",
 ];
 
@@ -149,8 +149,8 @@ const MainPage = () => {
     <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
       {/* Hero Section */}
-      <div className="max-w-5xl mx-auto w-full px-4 mt-6">
-        <div className="rounded-3xl overflow-hidden w-full h-48 md:h-64 flex items-center justify-center bg-[#FDEBED] relative mb-8">
+      <div className="max-w-5xl mx-auto w-full px-4 mt-[4.5vh]">
+        <div className="rounded-3xl overflow-hidden w-full h-[30vh] md:h-[40vh] flex items-center justify-center bg-[#FDEBED] relative mb-[5vh]">
           <img
             src="/Images/HomePageImage/salad.jpg"
             alt="hero salad"
@@ -159,7 +159,7 @@ const MainPage = () => {
           />
         </div>
         {/* Ready to Cook Title */}
-        <div className="flex items-center w-full my-6">
+        <div className="flex items-center w-full my-[3vh]">
           <div className="flex-1 border-t border-gray-300"></div>
           <div className="mx-4 text-2xl md:text-3xl font-semibold text-center">
             Ready to <span className="text-accent">Cook?</span>
@@ -167,7 +167,7 @@ const MainPage = () => {
           <div className="flex-1 border-t border-gray-300"></div>
         </div>
         {/* Category Buttons */}
-        <div className="flex flex-col items-center w-full mb-6">
+        <div className="flex flex-col items-center w-full mb-[3vh]">
           <div className="flex items-center w-full justify-center flex-wrap gap-y-2">
             {categories.map((cat) => (
               <CategoryButton
@@ -185,16 +185,16 @@ const MainPage = () => {
         </div>
 
         {/* Recipes You Would Love */}
-        <div className="mt-8">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center md:text-left">
+        <div className="mt-[4vh]">
+          <h2 className="text-2xl md:text-3xl font-bold mb-[2vh] text-center md:text-left">
             Recipes You Would Love
           </h2>
           {renderRecipeCards(recipes, loading)}
         </div>
 
         {/* What others are cooking */}
-        <div className="mt-12 mb-12">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-center md:text-left">
+        <div className="mt-[6vh] mb-[6vh]">
+          <h2 className="text-2xl md:text-3xl font-bold mb-[2vh] text-center md:text-left">
             What others are cooking
           </h2>
           {renderRecipeCards(popularRecipes)}
