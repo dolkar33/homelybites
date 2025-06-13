@@ -12,7 +12,6 @@ const UserProfile = () => {
   const [userInfo, setUserInfo] = useState({
     username: "",
     email: "",
-    phone: "",
     password: "",
     first_name: "",
     last_name: ""
@@ -84,7 +83,6 @@ const UserProfile = () => {
         setUserInfo({
           username: data.user.username || "",
           email: data.user.email || "", 
-          phone: data.user.phone || "",
           password: "",
           first_name: data.user.first_name || "",
           last_name: data.user.last_name || ""
@@ -600,18 +598,6 @@ const UserProfile = () => {
                       onChange={(e) => handleInputChange('last_name', e.target.value)}
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base focus:outline-none"
                       placeholder="Enter your last name"
-                    />
-                  </div>
-
-                  {/* Phone Number */}
-                  <div>
-                    <label className="block text-base font-medium mb-2">Phone Number</label>
-                    <input
-                      type="tel"
-                      value={userInfo.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base focus:outline-none"
-                      placeholder="Enter your phone number"
                     />
                   </div>
                   

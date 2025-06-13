@@ -6,8 +6,8 @@ import {
   Search,
   Image,
 } from "lucide-react";
-import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import Navbar from "../components/Navbar";
 
 const CommunityPage = () => {
   // Mock data - easy to replace with API calls later
@@ -43,6 +43,38 @@ const CommunityPage = () => {
       isLiked: true,
       isSaved: true,
       description: "Perfect grilling session with friends!",
+    },
+    {
+      id: 3,
+      author: {
+        name: "Jennie Kim",
+        avatar: "/Images/CommunityPage/jennie.jpg",
+        posts: 42,
+        following: 42,
+        followers: 42,
+      },
+      title: "Amazing Pasta Recipe",
+      image: "/Images/CommunityPage/ramen.jpeg",
+      likes: 35,
+      isLiked: false,
+      isSaved: false,
+      description: "Delicious homemade pasta",
+    },
+    {
+      id: 4,
+      author: {
+        name: "Choi Soobin",
+        avatar: "/Images/CommunityPage/soobin.jpg",
+        posts: 42,
+        following: 42,
+        followers: 42,
+      },
+      title: "Healthy Breakfast Ideas",
+      image: "/Images/CommunityPage/ramen.jpeg",
+      likes: 28,
+      isLiked: true,
+      isSaved: false,
+      description: "Start your day right!",
     },
   ]);
 
@@ -132,7 +164,7 @@ const CommunityPage = () => {
       {/* Navigation Bar */}
       <Navbar />
 
-      <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6 relative">
+      <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto">
           {/* Back Button */}
           <div className="mb-4 sm:mb-6">
@@ -145,16 +177,7 @@ const CommunityPage = () => {
           <div className="grid grid-cols-12 gap-4 sm:gap-6">
             {/* Left Sidebar - Fixed */}
             <div className="col-span-3 space-y-4 sm:space-y-6">
-                              <div className="sticky top-6 space-y-4 sm:space-y-6 max-h-screen overflow-y-auto scrollbar-hide">
-                  <style jsx>{`
-                    .scrollbar-hide {
-                      -ms-overflow-style: none;
-                      scrollbar-width: none;
-                    }
-                    .scrollbar-hide::-webkit-scrollbar {
-                      display: none;
-                    }
-                  `}</style>
+              <div className="sticky top-6 space-y-4 sm:space-y-6">
                 {/* Profile Section */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                   <div className="text-center mb-4 sm:mb-6">
@@ -267,18 +290,21 @@ const CommunityPage = () => {
               </div>
             </div>
 
-            {/* Main Content - Scrollable */}
+            {/* Main Content - Scrollable with hidden scrollbar */}
             <div className="col-span-6">
-              <div className="space-y-4 sm:space-y-6 max-h-screen overflow-y-auto scrollbar-hide-center">
+              <div 
+                className="space-y-4 sm:space-y-6 h-screen overflow-y-auto pr-4 -mr-4"
+                style={{
+                  scrollbarWidth: 'none', /* Firefox */
+                  msOverflowStyle: 'none', /* IE and Edge */
+                }}
+              >
                 <style jsx>{`
-                  .scrollbar-hide-center {
-                    -ms-overflow-style: none;
-                    scrollbar-width: none;
-                  }
-                  .scrollbar-hide-center::-webkit-scrollbar {
-                    display: none;
+                  div::-webkit-scrollbar {
+                    display: none; /* Safari and Chrome */
                   }
                 `}</style>
+                
                 {/* Story Section */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                   <div className="flex items-center bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
@@ -399,7 +425,18 @@ const CommunityPage = () => {
 
             {/* Right Sidebar - Fixed */}
             <div className="col-span-3">
-              <div className="sticky top-6 space-y-4 sm:space-y-6">
+              <div className="sticky top-6 space-y-4 sm:space-y-6 h-screen overflow-y-auto pr-4 -mr-4"
+                style={{
+                  scrollbarWidth: 'none', /* Firefox */
+                  msOverflowStyle: 'none', /* IE and Edge */
+                }}
+              >
+                <style jsx>{`
+                  div::-webkit-scrollbar {
+                    display: none; /* Safari and Chrome */
+                  }
+                `}</style>
+                
                 {/* Search Bar */}
                 <div className="relative">
                   <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
@@ -435,7 +472,7 @@ const CommunityPage = () => {
                         </p>
                       </div>
                     </div>
-                    <button className="bg-accent text-white px-4 py-1 rounded-full text-xs font-medium hover:bg-red-400 transition-colors">
+                    <button className="bg-red-500 text-white px-4 py-1 rounded-full text-xs font-medium hover:bg-red-400 transition-colors">
                       Follow
                     </button>
                   </div>
@@ -463,6 +500,7 @@ const CommunityPage = () => {
         </div>
       </div>
 
+      {/* Footer */}
       <Footer />
     </div>
   );
