@@ -21,8 +21,7 @@ const UserProfile = () => {
   // State for profile data
   const [profileData, setProfileData] = useState({
     dietary_preference: "",
-    allergies: "",
-    dislikes: ""
+    allergies: ""
   });
 
   // State for profile image
@@ -75,20 +74,26 @@ const UserProfile = () => {
         return;
       }
 
-      const response = await axiosInstance.get('api/user-profiles/my_profile/',
-      );
-
+      const response = await axiosInstance.get('api/user-profiles/my_profile/');
+      console.log('User profile response:', response);
+      
       if (response.status === 200) {
         const data = response.data;
         
         // Set user info from the response
         setUserInfo({
           username: data.user.username || "",
-          email: data.user.email || "", // Fixed: Now properly accessing phone from user data
+          email: data.user.email || "", 
+          phone: data.user.phone || "",
           password: "",
           first_name: data.user.first_name || "",
-          last_name: data.user.last_name || "",
-          dislikes: data.dislikes || ""
+          last_name: data.user.last_name || ""
+        });
+
+        // Set profile data
+        setProfileData({
+          dietary_preference: data.dietary_preference || "",
+          allergies: data.allergies || ""
         });
 
         // Set dietary plan for the radio buttons
@@ -275,7 +280,6 @@ const UserProfile = () => {
         // Profile fields
         dietary_preference: dietaryPlan,
         allergies: profileData.allergies,
-        dislikes: profileData.dislikes,
         
         // User fields (including phone)
         username: userInfo.username,
@@ -286,8 +290,7 @@ const UserProfile = () => {
       };
 
       // Update user profile
-      const response = await axiosInstance.put('api/user-profiles/my_profile/', updateData
-      );
+      const response = await axiosInstance.put('api/user-profiles/my_profile/', updateData);
 
       if (response.status === 200) {
         setSuccessMessage('Profile updated successfully!');
@@ -410,6 +413,7 @@ const UserProfile = () => {
         <div className="max-w-7xl mx-auto h-full">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
             
+            {/* Left Panel - Profile Image and Dietary Plan */}
             <div className="lg:col-span-2 bg-white rounded-3xl shadow-2xl p-6 flex flex-col">
               <button 
                 onClick={handleBack}
@@ -532,23 +536,11 @@ const UserProfile = () => {
                     placeholder="Enter any food allergies (e.g., Gluten, Nuts, Shellfish)"
                   />
                 </div>
-
-                {/* Dislikes Section */}
-                <div className="mb-4">
-                  <label className="block text-base font-medium mb-2">Food Dislikes</label>
-                  <textarea
-                    value={profileData.dislikes}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, dislikes: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none resize-none"
-                    rows="3"
-                    placeholder="Enter foods you dislike (e.g., Spicy food, Seafood)"
-                  />
-                </div>
               </div>
             </div>
             
+            {/* Right Panel - Account Information */}
             <div className="lg:col-span-3 bg-white rounded-3xl shadow-2xl p-6 flex flex-col">
-              
               <h2 className="text-xl font-bold mb-6">Account Information</h2>
               
               <form onSubmit={handleSaveChanges} className="flex-1 flex flex-col">
@@ -610,8 +602,18 @@ const UserProfile = () => {
                       placeholder="Enter your last name"
                     />
                   </div>
-                  
-              
+
+                  {/* Phone Number */}
+                  <div>
+                    <label className="block text-base font-medium mb-2">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={userInfo.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base focus:outline-none"
+                      placeholder="Enter your phone number"
+                    />
+                  </div>
                   
                   {/* Password */}
                   <div>
