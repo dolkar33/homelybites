@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../config/axiosInstance";
 import Navbar from "../components/Navbar.jsx";
@@ -255,6 +256,7 @@ const UserProfile = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleSaveChanges = async (e) => {
   const handleSaveChanges = async (e) => {
     e.preventDefault();
     

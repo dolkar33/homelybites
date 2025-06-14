@@ -60,10 +60,19 @@ const UserQuestion = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
-      navigate("/Home"); // Navigate to the home/main page
+      // Send answers to backend
+      await fetch('http://localhost:8000/api/complete-user-questions/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify(formData),
+      });
+      navigate("/Home");
     }
   };
 
