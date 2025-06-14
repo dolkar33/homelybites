@@ -7,11 +7,11 @@ import { recipeAPI } from "../services/api";
 
 const categories = [
   "breakfast",
-  "quick-and-easy",
+  "soup",
   "lunch",
   "dessert",
-  "healthy",
-  "drinks",
+  "salad",
+  "drink",
 ];
 
 const MainPage = () => {
