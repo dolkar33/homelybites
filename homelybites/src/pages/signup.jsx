@@ -228,7 +228,7 @@ const SignUp = () => {
             {/* Left side - SignUp Form */}
             <div className="w-full md:w-1/2 flex flex-col justify-start pt-[5vh] sm:pt-[6vh] px-4 sm:px-6 md:px-8 h-[100vh]">
                 <div className="w-full max-w-md mx-auto">
-                    <div className="flex flex-col items-center  mb-[4vh] sm:mb-[5vh]">
+                    <div className="flex flex-col items-center mb-[4vh] sm:mb-[5vh]">
                         <img src="/Images/logo/logo-fyp.svg" alt="HomelyBites Logo" className="w-[12vh] h-[12vh] sm:w-[16vh] sm:h-[16vh]" />
                         <h2 className="text-xl sm:text-2xl font-bold mt-[2vh] sm:mt-[3vh] text-gray-800">Get Started</h2>
                     </div>
@@ -248,7 +248,7 @@ const SignUp = () => {
                                     {...register('first_name', {
                                         onChange: handleInputChange
                                     })}
-                                    className={`w-full px-3  sm:px-4 py-[1.5vh] sm:py-[2vh] text-sm sm:text-base border border-gray-400  rounded-lg focus:outline-none focus:ring-1 focus:ring-accent ${
+                                    className={`w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent ${
                                         errors.first_name ? 'border-red-400' : 'border-gray-400'
                                     }`}
                                 />
@@ -256,7 +256,7 @@ const SignUp = () => {
                                     <p className="mt-1 text-xs text-red-600">{errors.first_name.message}</p>
                                 )}
                             </div>
-                            <div className="w-1/2">
+                            <div className="w-full sm:w-1/2">
                                 <input 
                                     type="text" 
                                     placeholder="Last Name"
@@ -273,8 +273,8 @@ const SignUp = () => {
                             </div>
                         </div>
 
-            <div className="mb-[3vh]">
-                <input 
+                        <div className="mb-[3vh]">
+                            <input 
                                 type="text" 
                                 placeholder="Username"
                                 {...register('username', {
@@ -289,8 +289,8 @@ const SignUp = () => {
                             )}
                         </div>
 
-            <div className='mb-[3vh]'>
-                <input 
+                        <div className="mb-[3vh]">
+                            <input 
                                 type="email" 
                                 placeholder="Email Address"
                                 {...register('email', {
@@ -304,10 +304,9 @@ const SignUp = () => {
                                 <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
                             )}
                         </div>
-            </div>
 
-            <div className="mb-[2vh] relative">
-             <input 
+                        <div className="mb-[2vh] relative">
+                            <input 
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Enter Password"
                                 {...register('password', {
@@ -338,39 +337,38 @@ const SignUp = () => {
                             )}
                         </div>
 
-
-            {/* Password Strength Indicator */}
-            {watchPassword && passwordStrength.score < 5 && (
-              <div className="mb-[2vh] p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs sm:text-sm font-medium text-gray-700 mb-[1vh]">
-                  Password Requirements:
-                </p>
-                <div className="grid grid-cols-2 gap-1">
-                 {passwordStrength.requirements.map((req,index) => ( 
-                  <div key={index} className = {`flex items-center text-xs sm:text-sm ${req.test ? 'text-green-600' : 'text-red-500'}`}>
-                    <span className="mr-2"> {req.test ? '✓' : '✗'}</span>
-                    <span className="text-xs">{req.text}</span>
+                        {/* Password Strength Indicator */}
+                        {watchPassword && passwordStrength.score < 5 && (
+                            <div className="mb-[2vh] p-3 bg-gray-50 rounded-lg">
+                                <p className="text-xs sm:text-sm font-medium text-gray-700 mb-[1vh]">
+                                    Password Requirements:
+                                </p>
+                                <div className="grid grid-cols-2 gap-1">
+                                    {passwordStrength.requirements.map((req, index) => ( 
+                                        <div key={index} className={`flex items-center text-xs sm:text-sm ${req.test ? 'text-green-600' : 'text-red-500'}`}>
+                                            <span className="mr-2">{req.test ? '✓' : '✗'}</span>
+                                            <span className="text-xs">{req.text}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
-           <div className="mb-6 relative">
+                        <div className="mb-6 relative">
                             <input 
                                 type={showConfirmPassword ? "text" : "password"}
                                 placeholder="Confirm Password"
                                 {...register('password2', {
                                     onChange: handleInputChange
                                 })}
-                                className={`w-full px-4 py-4 pr-12 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 ${
+                                className={`w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent ${
                                     errors.password2 ? 'border-red-400' : 'border-gray-400'
                                 }`}
                             />
                             <button
                                 type="button"
                                 onClick={toggleConfirmPasswordVisibility}
-                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none"
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                             >
                                 {showConfirmPassword ? (
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -388,39 +386,40 @@ const SignUp = () => {
                             )}
                         </div>
 
-            <button
-              onClick={handleSignUp}
-              disabled={loading}
-              className="w-full py-[1.5vh] sm:py-[2vh] text-sm sm:text-base text-white rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 bg-accent"
-            >
-              {loading ? "Creating Account..." : "Sign Up"}
-            </button>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="w-full py-[1.5vh] sm:py-[2vh] text-sm sm:text-base text-white rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 bg-accent"
+                        >
+                            {isSubmitting ? "Creating Account..." : "Sign Up"}
+                        </button>
 
-            <div className="mt-[3vh] text-center text-xs sm:text-sm text-gray-600">
-              Already have an account?{" "}
-              <button
-                onClick={navigateToLogin}
-                className="text-accent hover:opacity-60"
-              >
-                Login
-              </button>
+                        <div className="mt-[3vh] text-center text-xs sm:text-sm text-gray-600">
+                            Already have an account?{" "}
+                            <button
+                                type="button"
+                                onClick={navigateToLogin}
+                                className="text-accent hover:opacity-60"
+                            >
+                                Login
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Right side - Image */}
-      <div className="hidden md:inline-block md:w-1/2 h-[100vh] ">
-        <div className="h-full w-full md:flex md:justify-end relative overflow-visible">
-          <img
-            src="/src/img/chef.png"
-            alt="Chef Illustration"
-            className="absolute inset-0 w-full h-full object-cover "
-          />
+            {/* Right side - Image */}
+            <div className="hidden md:inline-block md:w-1/2 h-[100vh]">
+                <div className="h-full w-full md:flex md:justify-end relative overflow-visible">
+                    <img
+                        src="/src/img/chef.png"
+                        alt="Chef Illustration"
+                        className="absolute inset-0 w-full h-full object-cover"
+                    />
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default SignUp;
