@@ -166,13 +166,7 @@ const CommunityPage = () => {
 
       <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto">
-          {/* Back Button */}
-          <div className="mb-4 sm:mb-6">
-            <button className="flex items-center gap-2 text-red-500 hover:text-red-600 transition-colors">
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-base sm:text-lg font-medium">Back</span>
-            </button>
-          </div>
+         
 
           <div className="grid grid-cols-12 gap-4 sm:gap-6">
             {/* Left Sidebar - Fixed */}
