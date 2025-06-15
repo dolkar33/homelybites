@@ -17,7 +17,7 @@ const UserProfile = () => {
     last_name: ""
   });
 
-  // State for profile data
+  // State for profile response.data
   const [profileData, setProfileData] = useState({
     dietary_preference: "",
     allergies: ""
@@ -49,15 +49,15 @@ const UserProfile = () => {
   // State for success message
   const [successMessage, setSuccessMessage] = useState('');
 
-  const dietaryOptions = [
-    "Vegetarian",
-    "Non-Vegetarian", 
-    "Keto",
-    "Gluten Free",
-    "No Dietary Plan"
-  ];
+  const dietaryOptions = {
+    "Vegetarian": "vegetarian",
+    "Non-Vegetarian": "non-vegetarian", 
+    "Keto": "keto",
+    "Gluten Free": "gluten-free",
+    "No Dietary Plan": "no-dietary-plan"
+  };
 
-  // Fetch user profile data on component mount
+  // Fetch user profile response.data on component mount
   useEffect(() => {
     fetchUserProfile();
   }, []);
@@ -129,7 +129,6 @@ const UserProfile = () => {
       }));
     }
   };
-
   const handleDietaryChange = (option) => {
     setDietaryPlan(option);
     setProfileData(prev => ({
@@ -300,6 +299,19 @@ const UserProfile = () => {
           ...userInfo,
           dietary_preference: dietaryPlan
         };
+        setUserInfo({
+          username: response.data.user.username || "",
+          email: response.data.user.email || "", 
+          password: "",
+          first_name: response.data.user.first_name || "",
+          last_name: response.data.user.last_name || ""
+        });
+
+        // Set profile response.data
+        setProfileData({
+          dietary_preference: response.data.dietary_preference || "",
+          allergies: response.data.allergies || ""
+        });
         localStorage.setItem('currentUser', JSON.stringify(updatedUser));
 
         // Auto hide success message after 3 seconds
@@ -315,9 +327,9 @@ const UserProfile = () => {
         localStorage.removeItem('currentUser');
         navigate('/login');
       } else {
-        const errorMessage = error.response?.data?.message || 
-                           error.response?.data?.error || 
-                           error.response?.data?.detail ||
+        const errorMessage = error.response?.response.data?.message || 
+                           error.response?.response.data?.error || 
+                           error.response?.response.data?.detail ||
                            'Failed to update profile. Please try again.';
         setApiError(errorMessage);
       }
@@ -491,38 +503,37 @@ const UserProfile = () => {
                 />
               </div>
               
-              <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto">
                 <h3 className="text-lg font-bold mb-4 font-inter">Change Dietary Plan</h3>
                 <div className="space-y-2 mb-6">
-                  {dietaryOptions.map((option) => (
+                  {Object.entries(dietaryOptions).map(([key, value]) => (
                     <label
-                      key={option}
+                      key={key}
                       className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors"
                     >
                       <div className="relative">
                         <input
                           type="radio"
                           name="dietary"
-                          value={option}
-                          checked={dietaryPlan === option}
-                          onChange={() => handleDietaryChange(option)}
+                          value={value}
+                          checked={dietaryPlan.toLowerCase() === value}
+                          onChange={() => handleDietaryChange(value)}
                           className="sr-only"
                         />
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                          dietaryPlan === option 
+                          dietaryPlan === value 
                             ? 'bg-[#ff6b6b] border-[#ff6b6b]' 
                             : 'bg-gray-200 border-gray-300'
                         }`}>
-                          {dietaryPlan === option && (
+                          {dietaryPlan === value && (
                             <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
                           )}
                         </div>
                       </div>
-                      <span className="text-base">{option}</span>
+                      <span className="text-base">{key}</span>
                     </label>
                   ))}
                 </div>
-
                 {/* Allergies Section */}
                 <div className="mb-4">
                   <label className="block text-base font-medium mb-2">Allergies</label>

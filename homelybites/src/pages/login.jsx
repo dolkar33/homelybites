@@ -79,12 +79,21 @@ const Login = () => {
                 localStorage.setItem('authToken', response.data.access);
                 localStorage.setItem('refreshToken', response.data.refresh);
 
-                customToast.success('Login successful! Redirecting to your questions...');
+                
                 reset();
-
-                setTimeout(() => {
+                if (userData.has_completed_questions) {
+                    customToast.success('Welcome back! Redirecting to Home...');
+                    setTimeout(() => {
+                        navigate('/Home');
+                    }, 1500);
+                } else {
+                    customToast.success('Login successful! Redirecting to your questions...');
+                    setTimeout(() => {
+                    
                     navigate('/userquestion');
                 }, 1500);
+                };
+                
             }
         } catch (error) {
             console.error('Login error:', error);
