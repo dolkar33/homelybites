@@ -5,12 +5,8 @@ from rest_framework import viewsets, status, generics, filters, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
-<<<<<<< HEAD
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction, ContactMessage
-=======
 from django.utils import timezone
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser
->>>>>>> main
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage
 from .serializers import (
     RecipeSerializer, 
     RecipeListSerializer,
@@ -18,11 +14,7 @@ from .serializers import (
     UserProfileSerializer,
     UserRecipeInteractionSerializer,
     UserSerializer,
-<<<<<<< HEAD
-    ContactMessageSerializer
-)
-from django.utils import timezone
-=======
+    ContactMessageSerializer,
     UserRegistrationSerializer,
     UserLoginSerializer,
     PasswordResetSerializer,
@@ -37,7 +29,6 @@ from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.contrib.auth import get_user_model
->>>>>>> main
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -349,7 +340,6 @@ def import_from_spoonacular(request):
         else:
             return Response(results, status=400)
 
-<<<<<<< HEAD
 class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageSerializer
@@ -363,7 +353,6 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
             {"message": "Thank you for your message. We will get back to you soon!"},
             status=status.HTTP_201_CREATED
         )
-=======
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -416,7 +405,6 @@ def login_user(request):
             'error': 'Invalid credentials'
         }, status=status.HTTP_401_UNAUTHORIZED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
->>>>>>> main
 
 def homepage(request):
     """Render the homepage."""

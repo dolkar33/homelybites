@@ -25,13 +25,7 @@ from rest_framework_simplejwt.views import (
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-<<<<<<< HEAD
-    path('api/community/', include('community.urls')),
-    path('api/recipes/', include('recipes.urls')),
-    path('api/recent-recipes/', include('recent_recipes.urls')),
-=======
     path('api/', include('recipes.urls')),  # This will include all recipes URLs
->>>>>>> main
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

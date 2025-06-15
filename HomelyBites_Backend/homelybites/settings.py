@@ -185,13 +185,10 @@ CORS_ALLOW_HEADERS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Your React app's URL
+    "http://localhost:5173", 
 ]
 
 # Spoonacular API settings
-<<<<<<< HEAD
-SPOONACULAR_API_KEY = 'b4b8be0a733f497789c7bcd463aa556e'
-=======
 SPOONACULAR_API_KEY = '28757902a1544a44b3466566d399895d'
 
 # Email Configuration
@@ -204,5 +201,4 @@ EMAIL_HOST_PASSWORD = 'your_app_password'
 DEFAULT_FROM_EMAIL = 'your_email@gmail.com'
 
 # Frontend URL for password reset
-FRONTEND_URL = 'http://localhost:5173'  # Update to match your frontend URL
->>>>>>> main
+FRONTEND_URL = 'http://localhost:5173'  

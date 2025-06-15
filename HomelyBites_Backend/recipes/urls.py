@@ -1,14 +1,5 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-<<<<<<< HEAD
-from .views import RecipeViewSet, CategoryViewSet, UserProfileViewSet, UserRegistrationView, import_from_spoonacular,homepage, ContactMessageViewSet
-
-router = DefaultRouter()
-router.register(r'', RecipeViewSet)
-router.register(r'categories', CategoryViewSet)
-router.register(r'profiles', UserProfileViewSet)
-router.register(r'contact-messages', ContactMessageViewSet)
-=======
 from . import views
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -20,7 +11,6 @@ router = DefaultRouter()
 router.register(r'categories', views.CategoryViewSet)
 router.register(r'recipes', views.RecipeViewSet)
 router.register(r'user-profiles', views.UserProfileViewSet)
->>>>>>> main
 
 urlpatterns = [
     path('user-profiles/my_profile/', views.my_profile, name='my_profile'),
