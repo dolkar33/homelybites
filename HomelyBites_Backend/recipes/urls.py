@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+<<<<<<< HEAD
 from .views import RecipeViewSet, CategoryViewSet, UserProfileViewSet, UserRegistrationView, import_from_spoonacular,homepage, ContactMessageViewSet
 
 router = DefaultRouter()
@@ -7,10 +8,33 @@ router.register(r'', RecipeViewSet)
 router.register(r'categories', CategoryViewSet)
 router.register(r'profiles', UserProfileViewSet)
 router.register(r'contact-messages', ContactMessageViewSet)
+=======
+from . import views
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .models import UserProfile, Recipe
+from .serializers import RecipeListSerializer, UserProfileSerializer
+
+router = DefaultRouter()
+router.register(r'categories', views.CategoryViewSet)
+router.register(r'recipes', views.RecipeViewSet)
+router.register(r'user-profiles', views.UserProfileViewSet)
+>>>>>>> main
 
 urlpatterns = [
+    path('user-profiles/my_profile/', views.my_profile, name='my_profile'),
+    path('user-profiles/update/', views.update_user_profile, name='update_user_profile'),
     path('', include(router.urls)),
-    path('auth/register/', UserRegistrationView.as_view(), name='user-registration'),
-    path('import-recipes/', import_from_spoonacular, name='import-recipes'),
-    path('homepage/', homepage)
+    path('register/', views.register_user, name='register'),
+    path('login/', views.login_user, name='login'),
+    path('users/', views.list_users, name='list_users'),
+    path('homepage/', views.homepage, name='homepage'),
+    path('recommendations/', views.recommend_recipes, name='recommend_recipes'),
+    path('search/', views.search_recipes, name='search_recipes'),
+    path('import_from_spoonacular/', views.import_from_spoonacular, name='import_from_spoonacular'),
+    # Password reset URLs
+    path('password-reset/', views.password_reset_request, name='password_reset_request'),
+    path('password-reset-confirm/', views.password_reset_confirm, name='password_reset_confirm'),
+    path('complete-user-questions/', views.complete_user_questions, name='complete_user_questions'),
 ]

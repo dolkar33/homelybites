@@ -5,17 +5,39 @@ from rest_framework import viewsets, status, generics, filters, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
+<<<<<<< HEAD
 from .models import Recipe, Category, UserProfile, UserRecipeInteraction, ContactMessage
+=======
+from django.utils import timezone
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser
+>>>>>>> main
 from .serializers import (
     RecipeSerializer, 
     RecipeListSerializer,
     CategorySerializer, 
-    UserProfileSerializer, 
+    UserProfileSerializer,
     UserRecipeInteractionSerializer,
     UserSerializer,
+<<<<<<< HEAD
     ContactMessageSerializer
 )
 from django.utils import timezone
+=======
+    UserRegistrationSerializer,
+    UserLoginSerializer,
+    PasswordResetSerializer,
+    PasswordResetConfirmSerializer
+)
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+import requests
+from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.contrib.auth import get_user_model
+>>>>>>> main
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -247,8 +269,22 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['post'])
+    def update_profile_image(self, request):
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        if 'profile_image' not in request.FILES:
+            return Response(
+                {"error": "No image file provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = UserProfileSerializer(profile, data={'profile_image': request.FILES['profile_image']}, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class UserRegistrationView(generics.CreateAPIView):
-    queryset = User.objects.all()
+    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
     
@@ -257,7 +293,7 @@ class UserRegistrationView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         
         # Create the user
-        user = User.objects.create_user(
+        user = CustomUser.objects.create_user(
             username=serializer.validated_data['username'],
             email=serializer.validated_data.get('email', ''),
             password=request.data.get('password'),
@@ -276,14 +312,7 @@ class UserRegistrationView(generics.CreateAPIView):
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def import_from_spoonacular(request):
-    """
-    Import recipes from Spoonacular API.
-    Query parameters:
-    - query: Search term
-    - number: Number of recipes to import (default: 10)
-    - random: Set to 'true' to import random recipes
-    - tags: Comma-separated tags for filtering random recipes
-    """
+    
     service = SpoonacularService()
     number = int(request.query_params.get('number', 10))
     
@@ -320,6 +349,7 @@ def import_from_spoonacular(request):
         else:
             return Response(results, status=400)
 
+<<<<<<< HEAD
 class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageSerializer
@@ -333,8 +363,418 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
             {"message": "Thank you for your message. We will get back to you soon!"},
             status=status.HTTP_201_CREATED
         )
+=======
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    """Register a new user."""
+    serializer = UserRegistrationSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name
+            },
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'message': 'User registered successfully'
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_user(request):
+    """Login a user and return JWT tokens."""
+    serializer = UserLoginSerializer(data=request.data)
+    if serializer.is_valid():
+        user = authenticate(
+            username=serializer.validated_data['username'],
+            password=serializer.validated_data['password']
+        )
+        if user:
+            refresh = RefreshToken.for_user(user)
+            profile = user.profile
+            return Response({
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'has_completed_questions': profile.has_completed_questions
+                },
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'message': 'Login successful'
+            })
+        return Response({
+            'error': 'Invalid credentials'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+>>>>>>> main
 
 def homepage(request):
     """Render the homepage."""
     return render(request, 'homepage.html')
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def list_users(request):
+    """List all users (admin only)."""
+    users = CustomUser.objects.all().values('id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login')
+    return Response(list(users))
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def recommend_recipes(request):
+    user_profile = UserProfile.objects.get(user=request.user)
+    dietary_pref = user_profile.dietary_preference
+    allergies = user_profile.allergies.split(',') if user_profile.allergies else []
+    dislikes = user_profile.dislikes.split(',') if user_profile.dislikes else []
+
+    # Filter recipes based on dietary preference
+    recipes = Recipe.objects.all()
+    if dietary_pref:
+        recipes = recipes.filter(categories__name__icontains=dietary_pref)
+    # Exclude recipes with ingredients the user is allergic to or dislikes
+    for allergy in allergies:
+        recipes = recipes.exclude(ingredients__icontains=allergy.strip())
+    for dislike in dislikes:
+        recipes = recipes.exclude(ingredients__icontains=dislike.strip())
+
+    recipes = recipes.distinct()
+    serializer = RecipeListSerializer(recipes, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def my_profile(request):
+    user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+    if request.method == 'GET':
+        serializer = UserProfileSerializer(user_profile)
+        return Response(serializer.data)
+    elif request.method == 'PUT':
+        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def search_recipes(request):
+    # Get the search query from user
+    search_query = request.GET.get('q', '').strip().lower()
+    
+    # Get time and calorie filters
+    max_cooking_time = request.GET.get('max_time')  # in minutes
+    min_calories = request.GET.get('min_calories')
+    max_calories = request.GET.get('max_calories')
+    
+    # Get user preferences if authenticated
+    user_preferences = {}
+    if request.user.is_authenticated:
+        try:
+            user_profile = UserProfile.objects.get(user=request.user)
+            user_preferences = {
+                'dietary_preference': user_profile.dietary_preference,
+                'allergies': user_profile.allergies.split(',') if user_profile.allergies else [],
+                'dislikes': user_profile.dislikes.split(',') if user_profile.dislikes else [],
+                'favorite_categories': [cat.name for cat in user_profile.favorite_categories.all()]
+            }
+        except UserProfile.DoesNotExist:
+            pass
+    print("User dietary preference:", user_preferences.get('dietary_preference'))
+    print("User allergies:", user_preferences.get('allergies'))
+    print("User dislikes:", user_preferences.get('dislikes'))
+
+    # Build Spoonacular API query
+    api_key = settings.SPOONACULAR_API_KEY
+    endpoint = "https://api.spoonacular.com/recipes/complexSearch"
+    params = {
+        "apiKey": api_key,
+        "number": 20,
+        "addRecipeInformation": True,
+        "fillIngredients": True,
+        "instructionsRequired": True,
+        "addRecipeNutrition": True,
+    }
+    
+    # If user provided a search query, use it
+    if search_query:
+        params["query"] = search_query
+    
+    # Add time and calorie filters
+    if max_cooking_time:
+        params["maxReadyTime"] = max_cooking_time
+    if min_calories:
+        params["minCalories"] = min_calories
+    if max_calories:
+        params["maxCalories"] = max_calories
+    
+    # Add user preferences to search parameters if available
+    if user_preferences:
+        if user_preferences['dietary_preference']:
+            params["diet"] = user_preferences['dietary_preference']
+        if user_preferences['allergies']:
+            params["intolerances"] = ",".join(user_preferences['allergies'])
+        if user_preferences['favorite_categories']:
+            params["cuisine"] = ",".join(user_preferences['favorite_categories'])
+
+    # Call Spoonacular API
+    response = requests.get(endpoint, params=params)
+    dietary_fallback = False
+
+    def process_results(data):
+        filtered_results = []
+        calories_list = []
+        for recipe in data.get('results', []):
+            # Strictly filter by dietary preference if set
+            if user_preferences.get('dietary_preference') and not dietary_fallback:
+                if user_preferences['dietary_preference'].lower() not in [d.lower() for d in recipe.get('diets', [])]:
+                    continue
+            # Format recipe timing information
+            recipe['timing'] = {
+                'prep_time': f"{recipe.get('preparationMinutes', 0)} Minutes",
+                'cook_time': f"{recipe.get('cookingMinutes', 0)} Minutes",
+                'total_time': f"{recipe.get('readyInMinutes', 0)} Minutes",
+                'servings': f"{recipe.get('servings', 0)} Servings"
+            }
+            # Format nutrition information
+            calories = None
+            if 'nutrition' in recipe:
+                nutrition = recipe['nutrition']
+                calories = next((n['amount'] for n in nutrition.get('nutrients', []) if n['name'] == 'Calories'), 0)
+                recipe['nutrition_summary'] = {
+                    'calories': calories,
+                    'protein': next((n['amount'] for n in nutrition.get('nutrients', []) if n['name'] == 'Protein'), 0),
+                    'carbs': next((n['amount'] for n in nutrition.get('nutrients', []) if n['name'] == 'Carbohydrates'), 0),
+                    'fat': next((n['amount'] for n in nutrition.get('nutrients', []) if n['name'] == 'Fat'), 0)
+                }
+            if calories is not None:
+                calories_list.append(calories)
+            # Format ingredients in a clear list
+            if 'extendedIngredients' in recipe:
+                recipe['ingredients'] = [
+                    {
+                        'name': ing['name'],
+                        'amount': ing['amount'],
+                        'unit': ing['unit'],
+                        'original': ing['original'],
+                        'formatted': f"{ing['amount']} {ing['unit']} {ing['name']}"
+                    }
+                    for ing in recipe['extendedIngredients']
+                ]
+            # Format instructions into clear steps
+            if 'analyzedInstructions' in recipe and recipe['analyzedInstructions']:
+                steps = recipe['analyzedInstructions'][0].get('steps', [])
+                recipe['instructions'] = [
+                    {
+                        'step': step['number'],
+                        'instruction': step['step'],
+                        'ingredients': [ing['name'] for ing in step.get('ingredients', [])],
+                        'equipment': [eq['name'] for eq in step.get('equipment', [])]
+                    }
+                    for step in steps
+                ]
+            # Add recipe metadata
+            recipe['metadata'] = {
+                'title': recipe.get('title', ''),
+                'image': recipe.get('image', ''),
+                'description': recipe.get('summary', ''),
+                'cuisines': recipe.get('cuisines', []),
+                'dishTypes': recipe.get('dishTypes', []),
+                'diets': recipe.get('diets', []),
+                'occasions': recipe.get('occasions', []),
+                'source': {
+                    'name': recipe.get('sourceName', ''),
+                    'url': recipe.get('sourceUrl', '')
+                }
+            }
+            filtered_results.append(recipe)
+        min_calories = min(calories_list) if calories_list else None
+        max_calories = max(calories_list) if calories_list else None
+        return filtered_results, min_calories, max_calories
+
+    if response.status_code == 200:
+        data = response.json()
+        filtered_results, min_calories, max_calories = process_results(data)
+        # If no results and dietary preference was set, try fallback
+        if not filtered_results and user_preferences.get('dietary_preference'):
+            dietary_fallback = True
+            params.pop('diet', None)
+            response2 = requests.get(endpoint, params=params)
+            if response2.status_code == 200:
+                data2 = response2.json()
+                filtered_results, min_calories, max_calories = process_results(data2)
+                return Response({
+                    'results': filtered_results,
+                    'min_calories': min_calories,
+                    'max_calories': max_calories,
+                    'dietary_fallback': True,
+                    'message': 'No recipes found matching your dietary preference. Showing all results instead.'
+                })
+        return Response({
+            'results': filtered_results,
+            'min_calories': min_calories,
+            'max_calories': max_calories,
+            'dietary_fallback': False
+        })
+    else:
+        return Response({"error": "Failed to fetch recipes from Spoonacular"}, status=500)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_request(request):
+    serializer = PasswordResetSerializer(data=request.data)
+    if serializer.is_valid():
+        email = serializer.validated_data['email']
+        try:
+            user = CustomUser.objects.filter(email=email).first()
+            if not user:
+                return Response({'message': 'If an account exists with this email, you will receive a password reset link.'})
+            
+            # Generate a random token
+            token = default_token_generator.make_token(user)
+            
+            # Store the token in the user model
+            user.password_reset_token = token
+            user.save()
+            
+            # Create reset link
+            reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+            
+            # Send email
+            send_mail(
+                'Password Reset Request',
+                f'Click the following link to reset your password: {reset_link}',
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+            return Response({'message': 'Password reset email has been sent.'})
+        except CustomUser.DoesNotExist:
+            return Response({'message': 'If an account exists with this email, you will receive a password reset link.'})
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_confirm(request):
+    serializer = PasswordResetConfirmSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            # Get the token from the request data
+            token = serializer.validated_data['token']
+            
+            # Find the user by the token
+            user = CustomUser.objects.get(password_reset_token=token)
+            
+            # Set the new password
+            user.set_password(serializer.validated_data['password'])
+            user.password_reset_token = None  # Clear the token
+            user.save()
+            
+            return Response({'message': 'Password has been reset successfully.'})
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'Invalid or expired token.'}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def complete_user_questions(request):
+    profile = request.user.profile
+    data = request.data
+    # Save dietary preference (store as comma-separated string or first value)
+    if 'dietary' in data and data['dietary']:
+        # If user selects multiple, you can choose to store the first or join them
+        profile.dietary_preference = data['dietary'][0] if isinstance(data['dietary'], list) else data['dietary']
+    if 'allergies' in data:
+        profile.allergies = ','.join(data['allergies']) if isinstance(data['allergies'], list) else data['allergies']
+    if 'dislikes' in data:
+        profile.dislikes = ','.join(data['dislikes']) if isinstance(data['dislikes'], list) else data['dislikes']
+    profile.has_completed_questions = True
+    profile.save()
+    return Response({'message': 'Questions completed! User profile updated.'})
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_user_profile(request):
+    """Update user profile information."""
+    user = request.user
+    profile, created = UserProfile.objects.get_or_create(user=user)
+    
+    try:
+        # Update user information with validation
+        if 'first_name' in request.data:
+            if not request.data['first_name'].strip():
+                return Response({'error': 'First name cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
+            user.first_name = request.data['first_name'].strip()
+            
+        if 'last_name' in request.data:
+            if not request.data['last_name'].strip():
+                return Response({'error': 'Last name cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
+            user.last_name = request.data['last_name'].strip()
+            
+        if 'email' in request.data:
+            email = request.data['email'].strip()
+            if not email:
+                return Response({'error': 'Email cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
+            if CustomUser.objects.exclude(id=user.id).filter(email=email).exists():
+                return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+            user.email = email
+            
+        user.save()
+        
+        # Update profile information with validation
+        if 'dietary_preference' in request.data:
+            profile.dietary_preference = request.data['dietary_preference'].strip()
+            
+        if 'allergies' in request.data:
+            profile.allergies = request.data['allergies'].strip()
+            
+        if 'dislikes' in request.data:
+            profile.dislikes = request.data['dislikes'].strip()
+            
+        if 'profile_image' in request.FILES:
+            # Validate image file
+            image = request.FILES['profile_image']
+            if image.size > 5 * 1024 * 1024:  # 5MB limit
+                return Response({'error': 'Image size must be less than 5MB'}, status=status.HTTP_400_BAD_REQUEST)
+            if not image.content_type.startswith('image/'):
+                return Response({'error': 'File must be an image'}, status=status.HTTP_400_BAD_REQUEST)
+            profile.profile_image = image
+            
+        profile.save()
+        
+        # Log the update
+        print(f"Profile updated for user {user.username} at {timezone.now()}")
+        
+        return Response({
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name
+            },
+            'profile': {
+                'dietary_preference': profile.dietary_preference,
+                'allergies': profile.allergies,
+                'dislikes': profile.dislikes,
+                'profile_image': profile.profile_image.url if profile.profile_image else None
+            },
+            'message': 'Profile updated successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error updating profile for user {user.username}: {str(e)}")
+        return Response(
+            {'error': 'An error occurred while updating the profile'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 

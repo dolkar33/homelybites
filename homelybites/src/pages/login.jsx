@@ -1,195 +1,129 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import { Toaster } from 'react-hot-toast';
+import axiosInstance from '../config/axiosInstance';
+import { customToast } from './toast';
+
+// Yup validation schema
+const validationSchema = yup.object({
+    username: yup
+        .string()
+        .required('Username is required')
+        .min(3, 'Username must be at least 3 characters')
+        .max(20, 'Username must not exceed 20 characters')
+        .matches(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
+    
+    password: yup
+        .string()
+        .required('Password is required')
+        .min(1, 'Password cannot be empty')
+});
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const navigate = useNavigate();
+    const [showPassword, setShowPassword] = useState(false);
+    const [generalError, setGeneralError] = useState('');
+    const navigate = useNavigate();
 
-  // Check if redirected from signup with success flag
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("registered") === "true") {
-      setShowSuccessToast(true);
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+        clearErrors,
+        reset
+    } = useForm({
+        resolver: yupResolver(validationSchema),
+        defaultValues: {
+            username: '',
+            password: ''
+        }
+    });
 
-      // Clear the query parameter without page refresh
-      window.history.replaceState({}, document.title, window.location.pathname);
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('registered') === 'true') {
+            customToast.success('Registration successful! You can now log in.');
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, []);
 
-      // Auto hide toast after 5 seconds
-      setTimeout(() => {
-        setShowSuccessToast(false);
-      }, 5000);
-    }
+    const handleInputChange = () => {
+        if (generalError) {
+            setGeneralError('');
+        }
+    };
 
-    // Add test users for development (remove this in production)
-    const existingUsers = JSON.parse(localStorage.getItem("users") || "[]");
-    if (existingUsers.length === 0) {
-      const testUsers = [
-        {
-          firstName: "John",
-          lastName: "Doe",
-          email: "john@example.com",
-          password: "password123",
-        },
-        {
-          firstName: "Jane",
-          lastName: "Smith",
-          email: "jane@example.com",
-          password: "test123",
-        },
-      ];
-      localStorage.setItem("users", JSON.stringify(testUsers));
-    }
-  }, []);
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
+    };
 
-  const handleEmailChange = (e) => {
-    setEmail(e.target.value);
-    setError(""); // Clear error when user types
-  };
+    const onSubmit = async (data) => {
+        setGeneralError('');
 
-  const handlePasswordChange = (e) => {
-    setPassword(e.target.value);
-    setError(""); // Clear error when user types
-  };
+        try {
+            const response = await axiosInstance.post('api/login/', {
+                username: data.username,
+                password: data.password,
+            });
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
+            if (response.status === 200) {
+                const userData = response.data.user || response.data;
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+                localStorage.setItem('currentUser', JSON.stringify({
+                    ...userData,
+                    isLoggedIn: true
+                }));
 
-    // Basic validation
-    if (!email || !password) {
-      setError("Please enter both email and password");
-      setLoading(false);
-      return;
-    }
+                localStorage.setItem('authToken', response.data.access);
+                localStorage.setItem('refreshToken', response.data.refresh);
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address");
-      setLoading(false);
-      return;
-    }
+                customToast.success('Login successful! Redirecting to your questions...');
+                reset();
 
-    try {
-      // Simulate API call with localStorage check
-      const users = JSON.parse(localStorage.getItem("users") || "[]");
-      console.log("Stored users:", users); // Debug log
-      console.log("Login attempt:", { email, password }); // Debug log
+                setTimeout(() => {
+                    navigate('/userquestion');
+                }, 1500);
+            }
+        } catch (error) {
+            console.error('Login error:', error);
 
-      const user = users.find(
-        (u) => u.email === email && u.password === password
-      );
-      console.log("Found user:", user); // Debug log
+            if (error.response) {
+                if (error.response.status === 401) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('currentUser');
+                }
 
-      // Artificial delay to simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 800));
+                const errorMessage = error.response?.data?.message || 
+                                    error.response?.data?.error || 
+                                    error.response?.data?.detail ||
+                                    'Invalid username or password';
+                customToast.error(errorMessage);
+            } else if (error.request) {
+                customToast.error('Network error. Please check your connection and try again.');
+            } else {
+                customToast.error('An unexpected error occurred. Please try again later.');
+            }
+        }
+    };
 
-      if (user) {
-        // Store logged in user info in localStorage
-        localStorage.setItem(
-          "currentUser",
-          JSON.stringify({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            isLoggedIn: true,
-          })
-        );
+    const handleSignUp = () => {
+        navigate("/signup");
+    };
 
-        // Show success toast first
-        setShowSuccessToast(true);
-
-        // Redirect to MainPage after a short delay
-        setTimeout(() => {
-          navigate("/userquestion");
-        }, 1500);
-
-        // Auto hide toast after 5 seconds
-        setTimeout(() => {
-          setShowSuccessToast(false);
-        }, 5000);
-      } else {
-        setError("Invalid email or password");
-      }
-    } catch (err) {
-      setError("Login failed. Please try again");
-      console.error("Login error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignUp = () => {
-    navigate("/signup");
-  };
-
-  const handleForgotPassword = () => {
-    // For now, just alert the user
-    alert("Password reset functionality will be implemented soon!");
-  };
+    const handleForgotPassword = () => {
+        customToast.error('Forgot Password feature is not implemented yet.');
+    };
 
   return (
-    <div className="flex flex-col md:flex-row h-[100vh] w-full bg-white relative">
-      {/* Success Toast Notification - with pink theme (#FC7D7D) */}
-      {showSuccessToast && (
-        <div
-          className="fixed top-4 right-4 bg-white border-l-4 p-4 rounded shadow-md z-50 animate-fade-in-down flex items-center"
-          style={{ borderColor: "#FC7D7D" }}
-        >
-          <div className="mr-2">
-            <svg
-              className="h-6 w-6"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="#FC7D7D"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-          <div>
-            <p className="font-bold" style={{ color: "#333333" }}>
-              Success!
-            </p>
-            <p style={{ color: "#666666" }}>You have successfully logged in.</p>
-          </div>
-          <button
-            onClick={() => setShowSuccessToast(false)}
-            className="ml-4 hover:opacity-80"
-            style={{ color: "#FC7D7D" }}
-          >
-            <svg
-              className="h-4 w-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-      )}
+ <div className="flex flex-col md:flex-row h-[100vh] w-full bg-white relative">
+            <Toaster />
+
+            <div className="w-full md:w-1/2 flex flex-col justify-start items-center pt-16 px-8 overflow-hidden">
+      
+      
+      
 
       {/* Left side - Login Form */}
       <div className="w-full md:w-1/2 flex flex-col justify-start pt-[8vh] px-[4vw] h-[60vh] md:h-[100vh]">
@@ -205,112 +139,97 @@ const Login = () => {
             </h2>
           </div>
 
-          {error && (
-            <div className="mb-[2vh] p-[1.5vh] bg-red-100 text-red-700 rounded-lg">
-              {error}
-            </div>
-          )}
+                    {generalError && (
+                        <div className="mb-[2vh] p-[1.5vh] bg-red-100 text-red-700 rounded-lg">
+                            {generalError}
+                        </div>
+                    )}
 
-          <form onSubmit={handleLogin} className="w-full">
-            <div className="mb-[4vh]">
-              <input
-                type="email"
-                placeholder="Email Address"
-                value={email}
-                onChange={handleEmailChange}
-                className="w-full px-[2vw] py-[2vh] border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
-                required
-              />
-            </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+                        <div className="mb-6">
+                            <input 
+                                type="text" 
+                                placeholder="Username"
+                                {...register('username', {
+                                    onChange: handleInputChange
+                                })}
+                                className={`w-full px-[2vw] py-[2vh] border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 text-base ${
+                                    errors.username ? 'border-red-400' : 'border-gray-400'
+                                }`}
+                            />
+                            {errors.username && (
+                                <p className="mt-1 text-xs text-red-600">{errors.username.message}</p>
+                            )}
+                        </div>
 
-            <div className="mb-[0.5vh] relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter Password"
-                value={password}
-                onChange={handlePasswordChange}
-                className="w-full px-[2vw] py-[2vh] pr-[6vw] border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent"
-                required
-              />
-              <button
-                type="button"
-                onClick={togglePasswordVisibility}
-                className="absolute inset-y-0 right-0 flex items-center pr-[1vw] text-gray-500 hover:text-gray-700"
-              >
-                {showPassword ? (
-                  // Eye with slash (hide password)
-                  <svg
-                    className="h-5 w-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
-                    />
-                  </svg>
-                ) : (
-                  // Eye (show password)
-                  <svg
-                    className="h-5 w-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
-                  </svg>
-                )}
-              </button>
-            </div>
+                        <div className="mb-[0.5vh] relative">
+                            <input 
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Enter Password"
+                                {...register('password', {
+                                    onChange: handleInputChange
+                                })}
+                                className={`w-full px-[2vw] py-[2vh] pr-[6vw] border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 text-base ${
+                                    errors.password ? 'border-red-400' : 'border-gray-400'
+                                }`}
+                            />
+                            <button
+                                type="button"
+                                onClick={togglePasswordVisibility}
+                                className="absolute inset-y-0 right-0 flex items-center pr-[1vw] transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                            >
+                                {showPassword ? (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                )}
+                            </button>
+                            {errors.password && (
+                                <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
+                            )}
+                        </div>
 
-            <div className="text-right mb-[4vh] mt-[1vh] sm:text-[3vh] md:text-[2vh]">
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Forgot Password?
-              </button>
-            </div>
+                        <div className="text-right mb-[4vh] mt-[1vh] sm:text-[3vh] md:text-[2vh]">
+                            <button 
+                                type="button" 
+                                onClick={handleForgotPassword}
+                                className="text-sm text-gray-500 hover:text-gray-700"
+                            >
+                                Forgot Password?
+                            </button>
+                        </div>
 
-            <button
-              type="submit"
-              className="w-full py-[1.5vh] text-white bg-accent rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 text-[3vh] "
-              disabled={loading}
-            >
-              {loading ? "Logging in..." : "Login"}
-            </button>
-          </form>
+                        <button 
+                            type="submit" 
+                            disabled={isSubmitting}
+                            style={{ backgroundColor: '#FC7D7D' }}
+                            className="w-full py-[1.5vh] text-white bg-accent rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 text-[3vh]"
+                        >
+                            {isSubmitting ? 'Logging in...' : 'Login'}
+                        </button>
+                    </form>
 
-          <div className="mt-[3vh] text-center text-xs text-gray-600 sm:text-[3vh] md:text-[2vh] xl:text-[2.5vh] ">
+          <div className="mt-[3vh] text-center text-xs text-gray-600 sm:text-[3vh] md:text-[2vh] xl:text-[2.5vh]">
             Don't have an account?{" "}
-            <button
-              onClick={handleSignUp}
-              className="hover:opacity-6 text-accent"
-            >
-              SignUp Now
-            </button>
+             <button 
+                            onClick={handleSignUp}
+                            style={{ color: '#FC7D7D' }}
+                            className="hover:opacity-80 font-medium text-accent"
+                        >
+                            SignUp Now
+                        </button>
           </div>
         </div>
       </div>
 
-      <div className="hidden md:inline-block md:w-1/2 h-[40vh] md:h-[100vh]">
+      
+
+      <div className="hidden md:inline-block md:w-1/2 h-[40vh] md:h-[100vh] ">
         <div className="h-full w-full md:flex md:justify-end relative overflow-visible">
           <img
             src="/src/img/chef.png"
@@ -319,6 +238,7 @@ const Login = () => {
           />
         </div>
       </div>
+    </div>
     </div>
   );
 };

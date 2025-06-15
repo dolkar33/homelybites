@@ -1,5 +1,6 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axiosInstance from "../config/axiosInstance";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
 
@@ -7,17 +8,19 @@ const UserProfile = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // State for user information - Get from localStorage if available
-  const [userInfo, setUserInfo] = useState(() => {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    return {
-      username: currentUser.firstName && currentUser.lastName 
-        ? `${currentUser.firstName} ${currentUser.lastName}` 
-        : "Anushka Shakya",
-      email: currentUser.email || "aanu332@gmail.com",
-      phone: currentUser.phone || "",
-      password: ""
-    };
+  // State for user information
+  const [userInfo, setUserInfo] = useState({
+    username: "",
+    email: "",
+    password: "",
+    first_name: "",
+    last_name: ""
+  });
+
+  // State for profile data
+  const [profileData, setProfileData] = useState({
+    dietary_preference: "",
+    allergies: ""
   });
 
   // State for profile image
@@ -28,6 +31,8 @@ const UserProfile = () => {
   // State for loading and errors
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState('');
 
   // State for dietary preferences
   const [dietaryPlan, setDietaryPlan] = useState("Non-Vegetarian");
@@ -41,6 +46,9 @@ const UserProfile = () => {
   // State for making layout scrollable after clicking change profile
   const [isScrollableMode, setIsScrollableMode] = useState(false);
 
+  // State for success message
+  const [successMessage, setSuccessMessage] = useState('');
+
   const dietaryOptions = [
     "Vegetarian",
     "Non-Vegetarian", 
@@ -48,6 +56,64 @@ const UserProfile = () => {
     "Gluten Free",
     "No Dietary Plan"
   ];
+
+  // Fetch user profile data on component mount
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true);
+      setApiError('');
+      
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await axiosInstance.get('api/user-profiles/my_profile/');
+      console.log('User profile response:', response);
+      
+      if (response.status === 200) {
+        const data = response.data;
+        
+        // Set user info from the response
+        setUserInfo({
+          username: data.user.username || "",
+          email: data.user.email || "", 
+          password: "",
+          first_name: data.user.first_name || "",
+          last_name: data.user.last_name || ""
+        });
+
+        // Set profile data
+        setProfileData({
+          dietary_preference: data.dietary_preference || "",
+          allergies: data.allergies || ""
+        });
+
+        // Set dietary plan for the radio buttons
+        if (data.dietary_preference) {
+          setDietaryPlan(data.dietary_preference);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      
+      if (error.response?.status === 401) {
+        // Token is invalid or expired
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        navigate('/login');
+      } else {
+        setApiError('Failed to load profile data. Please refresh the page.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setUserInfo(prev => ({
@@ -66,6 +132,10 @@ const UserProfile = () => {
 
   const handleDietaryChange = (option) => {
     setDietaryPlan(option);
+    setProfileData(prev => ({
+      ...prev,
+      dietary_preference: option
+    }));
   };
 
   // Compress image before preview
@@ -98,7 +168,7 @@ const UserProfile = () => {
   // Handle profile image change
   const handleProfileImageChange = () => {
     setUploadError('');
-    setIsScrollableMode(true); // Make layout scrollable when Change Profile is clicked
+    setIsScrollableMode(true);
     fileInputRef.current?.click();
   };
 
@@ -117,14 +187,14 @@ const UserProfile = () => {
       }
 
       // Validate file size (5MB limit)
-      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      const maxSize = 5 * 1024 * 1024;
       if (file.size > maxSize) {
         throw new Error('File size must be less than 5MB');
       }
 
       // Compress image if it's too large
       let processedFile = file;
-      if (file.size > 1024 * 1024) { // If larger than 1MB, compress
+      if (file.size > 1024 * 1024) {
         processedFile = await compressImage(file);
       }
 
@@ -140,7 +210,6 @@ const UserProfile = () => {
       setUploadError(error.message);
     } finally {
       setIsUploading(false);
-      // Clear the input so the same file can be selected again
       event.target.value = '';
     }
   };
@@ -178,8 +247,6 @@ const UserProfile = () => {
       newErrors.email = "Email format is invalid";
     }
     
-    // Phone number is optional - no validation required
-    
     if (userInfo.password && userInfo.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters";
     }
@@ -188,7 +255,7 @@ const UserProfile = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSaveChanges = (e) => {
+  const handleSaveChanges = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -196,49 +263,155 @@ const UserProfile = () => {
     }
 
     setIsUploading(true);
+    setApiError('');
+    setSuccessMessage('');
     
-    // Simulate API call delay
-    setTimeout(() => {
-      try {
-        // Here you would typically save to backend
-        const dataToSave = {
-          ...userInfo,
-          dietaryPlan,
-          profileImage: selectedFile ? 'new_image_selected' : profileImage,
-          hasNewImage: !!selectedFile
-        };
-        
-        console.log("Saving user data:", dataToSave);
-        
-        // Simulate successful save
-        alert("Changes saved successfully!");
-        
-        // You could update localStorage here if needed
-        // localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        
-      } catch (error) {
-        alert("Error saving changes. Please try again.");
-        console.error("Save error:", error);
-      } finally {
-        setIsUploading(false);
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        navigate('/login');
+        return;
       }
-    }, 1000);
+
+      // Prepare the data to be sent to the API - now includes all user fields
+      const updateData = {
+        // Profile fields
+        dietary_preference: dietaryPlan,
+        allergies: profileData.allergies,
+        
+        // User fields (including phone)
+        username: userInfo.username,
+        email: userInfo.email,
+        first_name: userInfo.first_name,
+        last_name: userInfo.last_name,
+        ...(userInfo.password && { password: userInfo.password })
+      };
+
+      // Update user profile
+      const response = await axiosInstance.put('api/user-profiles/my_profile/', updateData);
+
+      if (response.status === 200) {
+        setSuccessMessage('Profile updated successfully!');
+        
+        // Update localStorage with new user data
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const updatedUser = {
+          ...currentUser,
+          ...userInfo,
+          dietary_preference: dietaryPlan
+        };
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+        // Auto hide success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      
+      if (error.response?.status === 401) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        navigate('/login');
+      } else {
+        const errorMessage = error.response?.data?.message || 
+                           error.response?.data?.error || 
+                           error.response?.data?.detail ||
+                           'Failed to update profile. Please try again.';
+        setApiError(errorMessage);
+      }
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleBack = () => {
-    navigate(-1); // Go back to previous page
+    navigate(-1);
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="bg-[#faf9f7] min-h-screen flex flex-col">
+        <div className="flex-shrink-0">
+          <Navbar />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#ff6b6b] mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading profile...</p>
+          </div>
+        </div>
+        <div className="mt-auto w-full">
+          <Footer />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`bg-[#faf9f7] flex flex-col ${isScrollableMode ? 'min-h-screen' : 'h-screen overflow-hidden'}`}>
+    <div className="bg-[#faf9f7] min-h-screen flex flex-col">
       <div className="flex-shrink-0">
         <Navbar />
       </div>
       
-      <div className={`flex-1 px-4 md:px-8 py-6 ${isScrollableMode ? '' : 'overflow-hidden'}`}>
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed top-4 right-4 bg-green-100 border-l-4 border-green-500 p-4 rounded shadow-md z-50 animate-fade-in-down">
+          <div className="flex items-center">
+            <div className="mr-2">
+              <svg className="h-6 w-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-bold text-green-800">Success!</p>
+              <p className="text-green-700">{successMessage}</p>
+            </div>
+            <button 
+              onClick={() => setSuccessMessage('')}
+              className="ml-4 text-green-500 hover:opacity-80"
+            >
+              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {apiError && (
+        <div className="fixed top-4 right-4 bg-red-100 border-l-4 border-red-500 p-4 rounded shadow-md z-50">
+          <div className="flex items-center">
+            <div className="mr-2">
+              <svg className="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-bold text-red-800">Error!</p>
+              <p className="text-red-700">{apiError}</p>
+            </div>
+            <button 
+              onClick={() => setApiError('')}
+              className="ml-4 text-red-500 hover:opacity-80"
+            >
+              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Main Content Area */}
+      <div className="flex-1 px-4 md:px-8 py-6 pb-12">
         <div className="max-w-7xl mx-auto h-full">
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
             
+            {/* Left Panel - Profile Image and Dietary Plan */}
             <div className="lg:col-span-2 bg-white rounded-3xl shadow-2xl p-6 flex flex-col">
               <button 
                 onClick={handleBack}
@@ -320,7 +493,7 @@ const UserProfile = () => {
               
               <div className="flex-1 overflow-y-auto">
                 <h3 className="text-lg font-bold mb-4 font-inter">Change Dietary Plan</h3>
-                <div className="space-y-2">
+                <div className="space-y-2 mb-6">
                   {dietaryOptions.map((option) => (
                     <label
                       key={option}
@@ -349,11 +522,23 @@ const UserProfile = () => {
                     </label>
                   ))}
                 </div>
+
+                {/* Allergies Section */}
+                <div className="mb-4">
+                  <label className="block text-base font-medium mb-2">Allergies</label>
+                  <textarea
+                    value={profileData.allergies}
+                    onChange={(e) => setProfileData(prev => ({ ...prev, allergies: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none resize-none"
+                    rows="3"
+                    placeholder="Enter any food allergies (e.g., Gluten, Nuts, Shellfish)"
+                  />
+                </div>
               </div>
             </div>
             
+            {/* Right Panel - Account Information */}
             <div className="lg:col-span-3 bg-white rounded-3xl shadow-2xl p-6 flex flex-col">
-              
               <h2 className="text-xl font-bold mb-6">Account Information</h2>
               
               <form onSubmit={handleSaveChanges} className="flex-1 flex flex-col">
@@ -365,7 +550,7 @@ const UserProfile = () => {
                       type="text"
                       value={userInfo.username}
                       onChange={(e) => handleInputChange('username', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent ${
+                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none ${
                         errors.username ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="Enter your username"
@@ -382,7 +567,7 @@ const UserProfile = () => {
                       type="email"
                       value={userInfo.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent ${
+                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none ${
                         errors.email ? 'border-red-500' : 'border-gray-300'
                       }`}
                       placeholder="Enter your email"
@@ -392,21 +577,28 @@ const UserProfile = () => {
                     )}
                   </div>
                   
-                  {/* Phone */}
+                  {/* First Name */}
                   <div>
-                    <label className="block text-base font-medium mb-2">Phone Number (Optional)</label>
+                    <label className="block text-base font-medium mb-2">First Name</label>
                     <input
-                      type="tel"
-                      value={userInfo.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent ${
-                        errors.phone ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      placeholder="Enter your phone number"
+                      type="text"
+                      value={userInfo.first_name}
+                      onChange={(e) => handleInputChange('first_name', e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base focus:outline-none"
+                      placeholder="Enter your first name"
                     />
-                    {errors.phone && (
-                      <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-                    )}
+                  </div>
+
+                  {/* Last Name */}
+                  <div>
+                    <label className="block text-base font-medium mb-2">Last Name</label>
+                    <input
+                      type="text"
+                      value={userInfo.last_name}
+                      onChange={(e) => handleInputChange('last_name', e.target.value)}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base focus:outline-none"
+                      placeholder="Enter your last name"
+                    />
                   </div>
                   
                   {/* Password */}
@@ -417,7 +609,7 @@ const UserProfile = () => {
                         type={showPassword ? "text" : "password"}
                         value={userInfo.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
-                        className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#ff6b6b] focus:border-transparent pr-10 ${
+                        className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none pr-10 ${
                           errors.password ? 'border-red-500' : 'border-gray-300'
                         }`}
                         placeholder="Enter new password (leave blank to keep current)"
@@ -474,10 +666,27 @@ const UserProfile = () => {
         </div>
       </div>
       
-      {/* Fixed Footer */}
-      <div className="flex-shrink-0">
+      {/* Footer - Now properly positioned at bottom with full width */}
+      <div className="w-full mt-auto">
         <Footer />
       </div>
+
+      {/* Custom styles */}
+      <style jsx>{`
+        @keyframes fadeInDown {
+          from {
+            opacity: 0;
+            transform: translate3d(0, -20px, 0);
+          }
+          to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+          }
+        }
+        .animate-fade-in-down {
+          animation: fadeInDown 0.5s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
