@@ -66,12 +66,10 @@ class UserProfile(models.Model):
         help_text='Upload a profile image (jpg, jpeg, png, or gif)'
     )
     favorite_categories = models.ManyToManyField(Category, blank=True, related_name='user_favorites')
-    dietary_preference = models.CharField(
-        max_length=50,
-        choices=DIETARY_CHOICES,
+    dietary_preference = models.TextField(
         blank=True,
         null=True,
-        help_text='User\'s dietary preference'
+        help_text='User\'s dietary preferences (comma-separated)'
     )
     allergies = models.TextField(
         blank=True,
@@ -92,7 +90,10 @@ class UserProfile(models.Model):
     def save(self, *args, **kwargs):
         # Clean and validate data before saving
         if self.dietary_preference:
-            self.dietary_preference = self.dietary_preference.strip().lower()
+            # Convert to lowercase and strip whitespace
+            preferences = [p.strip().lower() for p in self.dietary_preference.split(',')]
+            # Remove duplicates and join back
+            self.dietary_preference = ','.join(list(dict.fromkeys(preferences)))
         if self.allergies:
             self.allergies = self.allergies.strip()
         if self.dislikes:

@@ -17,7 +17,8 @@ from .serializers import (
     UserRegistrationSerializer,
     UserLoginSerializer,
     PasswordResetSerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer,
+    PasswordChangeSerializer
 )
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -361,14 +362,19 @@ def list_users(request):
 @permission_classes([IsAuthenticated])
 def recommend_recipes(request):
     user_profile = UserProfile.objects.get(user=request.user)
-    dietary_pref = user_profile.dietary_preference
+    dietary_prefs = user_profile.dietary_preference.split(',') if user_profile.dietary_preference else []
     allergies = user_profile.allergies.split(',') if user_profile.allergies else []
     dislikes = user_profile.dislikes.split(',') if user_profile.dislikes else []
 
-    # Filter recipes based on dietary preference
+    # Filter recipes based on dietary preferences
     recipes = Recipe.objects.all()
-    if dietary_pref:
-        recipes = recipes.filter(categories__name__icontains=dietary_pref)
+    if dietary_prefs:
+        # Create a Q object for each dietary preference
+        dietary_query = Q()
+        for pref in dietary_prefs:
+            dietary_query |= Q(categories__name__icontains=pref.strip())
+        recipes = recipes.filter(dietary_query).distinct()
+    
     # Exclude recipes with ingredients the user is allergic to or dislikes
     for allergy in allergies:
         recipes = recipes.exclude(ingredients__icontains=allergy.strip())
@@ -617,17 +623,30 @@ def password_reset_confirm(request):
 def complete_user_questions(request):
     profile = request.user.profile
     data = request.data
-    # Save dietary preference (store as comma-separated string or first value)
+    
+    # Save dietary preferences (store as comma-separated string)
     if 'dietary' in data and data['dietary']:
-        # If user selects multiple, you can choose to store the first or join them
-        profile.dietary_preference = data['dietary'][0] if isinstance(data['dietary'], list) else data['dietary']
+        # Convert to lowercase and join with commas
+        preferences = [p.strip().lower() for p in data['dietary']]
+        profile.dietary_preference = ','.join(preferences)
+    
+    # Save allergies
     if 'allergies' in data:
         profile.allergies = ','.join(data['allergies']) if isinstance(data['allergies'], list) else data['allergies']
+    
+    # Save dislikes
     if 'dislikes' in data:
         profile.dislikes = ','.join(data['dislikes']) if isinstance(data['dislikes'], list) else data['dislikes']
+    
     profile.has_completed_questions = True
     profile.save()
-    return Response({'message': 'Questions completed! User profile updated.'})
+    
+    return Response({
+        'message': 'Questions completed! User profile updated.',
+        'dietary_preferences': profile.dietary_preference.split(',') if profile.dietary_preference else [],
+        'allergies': profile.allergies.split(',') if profile.allergies else [],
+        'dislikes': profile.dislikes.split(',') if profile.dislikes else []
+    })
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
@@ -705,4 +724,24 @@ def update_user_profile(request):
             {'error': 'An error occurred while updating the profile'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    """Change user password."""
+    serializer = PasswordChangeSerializer(data=request.data)
+    if serializer.is_valid():
+        user = request.user
+        
+        # Check if old password is correct
+        if not user.check_password(serializer.validated_data['old_password']):
+            return Response({'error': 'Current password is incorrect'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Set new password
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+        
+        return Response({'message': 'Password changed successfully'})
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
