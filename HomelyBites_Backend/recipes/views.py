@@ -390,8 +390,24 @@ def recommend_recipes(request):
 def my_profile(request):
     user_profile, created = UserProfile.objects.get_or_create(user=request.user)
     if request.method == 'GET':
-        serializer = UserProfileSerializer(user_profile)
-        return Response(serializer.data)
+        # Return dietary_preference, allergies, dislikes as lists
+        data = {
+            'id': user_profile.id,
+            'user': {
+                'id': user_profile.user.id,
+                'username': user_profile.user.username,
+                'email': user_profile.user.email,
+                'first_name': user_profile.user.first_name,
+                'last_name': user_profile.user.last_name
+            },
+            'profile_image': user_profile.profile_image.url if user_profile.profile_image else None,
+            'favorite_categories': [cat.name for cat in user_profile.favorite_categories.all()],
+            'dietary_preference': user_profile.dietary_preference.split(',') if user_profile.dietary_preference else [],
+            'allergies': user_profile.allergies.split(',') if user_profile.allergies else [],
+            'dislikes': user_profile.dislikes.split(',') if user_profile.dislikes else [],
+            'has_completed_questions': user_profile.has_completed_questions
+        }
+        return Response(data)
     elif request.method == 'PUT':
         serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
         if serializer.is_valid():
@@ -658,19 +674,16 @@ def update_user_profile(request):
     """Update user profile information."""
     user = request.user
     profile, created = UserProfile.objects.get_or_create(user=user)
-    
     try:
         # Update user information with validation
         if 'first_name' in request.data:
             if not request.data['first_name'].strip():
                 return Response({'error': 'First name cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
             user.first_name = request.data['first_name'].strip()
-            
         if 'last_name' in request.data:
             if not request.data['last_name'].strip():
                 return Response({'error': 'Last name cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
             user.last_name = request.data['last_name'].strip()
-            
         if 'email' in request.data:
             email = request.data['email'].strip()
             if not email:
@@ -678,33 +691,34 @@ def update_user_profile(request):
             if CustomUser.objects.exclude(id=user.id).filter(email=email).exists():
                 return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
             user.email = email
-            
         user.save()
-        
         # Update profile information with validation
         if 'dietary_preference' in request.data:
-            profile.dietary_preference = request.data['dietary_preference'].strip()
-            
+            dietary = request.data['dietary_preference']
+            if isinstance(dietary, list):
+                profile.dietary_preference = ','.join([d.strip().lower() for d in dietary])
+            else:
+                profile.dietary_preference = dietary.strip().lower()
         if 'allergies' in request.data:
-            profile.allergies = request.data['allergies'].strip()
-            
+            allergies = request.data['allergies']
+            if isinstance(allergies, list):
+                profile.allergies = ','.join([a.strip() for a in allergies])
+            else:
+                profile.allergies = allergies.strip()
         if 'dislikes' in request.data:
-            profile.dislikes = request.data['dislikes'].strip()
-            
+            dislikes = request.data['dislikes']
+            if isinstance(dislikes, list):
+                profile.dislikes = ','.join([d.strip() for d in dislikes])
+            else:
+                profile.dislikes = dislikes.strip()
         if 'profile_image' in request.FILES:
-            # Validate image file
             image = request.FILES['profile_image']
-            if image.size > 5 * 1024 * 1024:  # 5MB limit
+            if image.size > 5 * 1024 * 1024:
                 return Response({'error': 'Image size must be less than 5MB'}, status=status.HTTP_400_BAD_REQUEST)
             if not image.content_type.startswith('image/'):
                 return Response({'error': 'File must be an image'}, status=status.HTTP_400_BAD_REQUEST)
             profile.profile_image = image
-            
         profile.save()
-        
-        # Log the update
-        print(f"Profile updated for user {user.username} at {timezone.now()}")
-        
         return Response({
             'user': {
                 'id': user.id,
@@ -714,20 +728,16 @@ def update_user_profile(request):
                 'last_name': user.last_name
             },
             'profile': {
-                'dietary_preference': profile.dietary_preference,
-                'allergies': profile.allergies,
-                'dislikes': profile.dislikes,
+                'dietary_preference': profile.dietary_preference.split(',') if profile.dietary_preference else [],
+                'allergies': profile.allergies.split(',') if profile.allergies else [],
+                'dislikes': profile.dislikes.split(',') if profile.dislikes else [],
                 'profile_image': profile.profile_image.url if profile.profile_image else None
             },
             'message': 'Profile updated successfully'
         })
-        
     except Exception as e:
         print(f"Error updating profile for user {user.username}: {str(e)}")
-        return Response(
-            {'error': 'An error occurred while updating the profile'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({'error': 'An error occurred while updating the profile'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
