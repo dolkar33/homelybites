@@ -13,9 +13,7 @@ router.register(r'recipes', views.RecipeViewSet)
 router.register(r'user-profiles', views.UserProfileViewSet)
 
 urlpatterns = [
-    path('user-profiles/my_profile/', views.my_profile, name='my_profile'),
-    path('user-profiles/update/', views.update_user_profile, name='update_user_profile'),
-    path('', include(router.urls)),
+    # Specific paths for function-based views
     path('register/', views.register_user, name='register'),
     path('login/', views.login_user, name='login'),
     path('users/', views.list_users, name='list_users'),
@@ -23,9 +21,13 @@ urlpatterns = [
     path('recommendations/', views.recommend_recipes, name='recommend_recipes'),
     path('search/', views.search_recipes, name='search_recipes'),
     path('import_from_spoonacular/', views.import_from_spoonacular, name='import_from_spoonacular'),
-    # Password reset URLs
     path('password-reset/', views.password_reset_request, name='password_reset_request'),
     path('password-reset-confirm/', views.password_reset_confirm, name='password_reset_confirm'),
     path('change-password/', views.change_password, name='change_password'),
     path('complete-user-questions/', views.complete_user_questions, name='complete_user_questions'),
+    path('user-profiles/my_profile/', views.my_profile, name='my_profile'),
+    path('user-profiles/update/', views.update_user_profile, name='update_user_profile'),
+
+    # Router-generated paths (should be last)
+    path('', include(router.urls)),
 ]

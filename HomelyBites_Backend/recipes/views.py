@@ -403,7 +403,7 @@ def my_profile(request):
 @permission_classes([AllowAny])
 def search_recipes(request):
     # Get the search query from user
-    search_query = request.GET.get('q', '').strip().lower()
+    search_query = request.GET.get('q', '').strip()
     
     # Get time and calorie filters
     max_cooking_time = request.GET.get('max_time')  # in minutes
@@ -441,7 +441,11 @@ def search_recipes(request):
     
     # If user provided a search query, use it
     if search_query:
-        params["query"] = search_query
+        if ',' in search_query:
+            params['includeIngredients'] = search_query.lower()
+            params['sort'] = 'max-used-ingredients'
+        else:
+            params["query"] = search_query.lower()
     
     # Add time and calorie filters
     if max_cooking_time:
