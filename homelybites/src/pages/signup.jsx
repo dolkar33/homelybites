@@ -140,120 +140,107 @@ const SignUp = () => {
     );
   };
 
-  const handleSignUp = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+    const handleSignUp = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        
+        // Basic validation
+        if (!firstName || !lastName || !email || !password || !confirmPassword) {
+            setError('Please complete all required fields');
+            setLoading(false);
+            return;
+        }
+        
+        // Enhanced email validation
+        const emailValidation = validateEmail(email);
+        if (!emailValidation.isValid) {
+            setError(emailValidation.message);
+            setLoading(false);
+            return;
+        }
+        
+        // Strong password validation
+        const passwordRequirements = validatePassword(password);
+        if (!passwordRequirements.minLength) {
+            setError('Password must be at least 8 characters long');
+            setLoading(false);
+            return;
+        }
+        if (!passwordRequirements.hasLowercase) {
+            setError('Password must contain at least one lowercase letter');
+            setLoading(false);
+            return;
+        }
+        if (!passwordRequirements.hasUppercase) {
+            setError('Password must contain at least one uppercase letter');
+            setLoading(false);
+            return;
+        }
+        if (!passwordRequirements.hasNumber) {
+            setError('Password must contain at least one number');
+            setLoading(false);
+            return;
+        }
+        if (!passwordRequirements.hasSpecialChar) {
+            setError('Password must contain at least one special character (!@#$%^&*()_+-=[]{};\':"|,.<>?/)');
+            setLoading(false);
+            return;
+        }
+        
+        // Password match validation
+        if (password !== confirmPassword) {
+            setError('Passwords do not match');
+            setLoading(false);
+            return;
+        }
+        
+        try {
+            const response = await fetch('http://localhost:8000/api/register/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: email,
+                    email: email,
+                    password: password,
+                    password2: confirmPassword,
+                    first_name: firstName,
+                    last_name: lastName
+                }),
+            });
 
-    // Basic validation
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      setError("Please complete all required fields");
-      setLoading(false);
-      return;
-    }
+            const data = await response.json();
 
-    // Enhanced email validation
-    const emailValidation = validateEmail(email);
-    if (!emailValidation.isValid) {
-      setError(emailValidation.message);
-      setLoading(false);
-      return;
-    }
+            if (!response.ok) {
+                throw new Error(data.detail || 'Registration failed');
+            }
 
-    // Strong password validation
-    const passwordRequirements = validatePassword(password);
-    if (!passwordRequirements.minLength) {
-      setError("Password must be at least 8 characters long");
-      setLoading(false);
-      return;
-    }
-    if (!passwordRequirements.hasLowercase) {
-      setError("Password must contain at least one lowercase letter");
-      setLoading(false);
-      return;
-    }
-    if (!passwordRequirements.hasUppercase) {
-      setError("Password must contain at least one uppercase letter");
-      setLoading(false);
-      return;
-    }
-    if (!passwordRequirements.hasNumber) {
-      setError("Password must contain at least one number");
-      setLoading(false);
-      return;
-    }
-    if (!passwordRequirements.hasSpecialChar) {
-      setError(
-        "Password must contain at least one special character (!@#$%^&*()_+-=[]{};':\"|,.<>?/)"
-      );
-      setLoading(false);
-      return;
-    }
-
-    // Password match validation
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Get existing users from localStorage
-      const existingUsers = JSON.parse(localStorage.getItem("users") || "[]");
-
-      // Check if email already exists
-      if (
-        existingUsers.some(
-          (user) => user.email.toLowerCase() === email.toLowerCase()
-        )
-      ) {
-        setError("Email is already registered");
-        setLoading(false);
-        return;
-      }
-
-      // Artificial delay to simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      // Create new user object
-      const newUser = {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.toLowerCase().trim(),
-        password: password, // In real app, this should be hashed
-        createdAt: new Date().toISOString(),
-      };
-
-      // Add new user to existing users array
-      const updatedUsers = [...existingUsers, newUser];
-
-      // Save updated users array to localStorage
-      localStorage.setItem("users", JSON.stringify(updatedUsers));
-
-      console.log("User registered successfully:", {
-        email: newUser.email,
-        firstName: newUser.firstName,
-      });
-
-      // Show success toast
-      setShowSuccessToast(true);
-
-      // Auto hide toast after 5 seconds
-      setTimeout(() => {
-        setShowSuccessToast(false);
-      }, 5000);
-
-      // Navigate to login with success parameter after successful registration
-      setTimeout(() => {
-        navigate("/login?registered=true");
-      }, 1500);
-    } catch (err) {
-      setError("Registration failed. Please try again");
-      console.error("Registration error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+            // Store tokens in localStorage
+            localStorage.setItem('access_token', data.access);
+            localStorage.setItem('refresh_token', data.refresh);
+            
+            // Show success toast
+            setShowSuccessToast(true);
+            
+            // Auto hide toast after 5 seconds
+            setTimeout(() => {
+                setShowSuccessToast(false);
+            }, 5000);
+            
+            // Navigate to login with success parameter after successful registration
+            setTimeout(() => {
+                navigate('/login?registered=true');
+            }, 1500);
+            
+        } catch (err) {
+            setError(err.message || 'Registration failed. Please try again');
+            console.error('Registration error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
   return (
     <div className="flex min-h-screen w-full bg-white relative">

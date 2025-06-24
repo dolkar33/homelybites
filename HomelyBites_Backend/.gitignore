@@ -63,6 +63,7 @@ pip-delete-this-directory.txt
 dmypy.json
 
 #Pytest,
+__pycache__/
 .pytest_cache/
 
 #Build artifacts,

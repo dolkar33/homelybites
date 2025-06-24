@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
@@ -7,17 +7,12 @@ const UserProfile = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // State for user information - Get from localStorage if available
-  const [userInfo, setUserInfo] = useState(() => {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    return {
-      username: currentUser.firstName && currentUser.lastName 
-        ? `${currentUser.firstName} ${currentUser.lastName}` 
-        : "Anushka Shakya",
-      email: currentUser.email || "aanu332@gmail.com",
-      phone: currentUser.phone || "",
-      password: ""
-    };
+  // State for user information
+  const [userInfo, setUserInfo] = useState({
+    username: '',
+    email: '',
+    phone: '',
+    password: ''
   });
 
   // State for profile image
@@ -40,6 +35,49 @@ const UserProfile = () => {
 
   // State for making layout scrollable after clicking change profile
   const [isScrollableMode, setIsScrollableMode] = useState(false);
+
+  // Fetch user profile data when component mounts
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/user-profiles/my_profile/', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch profile');
+        }
+
+        const data = await response.json();
+        
+        // Update user information
+        setUserInfo({
+          username: `${data.user.first_name} ${data.user.last_name}`,
+          email: data.user.email,
+          phone: '',
+          password: ''
+        });
+        
+        // Update dietary plan
+        if (data.dietary_preference) {
+          setDietaryPlan(data.dietary_preference);
+        }
+        
+        // Update profile image
+        if (data.profile_image) {
+          setProfileImage(data.profile_image);
+          setOriginalProfileImage(data.profile_image);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        alert('Failed to load profile data');
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
 
   const dietaryOptions = [
     "Vegetarian",
@@ -188,7 +226,7 @@ const UserProfile = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSaveChanges = (e) => {
+  const handleSaveChanges = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -197,32 +235,59 @@ const UserProfile = () => {
 
     setIsUploading(true);
     
-    // Simulate API call delay
-    setTimeout(() => {
-      try {
-        // Here you would typically save to backend
-        const dataToSave = {
-          ...userInfo,
-          dietaryPlan,
-          profileImage: selectedFile ? 'new_image_selected' : profileImage,
-          hasNewImage: !!selectedFile
-        };
-        
-        console.log("Saving user data:", dataToSave);
-        
-        // Simulate successful save
-        alert("Changes saved successfully!");
-        
-        // You could update localStorage here if needed
-        // localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        
-      } catch (error) {
-        alert("Error saving changes. Please try again.");
-        console.error("Save error:", error);
-      } finally {
-        setIsUploading(false);
+    try {
+      // Split the username into first and last name
+      const [firstName, ...lastNameParts] = userInfo.username.split(' ');
+      const lastName = lastNameParts.join(' ');
+
+      // Prepare the data to send
+      const formData = new FormData();
+      formData.append('first_name', firstName);
+      formData.append('last_name', lastName);
+      formData.append('email', userInfo.email);
+      formData.append('dietary_preference', dietaryPlan.toLowerCase());
+      
+      if (selectedFile) {
+        formData.append('profile_image', selectedFile);
       }
-    }, 1000);
+
+      const response = await fetch('http://localhost:8000/api/user-profiles/update/', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update profile');
+      }
+
+      const data = await response.json();
+      alert("Profile updated successfully!");
+      
+      // Update the local state with the new data
+      setUserInfo({
+        username: `${data.user.first_name} ${data.user.last_name}`,
+        email: data.user.email,
+        phone: '',
+        password: ''
+      });
+      
+      if (data.profile.profile_image) {
+        setProfileImage(data.profile.profile_image);
+        setOriginalProfileImage(data.profile.profile_image);
+      }
+      
+      setDietaryPlan(data.profile.dietary_preference || 'Non-Vegetarian');
+      
+    } catch (error) {
+      alert(error.message || "Error saving changes. Please try again.");
+      console.error("Save error:", error);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleBack = () => {

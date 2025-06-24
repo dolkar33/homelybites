@@ -80,63 +80,136 @@ const Login = () => {
       return;
     }
 
-    try {
-      // Simulate API call with localStorage check
-      const users = JSON.parse(localStorage.getItem("users") || "[]");
-      console.log("Stored users:", users); // Debug log
-      console.log("Login attempt:", { email, password }); // Debug log
+        try {
+            const response = await fetch('http://localhost:8000/api/login/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: email,
+                    password: password
+                }),
+            });
 
-      const user = users.find(
-        (u) => u.email === email && u.password === password
-      );
-      console.log("Found user:", user); // Debug log
+            const data = await response.json();
 
-      // Artificial delay to simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 800));
+            if (!response.ok) {
+                throw new Error(data.error || 'Invalid credentials');
+            }
 
-      if (user) {
-        // Store logged in user info in localStorage
-        localStorage.setItem(
-          "currentUser",
-          JSON.stringify({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            isLoggedIn: true,
-          })
-        );
-
-        // Show success toast first
-        setShowSuccessToast(true);
-
-        // Redirect to MainPage after a short delay
-        setTimeout(() => {
-          navigate("/userquestion");
-        }, 1500);
-
-        // Auto hide toast after 5 seconds
-        setTimeout(() => {
-          setShowSuccessToast(false);
-        }, 5000);
-      } else {
-        setError("Invalid email or password");
-      }
-    } catch (err) {
-      setError("Login failed. Please try again");
-      console.error("Login error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+            // Store tokens and user info in localStorage
+            localStorage.setItem('access_token', data.access);
+            localStorage.setItem('refresh_token', data.refresh);
+            localStorage.setItem('currentUser', JSON.stringify(data.user));
+            
+            // Show success toast
+            setShowSuccessToast(true);
+            
+            // Redirect to MainPage after a short delay
+            setTimeout(() => {
+                if (data.user.has_completed_questions) {
+                    navigate('/Home');
+                } else {
+                    navigate('/userquestion');
+                }
+            }, 1500);
+            
+            // Auto hide toast after 5 seconds
+            setTimeout(() => {
+                setShowSuccessToast(false);
+            }, 5000);
+            
+        } catch (err) {
+            setError(err.message || 'Login failed. Please try again');
+            console.error('Login error:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
   const handleSignUp = () => {
     navigate("/signup");
   };
 
-  const handleForgotPassword = () => {
-    // For now, just alert the user
-    alert("Password reset functionality will be implemented soon!");
-  };
+    const handleForgotPassword = async () => {
+        const email = prompt('Please enter your email address:');
+        if (!email) return;
+
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert('Please enter a valid email address');
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:8000/api/password-reset/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to send reset email');
+            }
+
+            alert('If an account exists with this email, you will receive a password reset link.');
+        } catch (err) {
+            alert(err.message || 'Failed to send reset email. Please try again.');
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+
+        if (password !== confirmPassword) {
+            setError('Passwords do not match');
+            setLoading(false);
+            return;
+        }
+
+        if (password.length < 8) {
+            setError('Password must be at least 8 characters long');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:8000/api/password-reset-confirm/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    password: password,
+                    password2: confirmPassword,
+                    token: `${uid}/${token}`
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to reset password');
+            }
+
+            setSuccess('Password has been reset successfully!');
+            setTimeout(() => {
+                navigate('/login');
+            }, 2000);
+        } catch (err) {
+            setError(err.message || 'Failed to reset password. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-full bg-white relative">

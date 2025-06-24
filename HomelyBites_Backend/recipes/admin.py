@@ -1,7 +1,18 @@
 from django.contrib import admin
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction, ContactMessage
+from django.contrib.auth.admin import UserAdmin
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, ContactMessage, CustomUser
+from django.contrib.admin.sites import NotRegistered
 
-# Register your models here.
+# Unregister the default User model if it's already registered
+from django.contrib.auth import get_user_model
+try:
+    admin.site.unregister(get_user_model())
+except admin.sites.NotRegistered:
+    pass
+
+# Register your CustomUser with Django's built-in UserAdmin
+# DO NOT unregister if you never registered it before!
+admin.site.register(CustomUser, UserAdmin)
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
@@ -18,8 +29,23 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'get_favorite_categories')
+    list_display = ('user', 'dietary_preference', 'has_completed_questions', 'last_updated', 'get_favorite_categories')
+    list_filter = ('dietary_preference', 'has_completed_questions', 'last_updated')
+    search_fields = ('user__username', 'user__email', 'allergies', 'dislikes')
     filter_horizontal = ('favorite_categories',)
+    readonly_fields = ('last_updated',)
+    
+    fieldsets = (
+        ('User Information', {
+            'fields': ('user', 'profile_image')
+        }),
+        ('Preferences', {
+            'fields': ('dietary_preference', 'favorite_categories', 'allergies', 'dislikes')
+        }),
+        ('Status', {
+            'fields': ('has_completed_questions', 'last_updated')
+        }),
+    )
     
     def get_favorite_categories(self, obj):
         return ", ".join([category.name for category in obj.favorite_categories.all()])
@@ -37,3 +63,4 @@ class ContactMessageAdmin(admin.ModelAdmin):
     list_filter = ('created_at',)
     search_fields = ('name', 'email', 'subject', 'message')
     readonly_fields = ('created_at',)
+    readonly_fields = ('timestamp',)
