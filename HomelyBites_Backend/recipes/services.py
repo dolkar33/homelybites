@@ -113,9 +113,10 @@ class SpoonacularService:
         # Process categories
         if 'dishTypes' in recipe_data:
             for dish_type in recipe_data['dishTypes']:
+                category_slug = slugify(dish_type)
                 category, created = Category.objects.get_or_create(
-                    name=dish_type.title(),
-                    slug=slugify(dish_type)
+                    slug=category_slug,
+                    defaults={'name': dish_type.title()}
                 )
                 recipe.categories.add(category)
         
