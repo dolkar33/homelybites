@@ -181,5 +181,9 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Your React app's URL
+]
+
 # Spoonacular API settings
 SPOONACULAR_API_KEY = 'b4b8be0a733f497789c7bcd463aa556e'

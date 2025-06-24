@@ -5,12 +5,9 @@ import {
   ArrowLeft,
   Search,
   Image,
-  X,
-  Upload,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-
 
 const CommunityPage = () => {
   // Mock data - easy to replace with API calls later
@@ -63,6 +60,38 @@ const CommunityPage = () => {
 
   const categories = ["Recipes", "Videos", "Blogs", "Questions"];
 
+  // Mock data for suggested people
+  const suggestedPeople = [
+    {
+      id: 1,
+      name: "Soobin",
+      username: "@soobinchoi",
+      avatar: "/Images/CommunityPage/soobin.jpg",
+    },
+    {
+      id: 2,
+      name: "Soobin",
+      username: "@soobinchoi",
+      avatar: "/Images/CommunityPage/soobin.jpg",
+    },
+    {
+      id: 3,
+      name: "Randy",
+      username: "@randyortan",
+      avatar: "/Images/CommunityPage/jennie.jpg",
+    },
+  ];
+
+  // Mock trending hashtags
+  const trendingHashtags = [
+    "#keemananoodles",
+    "#sadekomomo",
+    "#foodlover",
+    "#recipeshare",
+    "#cooking",
+    "#healthyfood"
+  ];
+
   // Actions - ready for backend integration
   const handleLike = (postId) => {
     setPosts(
@@ -76,8 +105,6 @@ const CommunityPage = () => {
           : post
       )
     );
-    // TODO: Add API call to backend
-    // await likePost(postId);
   };
 
   const handleSave = (postId) => {
@@ -86,22 +113,14 @@ const CommunityPage = () => {
         post.id === postId ? { ...post, isSaved: !post.isSaved } : post
       )
     );
-    // TODO: Add API call to backend
-    // await savePost(postId);
   };
 
   const handleSearch = (term) => {
     setSearchTerm(term);
-    // TODO: Add API call to search posts
-    // const results = await searchPosts(term);
-    // setPosts(results);
   };
 
   const handleCategoryChange = (category) => {
     setActiveCategory(category);
-    // TODO: Add API call to filter by category
-    // const filteredPosts = await getPostsByCategory(category);
-    // setPosts(filteredPosts);
   };
 
   const handleCreatePost = () => {
@@ -123,137 +142,143 @@ const CommunityPage = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-            {/* Sidebar */}
-            <div className="lg:col-span-1 space-y-4 sm:space-y-6">
-              {/* Profile Section */}
-              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                <div className="text-center mb-4 sm:mb-6">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md">
-                    <img
-                      src={currentUser.avatar}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
+          <div className="grid grid-cols-12 gap-4 sm:gap-6">
+            {/* Left Sidebar - Fixed */}
+            <div className="col-span-3 space-y-4 sm:space-y-6">
+                              <div className="sticky top-6 space-y-4 sm:space-y-6 max-h-screen overflow-y-auto scrollbar-hide">
+                  <style jsx>{`
+                    .scrollbar-hide {
+                      -ms-overflow-style: none;
+                      scrollbar-width: none;
+                    }
+                    .scrollbar-hide::-webkit-scrollbar {
+                      display: none;
+                    }
+                  `}</style>
+                {/* Profile Section */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+                  <div className="text-center mb-4 sm:mb-6">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md">
+                      <img
+                        src={currentUser.avatar}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
+                      {currentUser.name}
+                    </h3>
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
-                    {currentUser.name}
+
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
+                      <div className="text-base sm:text-lg font-bold text-gray-800">
+                        {currentUser.posts}
+                      </div>
+                      <div className="text-xs text-gray-600 leading-tight">
+                        Posts
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
+                      <div className="text-base sm:text-lg font-bold text-gray-800">
+                        {currentUser.following}
+                      </div>
+                      <div className="text-xs text-gray-600 leading-tight">
+                        Following
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
+                      <div className="text-base sm:text-lg font-bold text-gray-800">
+                        {currentUser.followers}
+                      </div>
+                      <div className="text-xs text-gray-600 leading-tight">
+                        Followers
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Navigation */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
+                    Navigation
                   </h3>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                    <div className="text-base sm:text-lg font-bold text-gray-800">
-                      {currentUser.posts}
-                    </div>
-                    <div className="text-xs text-gray-600 leading-tight">
-                      Posts
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                    <div className="text-base sm:text-lg font-bold text-gray-800">
-                      {currentUser.following}
-                    </div>
-                    <div className="text-xs text-gray-600 leading-tight">
-                      Following
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                    <div className="text-base sm:text-lg font-bold text-gray-800">
-                      {currentUser.followers}
-                    </div>
-                    <div className="text-xs text-gray-600 leading-tight">
-                      Followers
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Navigation */}
-              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
-                  Navigation
-                </h3>
-                <nav className="space-y-3 sm:space-y-4">
-                  <a
-                    href="#"
-                    className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
-                  >
-                    <span className="text-lg sm:text-xl">🏠</span>
-                    <span className="text-sm sm:text-base font-medium">
-                      Home Page
-                    </span>
-                  </a>
-                  <a
-                    href="#"
-                    className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
-                  >
-                    <span className="text-lg sm:text-xl">⚡</span>
-                    <span className="text-sm sm:text-base font-medium">
-                      My Post
-                    </span>
-                  </a>
-                  <a
-                    href="#"
-                    className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
-                  >
-                    <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-sm sm:text-base font-medium">
-                      Saved Recipes
-                    </span>
-                  </a>
-                  <a
-                    href="#"
-                    className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
-                  >
-                    <span className="text-lg sm:text-xl">📈</span>
-                    <span className="text-sm sm:text-base font-medium">
-                      Popular This week
-                    </span>
-                  </a>
-                </nav>
-              </div>
-
-              {/* Categories */}
-              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
-                  Categories
-                </h3>
-                <nav className="space-y-2 sm:space-y-3">
-                  {categories.map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => handleCategoryChange(category)}
-                      className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
-                        activeCategory === category
-                          ? "text-red-500 bg-red-50"
-                          : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
-                      }`}
+                  <nav className="space-y-3 sm:space-y-4">
+                    <a
+                      href="#"
+                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
                     >
-                      • {category}
-                    </button>
-                  ))}
-                </nav>
+                      <span className="text-lg sm:text-xl">🏠</span>
+                      <span className="text-sm sm:text-base font-medium">
+                        Home Page
+                      </span>
+                    </a>
+                    <a
+                      href="#"
+                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
+                    >
+                      <span className="text-lg sm:text-xl">⚡</span>
+                      <span className="text-sm sm:text-base font-medium">
+                        My Post
+                      </span>
+                    </a>
+                    <a
+                      href="#"
+                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
+                    >
+                      <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="text-sm sm:text-base font-medium">
+                        Saved Recipes
+                      </span>
+                    </a>
+                    <a
+                      href="#"
+                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
+                    >
+                      <span className="text-lg sm:text-xl">📈</span>
+                      <span className="text-sm sm:text-base font-medium">
+                        Popular This week
+                      </span>
+                    </a>
+                  </nav>
+                </div>
+
+                {/* Categories */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
+                    Categories
+                  </h3>
+                  <nav className="space-y-2 sm:space-y-3">
+                    {categories.map((category) => (
+                      <button
+                        key={category}
+                        onClick={() => handleCategoryChange(category)}
+                        className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
+                          activeCategory === category
+                            ? "text-red-500 bg-red-50"
+                            : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+                        }`}
+                      >
+                        • {category}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
               </div>
             </div>
 
-            {/* Main Content */}
-            <div className="lg:col-span-3">
-              <div className="space-y-4 sm:space-y-6">
-                {/* Search Bar */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <div className="relative">
-                    <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
-                    <input
-                      type="text"
-                      placeholder="Search......"
-                      value={searchTerm}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-100 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base"
-                    />
-                  </div>
-                </div>
-
+            {/* Main Content - Scrollable */}
+            <div className="col-span-6">
+              <div className="space-y-4 sm:space-y-6 max-h-screen overflow-y-auto scrollbar-hide-center">
+                <style jsx>{`
+                  .scrollbar-hide-center {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                  }
+                  .scrollbar-hide-center::-webkit-scrollbar {
+                    display: none;
+                  }
+                `}</style>
                 {/* Story Section */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                   <div className="flex items-center bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
@@ -371,12 +396,74 @@ const CommunityPage = () => {
                 ))}
               </div>
             </div>
+
+            {/* Right Sidebar - Fixed */}
+            <div className="col-span-3">
+              <div className="sticky top-6 space-y-4 sm:space-y-6">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+                  <input
+                    type="text"
+                    placeholder="Search......"
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-100 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base bg-transparent"
+                  />
+                </div>
+
+                {/* Suggested People - Only One Person */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6">
+                    Suggested people
+                  </h3>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden">
+                        <img
+                          src={suggestedPeople[0].avatar}
+                          alt={suggestedPeople[0].name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800 text-sm">
+                          {suggestedPeople[0].name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {suggestedPeople[0].username}
+                        </p>
+                      </div>
+                    </div>
+                    <button className="bg-accent text-white px-4 py-1 rounded-full text-xs font-medium hover:bg-red-400 transition-colors">
+                      Follow
+                    </button>
+                  </div>
+                </div>
+
+                {/* You may also like */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6">
+                    You may also like
+                  </h3>
+                  <div className="space-y-2 sm:space-y-3">
+                    {trendingHashtags.map((hashtag, index) => (
+                      <div
+                        key={index}
+                        className="text-sm text-gray-600 hover:text-red-500 cursor-pointer transition-colors"
+                      >
+                        {hashtag}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <Footer />
-      
     </div>
   );
 };

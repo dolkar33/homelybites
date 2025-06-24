@@ -44,6 +44,9 @@ class Recipe(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     favorite_categories = models.ManyToManyField(Category, blank=True, related_name='user_favorites')
+    dietary_preference = models.CharField(max_length=50, blank=True, null=True)
+    allergies = models.TextField(blank=True, null=True)
+    dislikes = models.TextField(blank=True, null=True)
     
     def __str__(self):
         return f"{self.user.username}'s profile"
