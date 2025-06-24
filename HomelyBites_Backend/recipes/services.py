@@ -60,7 +60,7 @@ class SpoonacularService:
             # Handle API errors
             return {"error": f"API Error: {response.status_code}", "message": response.text}
     
-    def import_recipe_to_db(self, recipe_data):
+    def import_recipe_to_db(self, recipe_data, tags=None):
         """
         Import a recipe from Spoonacular API to the database
         """
@@ -111,7 +111,16 @@ class SpoonacularService:
         recipe.save()
         
         # Process categories
-        if 'dishTypes' in recipe_data:
+        # If explicit tags are provided (e.g., from random import), use them.
+        if tags:
+            for tag in tags:
+                category, created = Category.objects.get_or_create(
+                    name=tag.title(),
+                    slug=slugify(tag)
+                )
+                recipe.categories.add(category)
+        # Otherwise, fall back to using dishTypes from the recipe data.
+        elif 'dishTypes' in recipe_data:
             for dish_type in recipe_data['dishTypes']:
                 category, created = Category.objects.get_or_create(
                     name=dish_type.title(),
@@ -143,7 +152,8 @@ class SpoonacularService:
             imported_recipes = []
             
             for recipe_data in data.get('recipes', []):
-                recipe = self.import_recipe_to_db(recipe_data)
+                # Pass the tags to the import function
+                recipe = self.import_recipe_to_db(recipe_data, tags=tags)
                 imported_recipes.append(recipe)
                 
             return imported_recipes

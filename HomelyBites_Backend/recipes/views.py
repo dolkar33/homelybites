@@ -25,6 +25,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
+from .services import SpoonacularService
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -38,7 +39,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
     lookup_field = 'slug'
 
 class RecipeViewSet(viewsets.ModelViewSet):
-    queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
     lookup_field = 'slug'
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -51,12 +51,16 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return RecipeSerializer
     
     def get_queryset(self):
-        queryset = Recipe.objects.all()
-        
-        # Filter by category if provided
-        category = self.request.query_params.get('category', None)
-        if category:
-            queryset = queryset.filter(categories__slug=category)
+        """
+        This view should return a list of all the recipes
+        for the currently authenticated user.
+        """
+        queryset = Recipe.objects.all().order_by('-created_at') # Start with all recipes
+
+        # Filter by category if provided in the query parameters
+        category_slug = self.request.query_params.get('category', None)
+        if category_slug:
+            queryset = queryset.filter(categories__slug=category_slug)
             
         # Filter by difficulty if provided
         difficulty = self.request.query_params.get('difficulty', None)
@@ -68,7 +72,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if max_prep_time:
             queryset = queryset.filter(prep_time__lte=int(max_prep_time))
         
-        return queryset
+        return queryset.distinct()
     
     @action(detail=False, methods=['get'])
     def recommended(self, request):
@@ -409,8 +413,28 @@ def login_user(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 def homepage(request):
-    """Render the homepage."""
-    return render(request, 'homepage.html')
+    """
+    Render the homepage, passing categories and initial recipes to the template.
+    """
+    categories = Category.objects.all()
+    # Get the first category or None, and then get recipes for that category
+    first_category = categories.first()
+    if first_category:
+        recipes = Recipe.objects.filter(categories=first_category)[:10]
+    else:
+        recipes = Recipe.objects.order_by('-created_at')[:10]
+
+    popular_recipes = Recipe.objects.annotate(
+        interaction_count=Count('userrecipeinteraction')
+    ).order_by('-interaction_count')[:10]
+
+    context = {
+        'categories': categories,
+        'selected_category_recipes': recipes,
+        'popular_recipes': popular_recipes,
+        'selected_category': first_category.slug if first_category else ''
+    }
+    return render(request, 'homepage.html', context)
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])

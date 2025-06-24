@@ -24,7 +24,8 @@ const useAuth = () => {
         const currentUser = localStorage.getItem('currentUser');
         if (currentUser) {
           const user = JSON.parse(currentUser);
-          setIsLoggedIn(user.isLoggedIn === true);
+          // A user is logged in if there is an access token present.
+          setIsLoggedIn(!!user.access);
         }
       } catch (error) {
         console.error('Error checking auth status:', error);

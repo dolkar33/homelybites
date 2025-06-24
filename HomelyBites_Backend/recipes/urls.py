@@ -1,13 +1,14 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from . import views  # Import the entire views module
 from .views import (
     RecipeViewSet, CategoryViewSet, UserProfileViewSet, ContactMessageViewSet,
     register_user, login_user, list_users, homepage, import_from_spoonacular
 )
 
 router = DefaultRouter()
-router.register(r'recipes', RecipeViewSet)
 router.register(r'categories', CategoryViewSet)
+router.register(r'recipes', RecipeViewSet, basename='recipe')
 router.register(r'profiles', UserProfileViewSet)
 router.register(r'contact-messages', ContactMessageViewSet)
 
