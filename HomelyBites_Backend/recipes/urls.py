@@ -1,4 +1,6 @@
 from django.urls import path, include
+from django.views.decorators.csrf import csrf_exempt
+
 from rest_framework.routers import DefaultRouter
 from . import views
 from rest_framework.decorators import api_view, permission_classes
@@ -6,16 +8,17 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import UserProfile, Recipe
 from .serializers import RecipeListSerializer, UserProfileSerializer
+from .views import ContactMessageViewSet
+
 
 router = DefaultRouter()
 router.register(r'categories', views.CategoryViewSet)
 router.register(r'recipes', views.RecipeViewSet)
 router.register(r'user-profiles', views.UserProfileViewSet)
+contact_view = ContactMessageViewSet.as_view({'post': 'create'})
+
 
 urlpatterns = [
-    path('user-profiles/my_profile/', views.my_profile, name='my_profile'),
-    path('user-profiles/update/', views.update_user_profile, name='update_user_profile'),
-    path('', include(router.urls)),
     path('register/', views.register_user, name='register'),
     path('login/', views.login_user, name='login'),
     path('users/', views.list_users, name='list_users'),
@@ -27,4 +30,8 @@ urlpatterns = [
     path('password-reset/', views.password_reset_request, name='password_reset_request'),
     path('password-reset-confirm/', views.password_reset_confirm, name='password_reset_confirm'),
     path('complete-user-questions/', views.complete_user_questions, name='complete_user_questions'),
+    path('user-profiles/my_profile/', views.my_profile, name='my_profile'),
+    path('user-profiles/update/', views.update_user_profile, name='update_user_profile'),
+    path('contact-messages/', csrf_exempt(contact_view), name='contact_message'),
+    path('', include(router.urls)),
 ]

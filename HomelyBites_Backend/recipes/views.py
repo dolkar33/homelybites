@@ -379,32 +379,66 @@ def register_user(request):
 @permission_classes([AllowAny])
 def login_user(request):
     """Login a user and return JWT tokens."""
+    print("Login attempt received:", request.data)  # Debug log
+    
     serializer = UserLoginSerializer(data=request.data)
     if serializer.is_valid():
-        user = authenticate(
-            username=serializer.validated_data['username'],
-            password=serializer.validated_data['password']
-        )
+        username_or_email = serializer.validated_data['username']
+        password = serializer.validated_data['password']
+        
+        print(f"Attempting login with: {username_or_email}")  # Debug log
+        
+        # Check if input is an email
+        if '@' in username_or_email:
+            try:
+                user = CustomUser.objects.get(email=username_or_email)
+                username = user.username
+                print(f"Found user by email: {username}")  # Debug log
+            except CustomUser.DoesNotExist:
+                print(f"No user found with email: {username_or_email}")  # Debug log
+                return Response({
+                    'error': 'Invalid credentials'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            username = username_or_email
+            print(f"Using username directly: {username}")  # Debug log
+        
+        user = authenticate(username=username, password=password)
+        print(f"Authentication result: {user}")  # Debug log
+        
         if user:
-            refresh = RefreshToken.for_user(user)
-            profile = user.profile
+            try:
+                refresh = RefreshToken.for_user(user)
+                # Get or create user profile
+                profile, created = UserProfile.objects.get_or_create(user=user)
+                print(f"Profile retrieved: {profile}, created: {created}")  # Debug log
+                
+                return Response({
+                    'user': {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
+                        'has_completed_questions': profile.has_completed_questions
+                    },
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                    'message': 'Login successful'
+                })
+            except Exception as e:
+                print(f"Error creating response: {str(e)}")  # Debug log
+                return Response({
+                    'error': 'Login successful but error creating response'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            print(f"Authentication failed for username: {username}")  # Debug log
             return Response({
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'has_completed_questions': profile.has_completed_questions
-                },
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'message': 'Login successful'
-            })
-        return Response({
-            'error': 'Invalid credentials'
-        }, status=status.HTTP_401_UNAUTHORIZED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                'error': 'Invalid credentials'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+    else:
+        print(f"Serializer errors: {serializer.errors}")  # Debug log
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 def homepage(request):
     """Render the homepage."""

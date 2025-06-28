@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage
 
 # Register CustomUser with enhanced admin interface
 @admin.register(CustomUser)
@@ -65,3 +65,5 @@ class UserRecipeInteractionAdmin(admin.ModelAdmin):
     list_filter = ('interaction_type', 'timestamp')
     search_fields = ('user__username', 'recipe__title')
     readonly_fields = ('timestamp',)
+
+admin.site.register(ContactMessage)
