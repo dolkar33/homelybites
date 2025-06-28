@@ -7,7 +7,6 @@ import { Toaster } from "react-hot-toast";
 import axiosInstance from "../config/axiosInstance";
 import { customToast } from "./toast";
 import axios from "axios";
-
 // Yup validation schema
 const validationSchema = yup.object({
   email: yup
@@ -29,12 +28,11 @@ const Login = () => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    clearErrors,
     reset,
   } = useForm({
     resolver: yupResolver(validationSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
@@ -61,7 +59,9 @@ const Login = () => {
     setGeneralError("");
 
     try {
-      const response = await axios.post("api/recipes/login/", {
+      // Check your backend API documentation for the correct endpoint
+      // Common endpoints: /api/auth/login/, /auth/login/, /api/login/, /login/
+      const response = await axios.post("http://localhost:8000/api/login/", {
         username: data.email,
         password: data.password,
       });
@@ -70,7 +70,6 @@ const Login = () => {
         const userData = response.data.user || response.data;
 
         localStorage.setItem(
-          
           "currentUser",
           JSON.stringify({
             ...userData,
@@ -233,8 +232,8 @@ const Login = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              
               className="w-full py-3 text-white rounded-full hover:opacity-80 transition-colors focus:outline-none focus:ring-2 focus:ring-accent text-lg mb-4 bg-accent"
+             
             >
               {isSubmitting ? "Logging in..." : "Login"}
             </button>

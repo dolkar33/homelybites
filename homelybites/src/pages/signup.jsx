@@ -5,7 +5,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import toast, { Toaster } from "react-hot-toast";
 import axiosInstance from "../config/axiosInstance";
-
+import axios from "axios";
 // Yup validation schema
 const validationSchema = yup.object({
   first_name: yup
@@ -153,7 +153,7 @@ const SignUp = () => {
     setGeneralError("");
 
     try {
-      const response = await axiosInstance.post("api/register/", {
+      const response = await axios.post("http://localhost:8000/api/register/", {
         first_name: data.first_name,
         last_name: data.last_name,
         username: data.username,
