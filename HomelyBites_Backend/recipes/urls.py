@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import UserProfile, Recipe
 from .serializers import RecipeListSerializer, UserProfileSerializer
+from .views import RecipeViewSet, CategoryViewSet, UserProfileViewSet, UserRegistrationView, import_from_spoonacular, homepage
 
 router = DefaultRouter()
 router.register(r'', RecipeViewSet, basename='recipe')
@@ -20,6 +21,8 @@ urlpatterns = [
     path('users/', views.list_users, name='list_users'),
     path('homepage/', views.homepage, name='homepage'),
     path('recommendations/', views.recommend_recipes, name='recommend_recipes'),
+    path('auth/register/', UserRegistrationView.as_view(), name='user-registration'),
+    path('import-recipes/', import_from_spoonacular, name='import-recipes'),
 ]
 
 @api_view(['GET'])
