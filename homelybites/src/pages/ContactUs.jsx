@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { User, Phone, Mail, MapPin } from "lucide-react";
 import axios from "axios";
+import Footer from "../components/Footer";
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
@@ -26,6 +27,7 @@ const ContactPage = () => {
       const response = await axios.post("http://localhost:8000/api/contact-messages/", formData);
       setStatus({ type: "success", message: "Message sent successfully! We'll get back to you soon." });
       setFormData({ name: "", email: "", subject: "", message: "" });
+      console.log(response.data); 
     } catch (error) {
       setStatus({ 
         type: "error", 
@@ -35,10 +37,12 @@ const ContactPage = () => {
   };
 
   return (
-    <div className="md:block flex flex-col justify-center min-h-screen bg-gradient-to-t from-vrless from-60% to-white">
+    <div className="min-h-screen bg-gradient-to-t from-vrless from-60% to-white flex flex-col">
+      {/* Navbar - Fixed at top */}
       <Navbar />
-      {/* Main Content */}
-      <div className="px-4 sm:px-6 md:px-9 py-6 sm:py-9">
+      
+      {/* Main Content - Takes remaining space */}
+      <div className="flex-1 px-4 sm:px-6 md:px-9 py-6 sm:py-9">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-9">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-black mb-3 sm:mb-4 font-poppins">
@@ -54,8 +58,9 @@ const ContactPage = () => {
             care and professionalism
           </p>
         </div>
+        
         {/* Contact Section */}
-        <div className="bg-white rounded-xl py-4 max-w-[950px] mx-auto flex flex-col md:gird-cols-2 lg:flex-row">
+        <div className="bg-white rounded-xl py-4 max-w-[950px] mx-auto">
           <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-6 sm:gap-8 lg:gap-12 px-4 sm:px-6">
             {/* Contact Information Card */}
             <div className="bg-red-400 rounded-3xl p-6 sm:p-8 md:p-12 text-white flex-shrink-0 w-full lg:w-[400px]">
@@ -119,7 +124,7 @@ const ContactPage = () => {
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="w-full border-b-2 border-gray-300 bg-transparent pb-2 text-sm sm:text-md focus:outline-none focus:border-red-400"
+                      className="w-full border-b-2 border-gray-300 bg-transparent pb-2 text-sm sm:text-md  focus:outline-none focus:border-red-400"
                     />
                   </div>
                 </div>
@@ -129,7 +134,7 @@ const ContactPage = () => {
                     Your Subject
                   </div>
                   <input
-                    type="type"
+                    type="text"
                     placeholder="Type your subject..."
                     name="subject"
                     value={formData.subject}
@@ -152,9 +157,21 @@ const ContactPage = () => {
                   />
                 </div>
 
+                {/* Status Message */}
+                {status.message && (
+                  <div className={`p-3 rounded-md text-sm ${
+                    status.type === 'success' ? 'bg-green-100 text-green-800' :
+                    status.type === 'error' ? 'bg-red-100 text-red-800' :
+                    'bg-blue-100 text-blue-800'
+                  }`}>
+                    {status.message}
+                  </div>
+                )}
+
                 <button
                   onClick={handleSubmit}
-                  className="bg-red-400 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-full text-sm sm:text-md font-medium hover:bg-accent transition-colors w-full sm:w-auto"
+                  disabled={status.type === 'loading'}
+                  className="bg-red-400 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-full text-sm sm:text-md font-medium hover:bg-red-500 transition-colors w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {status.type === "loading" ? "Sending..." : "Send Message"}
                 </button>
@@ -163,6 +180,9 @@ const ContactPage = () => {
           </div>
         </div>
       </div>
+      
+      
+      <Footer />
     </div>
   );
 };
