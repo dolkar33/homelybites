@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Heart, Star, ChevronLeft, X, User } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import BackButton from "../components/BackButton";
 
 const RecipeSearchPage = () => {
   // State for ingredients input
@@ -184,7 +183,6 @@ const RecipeSearchPage = () => {
         ),
       },
     };
-
     try {
       // Replace this with actual API call
       // const response = await fetch('/api/recipes/search', {
@@ -255,43 +253,26 @@ const RecipeSearchPage = () => {
     ));
   };
 
-  useEffect(() => {
-    const alertShown = sessionStorage.getItem("aleartShown");
-    if (!alertShown) {
-      alert(
-        "Welcome to Smart Recipe Search! Add Ingredients to find delicious recipes."
-      );
-      sessionStorage.setItem("aleartShown", "true");
-    }
-  }, []);
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
-
-      {/* Back Button at the top */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-2">
-        <div className="max-w-7xl mx-auto">
-          <BackButton />
-        </div>
-      </div>
-
       {/* Main Content */}
-      <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-2">
+      <div className="flex-1 w-full px-3 sm:px-4 lg:px-6 py-3">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row gap-4 xl:gap-6">
-            {/* Filter Section Starting  */}
-            <div className="w-full lg:w-80 xl:w-96 flex-shrink-0 mb-6">
-              <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 lg:mb-8">
+          <div className="flex flex-col lg:flex-row gap-3 lg:gap-4">
+            {/* Filter Section Starting - Made smaller and more responsive */}
+            <div className="w-full lg:w-64 xl:w-72 flex-shrink-0 mb-4">
+              <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 lg:p-5">
+                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-3 sm:mb-4">
                   Filters
                 </h2>
 
                 {/* Cuisine Type */}
-                <div className="mb-4 sm:mb-6 lg:mb-8">
-                  <h3 className="font-semibold text-base sm:text-lg lg:text-xl mb-2 sm:mb-3 lg:mb-4">
+                <div className="mb-3 sm:mb-4">
+                  <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">
                     Cuisine Type
                   </h3>
-                  <div className="space-y-2 sm:space-y-3 lg:space-y-4">
+                  <div className="space-y-1.5 sm:space-y-2">
                     {Object.keys(filters.cuisineType).map((cuisine) => (
                       <label key={cuisine} className="flex items-center">
                         <input
@@ -300,9 +281,9 @@ const RecipeSearchPage = () => {
                           onChange={() =>
                             handleFilterChange("cuisineType", cuisine)
                           }
-                          className="w-4 h-4 sm:w-5 sm:h-5"
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                         />
-                        <span className="ml-3 text-sm sm:text-base lg:text-lg text-gray-700">
+                        <span className="ml-2 text-xs sm:text-sm lg:text-base text-gray-700">
                           {cuisine}
                         </span>
                       </label>
@@ -311,11 +292,11 @@ const RecipeSearchPage = () => {
                 </div>
 
                 {/* Calories */}
-                <div className="mb-4 sm:mb-6 lg:mb-8">
-                  <h3 className="font-semibold text-base sm:text-lg lg:text-xl mb-2 sm:mb-3 lg:mb-4">
+                <div className="mb-3 sm:mb-4">
+                  <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">
                     Calories
                   </h3>
-                  <div className="space-y-2 sm:space-y-3 lg:space-y-4">
+                  <div className="space-y-1.5 sm:space-y-2">
                     <label className="flex items-center">
                       <input
                         type="checkbox"
@@ -323,9 +304,9 @@ const RecipeSearchPage = () => {
                         onChange={() =>
                           handleFilterChange("calories", "lowCal")
                         }
-                        className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 border-gray-300 rounded focus:ring-red-400"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-accent"
                       />
-                      <span className="ml-3 text-sm sm:text-base lg:text-lg text-gray-700">
+                      <span className="ml-2 text-xs sm:text-sm lg:text-base text-gray-700">
                         Low Cal (&lt;300)
                       </span>
                     </label>
@@ -336,9 +317,9 @@ const RecipeSearchPage = () => {
                         onChange={() =>
                           handleFilterChange("calories", "midCal")
                         }
-                        className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 border-gray-300 rounded focus:ring-red-400"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-accent"
                       />
-                      <span className="ml-3 text-sm sm:text-base lg:text-lg text-gray-700">
+                      <span className="ml-2 text-xs sm:text-sm lg:text-base text-gray-700">
                         Mid Cal(300-600)
                       </span>
                     </label>
@@ -349,9 +330,9 @@ const RecipeSearchPage = () => {
                         onChange={() =>
                           handleFilterChange("calories", "highCal")
                         }
-                        className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 border-gray-300 rounded focus:ring-red-400"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-accent"
                       />
-                      <span className="ml-3 text-sm sm:text-base lg:text-lg text-gray-700">
+                      <span className="ml-2 text-xs sm:text-sm lg:text-base text-gray-700">
                         High Cal (&gt;600)
                       </span>
                     </label>
@@ -359,11 +340,11 @@ const RecipeSearchPage = () => {
                 </div>
 
                 {/* Difficulty */}
-                <div className="mb-4 sm:mb-6 lg:mb-8">
-                  <h3 className="font-semibold text-base sm:text-lg lg:text-xl mb-2 sm:mb-3 lg:mb-4">
+                <div className="mb-3 sm:mb-4">
+                  <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">
                     Difficulty
                   </h3>
-                  <div className="space-y-2 sm:space-y-3 lg:space-y-4">
+                  <div className="space-y-1.5 sm:space-y-2">
                     {Object.keys(filters.difficulty).map((level) => (
                       <label key={level} className="flex items-center">
                         <input
@@ -372,9 +353,9 @@ const RecipeSearchPage = () => {
                           onChange={() =>
                             handleFilterChange("difficulty", level)
                           }
-                          className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 border-gray-300 rounded focus:ring-red-400"
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-accent"
                         />
-                        <span className="ml-3 text-sm sm:text-base lg:text-lg text-gray-700">
+                        <span className="ml-2 text-xs sm:text-sm lg:text-base text-gray-700">
                           {level}
                         </span>
                       </label>
@@ -385,7 +366,8 @@ const RecipeSearchPage = () => {
                 {/* Clear Filters Button */}
                 <button
                   onClick={clearFilters}
-                  className="w-full py-2 sm:py-3 lg:py-4 px-4 text-sm sm:text-base lg:text-lg bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium">
+                  className="w-full py-2 sm:py-2.5 px-3 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium"
+                >
                   Clear Filters
                 </button>
               </div>
@@ -394,42 +376,42 @@ const RecipeSearchPage = () => {
             {/* Recipe Search Section */}
             <div className="flex-1">
               {/* Search Header */}
-              <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 mb-4 sm:mb-6">
-                <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">
+              <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 lg:p-6 mb-4 sm:mb-5">
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mb-4 sm:mb-5 text-center">
                   Smart Recipe Search by Ingredients
                 </h1>
 
                 {/* Search Input */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="flex flex-col sm:flex-row gap-3 mb-4 sm:mb-5">
                   <input
                     type="text"
                     placeholder="Added Ingredients..."
                     value={ingredientInput}
                     onChange={(e) => setIngredientInput(e.target.value)}
                     onKeyPress={(e) => e.key === "Enter" && addIngredient()}
-                    className="flex-1 px-3 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 text-sm sm:text-base lg:text-lg border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-transparent outline-none"
+                    className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-400 focus:border-transparent outline-none"
                   />
                   <button
                     onClick={addIngredient}
-                    className="px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-4 text-sm sm:text-base lg:text-lg bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium">
+                    className="px-4 sm:px-6 py-2 sm:py-2.5 text-sm sm:text-base bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium"
+                  >
                     Add
                   </button>
                 </div>
 
                 {/* Selected Ingredients */}
-                <div className="flex flex-wrap gap-2 sm:gap-3">
+                <div className="flex flex-wrap gap-2">
                   {selectedIngredients.map((ingredient) => (
                     <span
                       key={ingredient}
-                      className="inline-flex items-center px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-full">
+                      className="inline-flex items-center px-2 sm:px-3 py-1 text-xs sm:text-sm bg-red-400 text-white rounded-full"
+                    >
                       {ingredient}
                       <button
                         onClick={() => removeIngredient(ingredient)}
-                        className="ml-2 hover:bg-red-500 rounded-full p-1">
-                        <X
-                          size={12}
-                          className="sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4"
-                        />
+                        className="ml-1.5 hover:bg-red-500 rounded-full p-0.5"
+                      >
+                        <X size={12} className="sm:w-3.5 sm:h-3.5" />
                       </button>
                     </span>
                   ))}
@@ -438,50 +420,49 @@ const RecipeSearchPage = () => {
 
               {/* Recipe Results */}
               {loading ? (
-                <div className="text-center py-8 sm:py-12 lg:py-16 ">
-                  <div className="animate-spin rounded-full h-10 sm:h-12 lg:h-16 w-10 sm:w-12 lg:w-16 border-b-2 border-red-400 mx-auto"></div>
-                  <p className="mt-4 text-sm sm:text-base lg:text-lg text-gray-600">
+                <div className="text-center py-8 sm:py-10">
+                  <div className="animate-spin rounded-full h-8 sm:h-10 w-8 sm:w-10 border-b-2 border-red-400 mx-auto"></div>
+                  <p className="mt-3 text-sm sm:text-base text-gray-600">
                     Searching recipes...
                   </p>
                 </div>
               ) : selectedIngredients.length === 0 ? (
-                <div className="text-center py-8 sm:py-12 lg:py-16">
+                <div className="text-center py-8 sm:py-10">
                   <div className="max-w-md mx-auto">
-                    <div className="w-12 sm:w-16 lg:w-20 h-12 sm:h-16 lg:h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                      <span className="text-xl sm:text-2xl lg:text-3xl">
-                        🔍
-                      </span>
+                    <div className="w-12 sm:w-14 h-12 sm:h-14 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
+                      <span className="text-xl sm:text-2xl">🔍</span>
                     </div>
-                    <h3 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 mb-2 sm:mb-3">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
                       Start Your Recipe Search
                     </h3>
-                    <p className="text-sm sm:text-base lg:text-lg text-gray-600">
+                    <p className="text-sm sm:text-base text-gray-600">
                       Add ingredients to discover delicious recipes you can make
                       with what you have.
                     </p>
-                    <p className="text-sm sm:text-base lg:text-lg text-gray-600">
+                    <p className="text-sm sm:text-base text-gray-600">
                       We assume that you already have salt and water.
                     </p>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3 sm:space-y-4 lg:space-y-6 mb-5">
+                <div className="space-y-3 sm:space-y-4 mb-4">
                   {recipes.map((recipe) => (
                     <div
                       key={recipe.id}
-                      className="bg-white rounded-lg shadow-lg p-3 sm:p-4 lg:p-6 hover:shadow-xl transition-shadow flex gap-3 sm:gap-4 lg:gap-6">
+                      className="bg-white rounded-lg shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow flex gap-3 sm:gap-4"
+                    >
                       <div className="flex-shrink-0">
                         <img
                           src={recipe.image}
                           alt={recipe.name}
-                          className="w-20 sm:w-24 lg:w-32 h-20 sm:h-24 lg:h-32 object-cover rounded-lg"
+                          className="w-16 sm:w-20 lg:w-24 h-16 sm:h-20 lg:h-24 object-cover rounded-lg"
                         />
                       </div>
 
                       <div className="flex-1 flex flex-col justify-between min-h-0">
                         <div>
                           <div className="flex items-start justify-between mb-1 sm:mb-2">
-                            <h3 className="font-bold text-sm sm:text-base lg:text-xl leading-tight pr-2">
+                            <h3 className="font-bold text-sm sm:text-base lg:text-lg leading-tight pr-2">
                               {recipe.name}
                             </h3>
                             <button
@@ -489,7 +470,7 @@ const RecipeSearchPage = () => {
                               className="flex-shrink-0 p-1 hover:bg-gray-200 rounded-full transition-colors"
                             >
                               <Heart
-                                size={30}
+                                size={20}
                                 className={`${
                                   favorites.has(recipe.id)
                                     ? "fill-red-500 text-red-500"
@@ -499,33 +480,33 @@ const RecipeSearchPage = () => {
                             </button>
                           </div>
 
-                          <div className="flex items-center mb-2 sm:mb-3">
+                          <div className="flex items-center mb-2">
                             <div className="flex mr-2">
                               {renderStars(recipe.rating)}
                             </div>
-                            <span className="text-xs sm:text-sm lg:text-base text-gray-600 mr-2">
+                            <span className="text-xs sm:text-sm text-gray-600 mr-2">
                               {recipe.rating}
                             </span>
-                            <span className="text-xs sm:text-sm lg:text-base text-gray-400">
+                            <span className="text-xs sm:text-sm text-gray-400">
                               |
                             </span>
-                            <span className="text-xs sm:text-sm lg:text-base text-gray-600 ml-2">
+                            <span className="text-xs sm:text-sm text-gray-600 ml-2">
                               {recipe.difficulty}
                             </span>
-                            <span className="text-xs sm:text-sm lg:text-base text-gray-400 mx-2">
+                            <span className="text-xs sm:text-sm text-gray-400 mx-2">
                               |
                             </span>
-                            <span className="text-xs sm:text-sm lg:text-base text-gray-600">
+                            <span className="text-xs sm:text-sm text-gray-600">
                               {recipe.calories}
                             </span>
                           </div>
 
-                          <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-2 sm:mb-3">
+                          <p className="text-xs sm:text-sm text-gray-600 mb-2">
                             {recipe.description}
                           </p>
                         </div>
 
-                        <button className="self-start px-3 sm:px-4 lg:px-6 py-1 sm:py-1.5 lg:py-2 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors">
+                        <button className="self-start px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors">
                           Go to Recipe
                         </button>
                       </div>
@@ -537,11 +518,11 @@ const RecipeSearchPage = () => {
               {recipes.length === 0 &&
                 !loading &&
                 selectedIngredients.length > 0 && (
-                  <div className="text-center py-8 sm:py-12 lg:py-16">
-                    <p className="text-sm sm:text-base lg:text-lg text-gray-600">
+                  <div className="text-center py-8 sm:py-10">
+                    <p className="text-sm sm:text-base text-gray-600">
                       No recipes found matching your criteria.
                     </p>
-                    <p className="text-xs sm:text-sm lg:text-base text-gray-500 mt-2 sm:mt-3">
+                    <p className="text-xs sm:text-sm text-gray-500 mt-2">
                       Try adjusting your filters or ingredients.
                     </p>
                   </div>
