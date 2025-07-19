@@ -94,3 +94,42 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs['password'] != attrs['password2']:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
         return attrs
+
+class PasswordChangeSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(required=True, write_only=True)
+    confirm_password = serializers.CharField(required=True, write_only=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({
+                'confirm_password': 'Passwords do not match'
+            })
+        
+        # Password validation
+        if len(data['new_password']) < 8:
+            raise serializers.ValidationError({
+                'new_password': 'Password must be at least 8 characters long'
+            })
+        
+        if not any(char.isupper() for char in data['new_password']):
+            raise serializers.ValidationError({
+                'new_password': 'Password must contain at least one uppercase letter'
+            })
+        
+        if not any(char.islower() for char in data['new_password']):
+            raise serializers.ValidationError({
+                'new_password': 'Password must contain at least one lowercase letter'
+            })
+        
+        if not any(char.isdigit() for char in data['new_password']):
+            raise serializers.ValidationError({
+                'new_password': 'Password must contain at least one number'
+            })
+        
+        if not any(char in '!@#$%^&*()_+-=[]{};\':"|,.<>?/' for char in data['new_password']):
+            raise serializers.ValidationError({
+                'new_password': 'Password must contain at least one special character'
+            })
+        
+        return data
