@@ -13,12 +13,6 @@ const allergyOptions = [
   "Gluten Intolerance",
   "Shellfish Allergy",
 ];
-const dislikeOptions = [
-  "Lactose Intolerance",
-  "Nut Allergy",
-  "Gluten Intolerance",  
-  "Shellfish Allergy",
-];
 
 const UserQuestion = () => {
   const navigate = useNavigate();
@@ -54,10 +48,7 @@ const UserQuestion = () => {
     if (formData.allergies.length === 0) {
       newErrors.allergies = "Please select your food allergies/intolerances or check 'None'";
     }
-    if (formData.dislikes.length === 0) {
-      newErrors.dislikes = "Please select ingredients to avoid or check 'None'";
-    }
-    
+   
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -168,40 +159,7 @@ const UserQuestion = () => {
                   )}
                 </div>
                 
-                {/* Q3 */}
-                <div>
-                  <div className="mb-4 text-lg font-medium">
-                    3. Are there any ingredients you dislike or want to avoid? *
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-                    {dislikeOptions.map((option) => (
-                      <label
-                        key={option}
-                        className="flex items-center gap-3 text-lg cursor-pointer"
-                      >
-                        <input 
-                          type="checkbox" 
-                          className="accent-accent w-5 h-5"
-                          checked={formData.dislikes.includes(option)}
-                          onChange={() => handleCheckboxChange('dislikes', option)}
-                        />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                    <label className="flex items-center gap-3 text-lg cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="accent-accent w-5 h-5"
-                        checked={formData.dislikes.includes('None')}
-                        onChange={() => handleCheckboxChange('dislikes', 'None')}
-                      />
-                      <span>None</span>
-                    </label>
-                  </div>
-                  {errors.dislikes && (
-                    <p className="text-red-500 text-sm mt-2">{errors.dislikes}</p>
-                  )}
-                </div>
+               
 
                 {/* Add more questions here as needed */}
                 

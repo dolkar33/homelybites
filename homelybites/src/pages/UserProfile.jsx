@@ -516,7 +516,7 @@ const UserProfile = () => {
                           type="radio"
                           name="dietary"
                           value={value}
-                          checked={dietaryPlan.toLowerCase() === value}
+                          checked={dietaryPlan.toLowerCase === value}
                           onChange={() => handleDietaryChange(value)}
                           className="sr-only"
                         />
