@@ -1,6 +1,7 @@
 from rest_framework import serializers
+from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import Recipe, Category, UserProfile, CustomUser, UserRecipeInteraction
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,31 +24,17 @@ class RecipeListSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CustomUser
+        model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
         extra_kwargs = {'password': {'write_only': True}}
 
 class UserProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     favorite_categories = CategorySerializer(many=True, read_only=True)
-    profile_image = serializers.ImageField(max_length=None, allow_empty_file=True, required=False)
-    has_completed_questions = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = UserProfile
-        fields = ['id', 'user', 'profile_image', 'favorite_categories', 'dietary_preference', 'allergies', 'dislikes', 'has_completed_questions']
-        read_only_fields = ['id', 'user', 'has_completed_questions']
-
-    def update(self, instance, validated_data):
-        if 'profile_image' in validated_data:
-            if instance.profile_image:
-                instance.profile_image.delete(save=False)
-            instance.profile_image = validated_data['profile_image']
-        instance.dietary_preference = validated_data.get('dietary_preference', instance.dietary_preference)
-        instance.allergies = validated_data.get('allergies', instance.allergies)
-        instance.dislikes = validated_data.get('dislikes', instance.dislikes)
-        instance.save()
-        return instance
+        fields = ['id', 'user', 'favorite_categories']
 
 class UserRecipeInteractionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,7 +46,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(write_only=True, required=True)
 
     class Meta:
-        model = CustomUser
+        model = User
         fields = ('username', 'password', 'password2', 'email', 'first_name', 'last_name')
         extra_kwargs = {
             'first_name': {'required': True},
@@ -74,13 +61,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('password2')
-        user = CustomUser.objects.create_user(**validated_data)
+        user = User.objects.create_user(**validated_data)
         UserProfile.objects.create(user=user)
         return user
 
 class UserLoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
     password = serializers.CharField(required=True, write_only=True)
+<<<<<<< HEAD
 
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
@@ -133,3 +121,5 @@ class PasswordChangeSerializer(serializers.Serializer):
             })
         
         return data
+=======
+>>>>>>> main

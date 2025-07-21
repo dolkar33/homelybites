@@ -81,11 +81,11 @@ const PostPage = () => {
     // Reset form and show success message or navigate back
     setNewPost({ content: '', images: [], title: '' });
     alert('Post created successfully!');
-    
+    // In your actual app, you would navigate back using: navigate('/community');
   };
 
   const handleGoBack = () => {
-  
+    // In your actual app, you would use: navigate('/community');
     window.history.back();
   };
 

@@ -132,9 +132,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Custom user model
-AUTH_USER_MODEL = 'recipes.CustomUser'
-
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -166,15 +163,3 @@ CORS_ALLOWED_ORIGINS = [
 
 # Spoonacular API settings
 SPOONACULAR_API_KEY = '28757902a1544a44b3466566d399895d'
-
-# Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'your_email@gmail.com'
-EMAIL_HOST_PASSWORD = 'your_app_password'
-DEFAULT_FROM_EMAIL = 'your_email@gmail.com'
-
-# Frontend URL for password reset
-FRONTEND_URL = 'http://localhost:5173'  # Update to match your frontend URL

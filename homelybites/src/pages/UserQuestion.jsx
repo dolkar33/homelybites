@@ -2,9 +2,6 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
-import axiosInstance from "../config/axiosInstance.js";
-import { customToast } from "./toast.jsx";
-import { Toaster } from "react-hot-toast";
 
 const dietaryOptions = ["Vegetarian", "Keto", "Gluten-free", "Vegan"];
 const allergyOptions = [
@@ -22,6 +19,7 @@ const UserQuestion = () => {
     dislikes: []
   });
   const [errors, setErrors] = useState({});
+
   const handleCheckboxChange = (category, option) => {
     setFormData(prev => ({
       ...prev,
@@ -53,32 +51,20 @@ const UserQuestion = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (validateForm()) {
-
-      try {
-      const response = await axiosInstance.post('/api/complete-user-questions/', formData);
-      if (response.status === 200) {
-        customToast.success("User questions submitted successfully");
-        setTimeout(() => {
-                    navigate('/Home');
-                }, 1500);
-      }
-      } catch (error) {
-    customToast.error("Failed to submit user questions. Please try again.");}
-     
+      navigate("/Home"); // Navigate to the home/main page
     }
   };
 
   return (
     <div className="h-screen bg-[#faf9f7] flex flex-col">
       {/* Fixed Navbar */}
-      <Toaster />
       <div className="flex-shrink-0">
         <Navbar />
       </div>
-
+      
       {/* Main Content Area */}
       <div className="flex-1 flex px-4 md:px-8 overflow-hidden">
         <div className="flex w-full max-w-6xl mx-auto gap-8">
