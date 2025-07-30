@@ -5,26 +5,30 @@ from rest_framework import viewsets, status, generics, filters, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction
+from django.utils import timezone
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser
 from .serializers import (
     RecipeSerializer, 
     RecipeListSerializer,
     CategorySerializer, 
-    UserProfileSerializer, 
+    UserProfileSerializer,
     UserRecipeInteractionSerializer,
     UserSerializer,
     UserRegistrationSerializer,
-<<<<<<< HEAD
     UserLoginSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
     PasswordChangeSerializer
-=======
-    UserLoginSerializer
->>>>>>> main
 )
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+import requests
+from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.contrib.auth import get_user_model
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -210,8 +214,22 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['post'])
+    def update_profile_image(self, request):
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        if 'profile_image' not in request.FILES:
+            return Response(
+                {"error": "No image file provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = UserProfileSerializer(profile, data={'profile_image': request.FILES['profile_image']}, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class UserRegistrationView(generics.CreateAPIView):
-    queryset = User.objects.all()
+    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
     
@@ -220,7 +238,7 @@ class UserRegistrationView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         
         # Create the user
-        user = User.objects.create_user(
+        user = CustomUser.objects.create_user(
             username=serializer.validated_data['username'],
             email=serializer.validated_data.get('email', ''),
             password=request.data.get('password'),
@@ -239,14 +257,7 @@ class UserRegistrationView(generics.CreateAPIView):
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def import_from_spoonacular(request):
-    """
-    Import recipes from Spoonacular API.
-    Query parameters:
-    - query: Search term
-    - number: Number of recipes to import (default: 10)
-    - random: Set to 'true' to import random recipes
-    - tags: Comma-separated tags for filtering random recipes
-    """
+    
     service = SpoonacularService()
     number = int(request.query_params.get('number', 10))
     
@@ -317,13 +328,15 @@ def login_user(request):
         )
         if user:
             refresh = RefreshToken.for_user(user)
+            profile = user.profile
             return Response({
                 'user': {
                     'id': user.id,
                     'username': user.username,
                     'email': user.email,
                     'first_name': user.first_name,
-                    'last_name': user.last_name
+                    'last_name': user.last_name,
+                    'has_completed_questions': profile.has_completed_questions
                 },
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -342,7 +355,7 @@ def homepage(request):
 @permission_classes([IsAdminUser])
 def list_users(request):
     """List all users (admin only)."""
-    users = User.objects.all().values('id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login')
+    users = CustomUser.objects.all().values('id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login')
     return Response(list(users))
 
 @api_view(['GET'])
@@ -402,7 +415,6 @@ def my_profile(request):
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
 
-<<<<<<< HEAD
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def search_recipes(request):
@@ -747,5 +759,3 @@ def change_password(request):
         return Response({'message': 'Password changed successfully'})
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-=======
->>>>>>> main

@@ -1,5 +1,4 @@
 from django.contrib import admin
-<<<<<<< HEAD
 from django.contrib.auth.admin import UserAdmin
 from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser
 from django.contrib.admin.sites import NotRegistered
@@ -14,11 +13,6 @@ except admin.sites.NotRegistered:
 # Register your CustomUser with Django's built-in UserAdmin
 # DO NOT unregister if you never registered it before!
 admin.site.register(CustomUser, UserAdmin)
-=======
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction
-
-# Register your models here.
->>>>>>> main
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
@@ -35,8 +29,23 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'get_favorite_categories')
+    list_display = ('user', 'dietary_preference', 'has_completed_questions', 'last_updated', 'get_favorite_categories')
+    list_filter = ('dietary_preference', 'has_completed_questions', 'last_updated')
+    search_fields = ('user__username', 'user__email', 'allergies', 'dislikes')
     filter_horizontal = ('favorite_categories',)
+    readonly_fields = ('last_updated',)
+    
+    fieldsets = (
+        ('User Information', {
+            'fields': ('user', 'profile_image')
+        }),
+        ('Preferences', {
+            'fields': ('dietary_preference', 'favorite_categories', 'allergies', 'dislikes')
+        }),
+        ('Status', {
+            'fields': ('has_completed_questions', 'last_updated')
+        }),
+    )
     
     def get_favorite_categories(self, obj):
         return ", ".join([category.name for category in obj.favorite_categories.all()])
@@ -47,3 +56,4 @@ class UserRecipeInteractionAdmin(admin.ModelAdmin):
     list_display = ('user', 'recipe', 'interaction_type', 'rating', 'timestamp')
     list_filter = ('interaction_type', 'timestamp')
     search_fields = ('user__username', 'recipe__title')
+    readonly_fields = ('timestamp',)
