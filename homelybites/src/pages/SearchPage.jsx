@@ -60,7 +60,7 @@ const RecipeSearchPage = () => {
     },
     {
       id: 3,
-      name: "Chicken Tikka Masala",
+      name: "Chiken Creamy Curry",
       image:
         "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&h=300&fit=crop",
       rating: 4.0,
@@ -71,7 +71,7 @@ const RecipeSearchPage = () => {
     },
     {
       id: 4,
-      name: "Chicken Tikka Masala",
+      name: "Paneer Tikka Masala",
       image:
         "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&h=300&fit=crop",
       rating: 4.0,

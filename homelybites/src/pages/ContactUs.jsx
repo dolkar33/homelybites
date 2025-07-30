@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { User, Phone, Mail, MapPin, AlertCircle, CheckCircle } from "lucide-react";
+import {
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -62,15 +69,18 @@ const ContactPage = () => {
   const onSubmit = async (data) => {
     try {
       setStatus({ type: "loading", message: "Sending message..." });
-      
+
       // Backend API call using fetch
-      const response = await fetch("http://localhost:8000/api/contact-messages/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      const response = await fetch(
+        "http://localhost:8000/api/contact-messages/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -79,49 +89,58 @@ const ContactPage = () => {
 
       const responseData = await response.json();
       console.log("Response from backend:", responseData);
-      
-      setStatus({ 
-        type: "success", 
-        message: "Message sent successfully! We'll get back to you soon." 
+
+      setStatus({
+        type: "success",
+        message: "Message sent successfully! We'll get back to you soon.",
       });
-      
+
       // Reset form
       reset();
-      
     } catch (error) {
       console.error("Error sending message:", error);
-      setStatus({ 
-        type: "error", 
-        message: error.message || "Failed to send message. Please try again." 
+      setStatus({
+        type: "error",
+        message: error.message || "Failed to send message. Please try again.",
       });
     }
   };
 
   const getFieldStatus = (fieldName) => {
-    if (!touchedFields[fieldName]) return 'default';
-    return errors[fieldName] ? 'error' : 'success';
+    if (!touchedFields[fieldName]) return "default";
+    return errors[fieldName] ? "error" : "success";
   };
 
   const getInputClassName = (fieldName) => {
     const status = getFieldStatus(fieldName);
-    const baseClass = "w-full border-b-2 border-gray-300 bg-transparent pb-2 sm:pb-3 text-sm sm:text-md focus:outline-none focus:border-red-400 transition-colors";
-    
-    if (status === 'error') {
-      return baseClass.replace('border-gray-300', 'border-red-500').replace('focus:border-red-400', 'focus:border-red-500');
-    } else if (status === 'success') {
-      return baseClass.replace('border-gray-300', 'border-green-500').replace('focus:border-red-400', 'focus:border-green-500');
+    const baseClass =
+      "w-full border-b-2 border-gray-300 bg-transparent pb-2 sm:pb-3 text-sm sm:text-md focus:outline-none focus:border-red-400 transition-colors";
+
+    if (status === "error") {
+      return baseClass
+        .replace("border-gray-300", "border-red-500")
+        .replace("focus:border-red-400", "focus:border-red-500");
+    } else if (status === "success") {
+      return baseClass
+        .replace("border-gray-300", "border-green-500")
+        .replace("focus:border-red-400", "focus:border-green-500");
     }
     return baseClass;
   };
 
   const getTextareaClassName = (fieldName) => {
     const status = getFieldStatus(fieldName);
-    const baseClass = "w-full border-b-2 border-gray-300 bg-transparent pb-2 text-sm sm:text-md focus:outline-none focus:border-red-400 resize-none transition-colors";
-    
-    if (status === 'error') {
-      return baseClass.replace('border-gray-300', 'border-red-500').replace('focus:border-red-400', 'focus:border-red-500');
-    } else if (status === 'success') {
-      return baseClass.replace('border-gray-300', 'border-green-500').replace('focus:border-red-400', 'focus:border-green-500');
+    const baseClass =
+      "w-full border-b-2 border-gray-300 bg-transparent pb-2 text-sm sm:text-md focus:outline-none focus:border-red-400 resize-none transition-colors";
+
+    if (status === "error") {
+      return baseClass
+        .replace("border-gray-300", "border-red-500")
+        .replace("focus:border-red-400", "focus:border-red-500");
+    } else if (status === "success") {
+      return baseClass
+        .replace("border-gray-300", "border-green-500")
+        .replace("focus:border-red-400", "focus:border-green-500");
     }
     return baseClass;
   };
@@ -130,7 +149,7 @@ const ContactPage = () => {
     <div className="min-h-screen bg-gradient-to-t from-red-50 from-60% to-white flex flex-col">
       {/* Navbar - Fixed at top */}
       <Navbar />
-      
+
       {/* Main Content - Takes remaining space */}
       <div className="flex-1 px-4 sm:px-6 md:px-9 py-4 sm:py-9">
         {/* Header */}
@@ -148,7 +167,7 @@ const ContactPage = () => {
             care and professionalism
           </p>
         </div>
-        
+
         {/* Contact Section */}
         <div className="bg-white rounded-xl py-4 max-w-[950px] mx-auto">
           <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-6 sm:gap-8 lg:gap-12 px-4 sm:px-6">
@@ -188,7 +207,10 @@ const ContactPage = () => {
 
             {/* Contact Form */}
             <div className="flex-1">
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 sm:space-y-8">
+              <form
+                onSubmit={handleSubmit(onSubmit)}
+                className="space-y-6 sm:space-y-8"
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                   <div>
                     <div className="block text-greyy text-sm sm:text-md mb-1">
@@ -201,12 +223,12 @@ const ContactPage = () => {
                         {...register("name", {
                           onChange: handleInputChange,
                         })}
-                        className={getInputClassName('name')}
+                        className={getInputClassName("name")}
                       />
-                      {getFieldStatus('name') === 'success' && (
+                      {getFieldStatus("name") === "success" && (
                         <CheckCircle className="absolute right-0 top-1 w-4 h-4 text-green-500" />
                       )}
-                      {getFieldStatus('name') === 'error' && (
+                      {getFieldStatus("name") === "error" && (
                         <AlertCircle className="absolute right-0 top-1 w-4 h-4 text-red-500" />
                       )}
                     </div>
@@ -229,12 +251,12 @@ const ContactPage = () => {
                         {...register("email", {
                           onChange: handleInputChange,
                         })}
-                        className={getInputClassName('email')}
+                        className={getInputClassName("email")}
                       />
-                      {getFieldStatus('email') === 'success' && (
+                      {getFieldStatus("email") === "success" && (
                         <CheckCircle className="absolute right-0 top-1 w-4 h-4 text-green-500" />
                       )}
-                      {getFieldStatus('email') === 'error' && (
+                      {getFieldStatus("email") === "error" && (
                         <AlertCircle className="absolute right-0 top-1 w-4 h-4 text-red-500" />
                       )}
                     </div>
@@ -258,12 +280,12 @@ const ContactPage = () => {
                       {...register("subject", {
                         onChange: handleInputChange,
                       })}
-                      className={getInputClassName('subject')}
+                      className={getInputClassName("subject")}
                     />
-                    {getFieldStatus('subject') === 'success' && (
+                    {getFieldStatus("subject") === "success" && (
                       <CheckCircle className="absolute right-0 top-1 w-4 h-4 text-green-500" />
                     )}
-                    {getFieldStatus('subject') === 'error' && (
+                    {getFieldStatus("subject") === "error" && (
                       <AlertCircle className="absolute right-0 top-1 w-4 h-4 text-red-500" />
                     )}
                   </div>
@@ -286,12 +308,12 @@ const ContactPage = () => {
                         onChange: handleInputChange,
                       })}
                       rows="4"
-                      className={getTextareaClassName('message')}
+                      className={getTextareaClassName("message")}
                     />
-                    {getFieldStatus('message') === 'success' && (
+                    {getFieldStatus("message") === "success" && (
                       <CheckCircle className="absolute right-2 top-2 w-4 h-4 text-green-500" />
                     )}
-                    {getFieldStatus('message') === 'error' && (
+                    {getFieldStatus("message") === "error" && (
                       <AlertCircle className="absolute right-2 top-2 w-4 h-4 text-red-500" />
                     )}
                   </div>
@@ -312,14 +334,18 @@ const ContactPage = () => {
 
                 {/* Status Message */}
                 {status.message && (
-                  <div className={`p-3 rounded-md text-sm flex items-center gap-2 ${
-                    status.type === 'success' ? 'bg-green-100 text-green-800' :
-                    status.type === 'error' ? 'bg-red-100 text-red-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
-                    {status.type === 'success' ? (
+                  <div
+                    className={`p-3 rounded-md text-sm flex items-center gap-2 ${
+                      status.type === "success"
+                        ? "bg-green-100 text-green-800"
+                        : status.type === "error"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {status.type === "success" ? (
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                    ) : status.type === 'error' ? (
+                    ) : status.type === "error" ? (
                       <AlertCircle className="w-4 h-4 text-red-600" />
                     ) : (
                       <div className="w-4 h-4 border-2 border-blue-600 border-r-transparent rounded-full animate-spin"></div>
@@ -347,7 +373,7 @@ const ContactPage = () => {
           </div>
         </div>
       </div>
-      
+
       <Footer />
     </div>
   );
