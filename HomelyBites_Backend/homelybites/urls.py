@@ -28,11 +28,13 @@ from recipes.views import ContactMessageViewSet
 router = DefaultRouter()
 router.register(r'contact-messages', ContactMessageViewSet, basename='contactmessage')
 
+from recipes.views import register_user
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),
+    path('api/', include(router.urls)),           # exposes /api/contact-messages/
+    path('api/', include('recipes.urls')),        # exposes /api/login/, /api/register/, etc.
     path('api/community/', include('community.urls')),
-    path('api/recipes/', include('recipes.urls')),
     path('api/recent-recipes/', include('recent_recipes.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
