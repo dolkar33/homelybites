@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../config/axiosInstance";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
+import { baseURL } from "../config/axiosInstance";
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -12,7 +13,8 @@ const UserProfile = () => {
   const [userInfo, setUserInfo] = useState({
     username: "",
     email: "",
-    password: "",
+    current_password: "",
+    new_password: "",
     first_name: "",
     last_name: ""
   });
@@ -95,7 +97,8 @@ const UserProfile = () => {
         setUserInfo({
           username: data.user.username || "",
           email: data.user.email || "", 
-          password: "",
+          current_password: "",
+          new_password: "",
           first_name: data.user.first_name || "",
           last_name: data.user.last_name || ""
         });
@@ -218,7 +221,12 @@ const UserProfile = () => {
         
         // Draw and compress
         ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(resolve, 'image/jpeg', quality);
+        canvas.toBlob((blob) => {
+          // Create a new File with a valid name and type
+          const ext = file.name.split('.').pop();
+          const newFile = new File([blob], `compressed.${ext}`, { type: blob.type });
+          resolve(newFile);
+        }, 'image/jpeg', quality);
       };
       
       img.src = URL.createObjectURL(file);
@@ -306,13 +314,102 @@ const UserProfile = () => {
     } else if (!/\S+@\S+\.\S+/.test(userInfo.email)) {
       newErrors.email = "Email format is invalid";
     }
-    
-    if (userInfo.password && userInfo.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+
+    // If new_password is provided, current_password must also be provided
+    if (userInfo.new_password) {
+      if (!userInfo.current_password) {
+        newErrors.current_password = "Current password is required to set a new password";
+      }
+      if (userInfo.new_password.length < 8) {
+        newErrors.new_password = "New password must be at least 8 characters";
+      }
+      if (userInfo.current_password && userInfo.new_password === userInfo.current_password) {
+        newErrors.new_password = "Please choose a new password different from your current password.";
+      }
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handlePasswordChange = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        navigate('/login');
+        return false;
+      }
+      const response = await axiosInstance.post(
+        'api/change-password/',
+        {
+          old_password: userInfo.current_password,
+          new_password: userInfo.new_password,
+          confirm_password: userInfo.new_password,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+      if (response.data.message) {
+        setSuccessMessage(response.data.message);
+        setUserInfo(prev => ({
+          ...prev,
+          current_password: "",
+          new_password: "",
+        }));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      setApiError(
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.response?.data?.detail ||
+        'Failed to change password. Please try again.'
+      );
+      return false;
+    }
+  };
+
+  const handleProfileImageUpload = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        navigate('/login');
+        return null;
+      }
+      const formData = new FormData();
+      formData.append('profile_image', selectedFile);
+
+      const response = await axiosInstance.post(
+        'api/user-profiles/update_profile_image/',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+      if (response.data.profile_image) {
+        setProfileImage(response.data.profile_image);
+        setSelectedFile(null);
+        setSuccessMessage('Profile image updated successfully!');
+        return response.data.profile_image;
+      }
+      return null;
+    } catch (error) {
+      console.error('Image upload error:', error, error?.response?.data);
+      setUploadError(
+        (error.response && JSON.stringify(error.response.data)) ||
+        error.message ||
+        'Failed to update profile image. Please try again.'
+      );
+      return null;
+    }
   };
 
   const handleSaveChanges = async (e) => {
@@ -327,28 +424,48 @@ const UserProfile = () => {
     setSuccessMessage('');
     
     try {
+      if (userInfo.new_password) {
+        const passwordChanged = await handlePasswordChange();
+        if (!passwordChanged) {
+          setIsUploading(false);
+          return;
+        }
+      }
+
+      if (selectedFile) {
+        const uploadedImageUrl = await handleProfileImageUpload();
+        if (!uploadedImageUrl) {
+          setIsUploading(false);
+          return;
+        }
+      }
+
       const token = localStorage.getItem('authToken');
       if (!token) {
         navigate('/login');
         return;
       }
 
-      // Prepare the data to be sent to the API - now includes all user fields
-      const updateData = {
-        // Profile fields
-        dietary_preference: dietaryPlan,
-        allergies: selectedAllergies,
-        
-        // User fields (including phone)
-        username: userInfo.username,
-        email: userInfo.email,
-        first_name: userInfo.first_name,
-        last_name: userInfo.last_name,
-        ...(userInfo.password && { password: userInfo.password })
-      };
+      let response;
+      if (selectedFile) {
+        // (No longer send image here)
+      } else {
+        // If no image, send JSON as before
+        const updateData = {
+          dietary_preference: dietaryPlan,
+          allergies: selectedAllergies,
+          username: userInfo.username,
+          email: userInfo.email,
+          first_name: userInfo.first_name,
+          last_name: userInfo.last_name,
+          // Do NOT include current_password or new_password here
+        };
 
-      // Update user profile
-      const response = await axiosInstance.put('api/user-profiles/my_profile/', updateData);
+        response = await axiosInstance.put(
+          'api/user-profiles/update/',
+          updateData
+        );
+      }
 
       if (response.status === 200) {
         setSuccessMessage('Profile updated successfully!');
@@ -362,8 +479,9 @@ const UserProfile = () => {
         };
         setUserInfo({
           username: response.data.user.username || "",
-          email: response.data.user.email || "", 
-          password: "",
+          email: response.data.user.email || "",
+          current_password: "",
+          new_password: "",
           first_name: response.data.user.first_name || "",
           last_name: response.data.user.last_name || ""
         });
@@ -388,9 +506,9 @@ const UserProfile = () => {
         localStorage.removeItem('currentUser');
         navigate('/login');
       } else {
-        const errorMessage = error.response?.response.data?.message || 
-                           error.response?.response.data?.error || 
-                           error.response?.response.data?.detail ||
+        const errorMessage = error.response?.data?.message || 
+                           error.response?.data?.error || 
+                           error.response?.data?.detail ||
                            'Failed to update profile. Please try again.';
         setApiError(errorMessage);
       }
@@ -499,7 +617,7 @@ const UserProfile = () => {
                 <div className="w-32 h-32 mx-auto rounded-2xl overflow-hidden mb-3 shadow-lg relative">
                   {profileImage ? (
                     <img 
-                      src={profileImage} 
+                      src={profileImage?.startsWith('http') ? profileImage : baseURL + profileImage}
                       alt="Profile" 
                       className="w-full h-full object-cover"
                     />
@@ -768,16 +886,54 @@ const UserProfile = () => {
                     />
                   </div>
                   
-                  {/* Password */}
+                  {/* Current Password */}
                   <div>
-                    <label className="block text-base font-medium mb-2">Password</label>
+                    <label className="block text-base font-medium mb-2">Current Password</label>
                     <div className="relative">
                       <input
                         type={showPassword ? "text" : "password"}
-                        value={userInfo.password}
-                        onChange={(e) => handleInputChange('password', e.target.value)}
+                        value={userInfo.current_password}
+                        onChange={(e) => handleInputChange('current_password', e.target.value)}
                         className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none pr-10 ${
-                          errors.password ? 'border-red-500' : 'border-gray-300'
+                          errors.current_password ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter your current password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          {showPassword ? (
+                            <>
+                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                              <line x1="1" y1="1" x2="23" y2="23"/>
+                            </>
+                          ) : (
+                            <>
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                              <circle cx="12" cy="12" r="3"/>
+                            </>
+                          )}
+                        </svg>
+                      </button>
+                    </div>
+                    {errors.current_password && (
+                      <p className="text-red-500 text-sm mt-1">{errors.current_password}</p>
+                    )}
+                  </div>
+
+                  {/* New Password */}
+                  <div>
+                    <label className="block text-base font-medium mb-2">New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={userInfo.new_password}
+                        onChange={(e) => handleInputChange('new_password', e.target.value)}
+                        className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none pr-10 ${
+                          errors.new_password ? 'border-red-500' : 'border-gray-300'
                         }`}
                         placeholder="Enter new password (leave blank to keep current)"
                       />
@@ -801,8 +957,8 @@ const UserProfile = () => {
                         </svg>
                       </button>
                     </div>
-                    {errors.password && (
-                      <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                    {errors.new_password && (
+                      <p className="text-red-500 text-sm mt-1">{errors.new_password}</p>
                     )}
                     <p className="text-gray-500 text-sm mt-1">
                       Password must be at least 8 characters with letters, numbers and symbols
