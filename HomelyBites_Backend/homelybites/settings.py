@@ -192,7 +192,8 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # Spoonacular API settings
-SPOONACULAR_API_KEY = '28757902a1544a44b3466566d399895d'
+SPOONACULAR_API_KEY = 'b4b8be0a733f497789c7bcd463aa556e'
+
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

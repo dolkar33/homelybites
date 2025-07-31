@@ -1,14 +1,40 @@
 import axios from "axios";
 
-const SPOONACULAR_API_KEY = "28757902a1544a44b3466566d399895d"; 
-const BASE_URL = "https://api.spoonacular.com/";
+const BACKEND_URL = "http://localhost:8000/api";
 
 export const getRecommendedRecipes = async (limit = 4) => {
-  const response = await axios.get(${BASE_URL}/recipes/random, {
+  const response = await axios.get(`${BACKEND_URL}/recipes/recommended/`, {
     params: {
-      number: limit,
-      apiKey: SPOONACULAR_API_KEY,
+      limit: limit,
     },
   });
-  return response.data.recipes; 
+  return response.data.results || response.data;
+};
+
+export const getPopularRecipes = async (limit = 4) => {
+  const response = await axios.get(`${BACKEND_URL}/recipes/popular/`, {
+    params: {
+      limit: limit,
+    },
+  });
+  return response.data.results || response.data;
+};
+
+export const getRecentRecipes = async (limit = 8) => {
+  const response = await axios.get(`${BACKEND_URL}/recent/recent/`, {
+    params: {
+      limit: limit,
+    },
+  });
+  return response.data.results || response.data;
+};
+
+export const getRecipesByCategory = async (category, limit = 9) => {
+  const response = await axios.get(`${BACKEND_URL}/recipes/`, {
+    params: {
+      category: category,
+      limit: limit,
+    },
+  });
+  return response.data.results || response.data;
 };

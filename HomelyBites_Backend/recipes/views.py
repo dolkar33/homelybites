@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
 from django.utils import timezone
 from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage
+from recent_recipes.models import UserInteraction
 from .serializers import (
     RecipeSerializer, 
     RecipeListSerializer,
@@ -66,7 +67,18 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if max_prep_time:
             queryset = queryset.filter(prep_time__lte=int(max_prep_time))
         
+        # Apply limit if provided
+        limit = self.request.query_params.get('limit', None)
+        if limit:
+            queryset = queryset[:int(limit)]
+        
         return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """Override list method to return results in the expected format."""
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({'results': serializer.data})
     
     @action(detail=False, methods=['get'])
     def recommended(self, request):
@@ -74,6 +86,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         Get personalized recipe recommendations for the authenticated user.
         For non-authenticated users, return popular recipes.
         """
+        limit = int(request.query_params.get('limit', 10))
+        
         if request.user.is_authenticated:
             # Get user's favorite categories
             try:
@@ -85,40 +99,53 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     categories__in=favorite_categories
                 ).distinct()
                 
-                # If we have less than 5 recommendations, add popular recipes
-                if recommended_recipes.count() < 5:
-                    popular_recipes = Recipe.objects.annotate(
-                        interaction_count=Count('user_interactions')
-                    ).order_by('-interaction_count')
+                # If we have less than limit recommendations, add recently added recipes
+                if recommended_recipes.count() < limit:
+                    recent_recipes = Recipe.objects.exclude(
+                        id__in=recommended_recipes.values_list('id', flat=True)
+                    ).order_by('-created_at')[:limit - recommended_recipes.count()]
                     
-                    # Combine the two querysets without duplicates
-                    recommended_recipes = (recommended_recipes | popular_recipes).distinct()[:10]
+                    # Combine the two querysets
+                    from itertools import chain
+                    recommended_recipes = list(chain(recommended_recipes, recent_recipes))
                 else:
-                    recommended_recipes = recommended_recipes[:10]
+                    recommended_recipes = recommended_recipes[:limit]
                     
             except UserProfile.DoesNotExist:
-                # If user profile doesn't exist, return popular recipes
-                recommended_recipes = Recipe.objects.annotate(
-                    interaction_count=Count('user_interactions')
-                ).order_by('-interaction_count')[:10]
+                # If user profile doesn't exist, return recently added recipes
+                recommended_recipes = Recipe.objects.order_by('-created_at')[:limit]
         else:
-            # For non-authenticated users, return popular recipes
-            recommended_recipes = Recipe.objects.annotate(
-                interaction_count=Count('user_interactions')
-            ).order_by('-interaction_count')[:10]
+            # For non-authenticated users, return recently added recipes
+            recommended_recipes = Recipe.objects.order_by('-created_at')[:limit]
             
         serializer = RecipeListSerializer(recommended_recipes, many=True)
-        return Response(serializer.data)
+        return Response({'results': serializer.data})
     
     @action(detail=False, methods=['get'])
     def popular(self, request):
         """Get most popular recipes based on user interactions."""
+        limit = int(request.query_params.get('limit', 10))
+        
+        # First try to get recipes with interactions
         popular_recipes = Recipe.objects.annotate(
             interaction_count=Count('user_interactions')
-        ).order_by('-interaction_count')[:10]
+        ).filter(interaction_count__gt=0).order_by('-interaction_count')[:limit]
+        
+        # If we don't have enough recipes with interactions, add recently added recipes
+        if popular_recipes.count() < limit:
+            remaining_count = limit - popular_recipes.count()
+            recent_recipes = Recipe.objects.exclude(
+                id__in=popular_recipes.values_list('id', flat=True)
+            ).order_by('-created_at')[:remaining_count]
+            
+            # Combine the querysets
+            from itertools import chain
+            popular_recipes = list(chain(popular_recipes, recent_recipes))
+        else:
+            popular_recipes = list(popular_recipes)
         
         serializer = RecipeListSerializer(popular_recipes, many=True)
-        return Response(serializer.data)
+        return Response({'results': serializer.data})
     
     @action(detail=False, methods=['get'])
     def by_category(self, request):

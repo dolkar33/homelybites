@@ -3,8 +3,12 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import RecipeCard from "../components/RecipeCard";
 import CategoryButton from "../components/CategoryButton";
-import { recipeAPI } from "../services/api";
 import { Carousel, Row, Col } from "react-bootstrap";
+import {
+  getPopularRecipes,
+  getRecentRecipes,
+  getRecipesByCategory,
+} from "../services/spoonacularAPI";
 
 const categories = ["breakfast", "soup", "lunch", "dessert", "salad", "drink"];
 
@@ -25,21 +29,32 @@ const MainPage = () => {
         setLoading(true);
         setError(null);
 
-        // For category-based filtering, we'll use the main recipes endpoint
-        // Note: Your backend might need to support category filtering
-        const response = await recipeAPI.getRecipes({
-          category: activeCategory,
-          page: page,
-          limit: 8,
-        });
+        // Use Django backend API service for category-based recipes
+        const data = await getRecipesByCategory(activeCategory, 8);
+
+        // Transform Django backend data to match your component structure
+        const transformedRecipes =
+          data?.map((recipe) => ({
+            id: recipe.id,
+            title: recipe.title,
+            image_url: recipe.image_url,
+            description:
+              recipe.description ||
+              recipe.ingredients?.substring(0, 100) + "..." ||
+              "Delicious recipe",
+            difficulty: recipe.difficulty || "Medium",
+            prep_time: recipe.prep_time,
+            cook_time: recipe.cook_time,
+            slug: recipe.slug,
+          })) || [];
 
         if (page === 1) {
-          setRecipes(response.data.results || []);
+          setRecipes(transformedRecipes);
         } else {
-          setRecipes((prev) => [...prev, ...(response.data.results || [])]);
+          setRecipes((prev) => [...prev, ...transformedRecipes]);
         }
 
-        setHasMore(response.data.next !== null);
+        setHasMore(false); // Django pagination would need more complex handling
       } catch (err) {
         setError(
           err.message || "Failed to fetch recipes. Please try again later."
@@ -53,75 +68,62 @@ const MainPage = () => {
     fetchRecipes();
   }, [activeCategory, page]);
 
-  const recommendedRecipes = [
-    {
-      id: 1,
-      title: "Creamy Mushroom Pasta",
-      ingredients: ["pasta", "mushrooms", "cream", "garlic"],
-      instructions: "Boil pasta. Sauté mushrooms. Mix with cream and serve.",
-      spoonacular_id: "12345",
-      image: "/Images/Dummy/mushroom_pasta.jpg",
-      tags: ["pasta", "vegetarian", "quick"],
-    },
-    {
-      id: 2,
-      title: "Avocado Toast",
-      ingredients: ["bread", "avocado", "salt", "lemon"],
-      instructions:
-        "Toast bread. Smash avocado with salt and lemon. Spread and serve.",
-      spoonacular_id: "67890",
-      image: "/Images/Dummy/avocado_toast.jpg",
-      tags: ["breakfast", "healthy", "vegan"],
-    },
-    {
-      id: 3,
-      title: "Berry Smoothie",
-      ingredients: ["berries", "banana", "yogurt", "honey"],
-      instructions: "Blend all ingredients until smooth. Serve chilled.",
-      spoonacular_id: "54321",
-      image: "/Images/Dummy/berry_smoothie.jpg",
-      tags: ["drink", "healthy", "quick"],
-    },
-    {
-      id: 4,
-      title: "Chicken Stir Fry",
-      ingredients: ["chicken", "veggies", "soy sauce", "garlic"],
-      instructions:
-        "Stir fry chicken and vegetables. Add soy sauce. Cook and serve.",
-      spoonacular_id: "98765",
-      image: "/Images/Dummy/chicken_stir_fry.jpg",
-      tags: ["lunch", "protein", "asian"],
-    },
-  ];
-
-  // Fetch popular recipes
+  // Fetch popular recipes using Django backend service
   useEffect(() => {
     const fetchPopularRecipes = async () => {
       try {
-        const response = await recipeAPI.getRecipes({
-          sort: "popular",
-          limit: 4,
-        });
-        setPopularRecipes(response.data.results || []);
+        const data = await getPopularRecipes(4);
+
+        const transformedRecipes =
+          data?.map((recipe) => ({
+            id: recipe.id,
+            title: recipe.title,
+            image_url: recipe.image_url,
+            description:
+              recipe.description ||
+              recipe.ingredients?.substring(0, 100) + "..." ||
+              "Quick and delicious",
+            difficulty: recipe.difficulty || "Easy",
+            prep_time: recipe.prep_time,
+            cook_time: recipe.cook_time,
+            slug: recipe.slug,
+          })) || [];
+
+        setPopularRecipes(transformedRecipes);
       } catch (err) {
         console.error("Error fetching popular recipes:", err);
+        setPopularRecipes([]);
       }
     };
 
     fetchPopularRecipes();
   }, []);
 
-  // Fetch recent recipes for "What others are cooking" section
+  // Fetch recent recipes for "What others are cooking" section using Django backend service
   useEffect(() => {
     const fetchRecentRecipes = async () => {
       try {
-        const response = await recipeAPI.getRecipes({
-          sort: "recent",
-          limit: 4,
-        });
-        setRecentRecipes(response.data.results || []);
+        const data = await getRecentRecipes(8);
+
+        const transformedRecipes =
+          data?.map((recipe) => ({
+            id: recipe.id,
+            title: recipe.title,
+            image_url: recipe.image_url,
+            description:
+              recipe.description ||
+              recipe.ingredients?.substring(0, 100) + "..." ||
+              "Trending recipe",
+            difficulty: recipe.difficulty || "Medium",
+            prep_time: recipe.prep_time,
+            cook_time: recipe.cook_time,
+            slug: recipe.slug,
+          })) || [];
+
+        setRecentRecipes(transformedRecipes);
       } catch (err) {
         console.error("Error fetching recent recipes:", err);
+        setRecentRecipes([]);
       }
     };
 
@@ -257,49 +259,6 @@ const MainPage = () => {
                 </CategoryButton>
               ))}
             </div>
-          </div>
-
-          {/* Recipes You Would Love */}
-
-          <div className="mt-[4vh] mb-[6vh]">
-            <h2 className="text-2xl md:text-3xl font-bold mb-[2vh] text-center md:text-left">
-              Recipes You Would Love
-            </h2>
-
-            <Carousel>
-              {recommendedRecipes
-                .reduce((result, recipe, index) => {
-                  if (index % 3 === 0) result.push([]);
-                  result[result.length - 1].push(recipe);
-                  return result;
-                }, [])
-                .map((group, idx) => (
-                  <Carousel.Item key={idx}>
-                    <Row className="justify-content-center">
-                      {group.map((recipe) => (
-                        <Col
-                          md={4}
-                          key={recipe.id}
-                          className="d-flex justify-content-center mb-4"
-                        >
-                          <RecipeCard
-                            key={recipe.id}
-                            image={recipe.image}
-                            title={recipe.title}
-                            description={recipe.instructions}
-                            slug={recipe.title
-                              .toLowerCase()
-                              .replace(/\s+/g, "-")}
-                            difficulty={"Easy"}
-                            prepTime={10}
-                            cookTime={15}
-                          />
-                        </Col>
-                      ))}
-                    </Row>
-                  </Carousel.Item>
-                ))}
-            </Carousel>
           </div>
 
           {/* Popular Recipes */}

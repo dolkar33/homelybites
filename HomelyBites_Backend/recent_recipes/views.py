@@ -13,28 +13,34 @@ class RecentRecipesViewSet(viewsets.ViewSet):
         Get recently viewed recipes for the authenticated user.
         For non-authenticated users, return recently added recipes.
         """
+        limit = int(request.query_params.get('limit', 8))
+        
         if request.user.is_authenticated:
             # Get user's recently viewed recipes
             try:
                 user_profile = UserProfile.objects.get(user=request.user)
                 recent_recipes = Recipe.objects.filter(
-                    recent_views__user=request.user
-                ).order_by('-recent_views__viewed_at')[:8]
+                    user_interactions__user=request.user
+                ).order_by('-user_interactions__viewed_at')[:limit]
                 
-                # If we have less than 8 recent recipes, add recently added recipes
-                if recent_recipes.count() < 8:
-                    recent_added = Recipe.objects.order_by('-created_at')[:8]
-                    # Combine the two querysets without duplicates
-                    recent_recipes = (recent_recipes | recent_added).distinct()[:8]
+                # If we have less than limit recent recipes, add recently added recipes
+                if recent_recipes.count() < limit:
+                    recent_added = Recipe.objects.exclude(
+                        id__in=recent_recipes.values_list('id', flat=True)
+                    ).order_by('-created_at')[:limit - recent_recipes.count()]
+                    
+                    # Combine the two querysets
+                    from itertools import chain
+                    recent_recipes = list(chain(recent_recipes, recent_added))
             except UserProfile.DoesNotExist:
                 # If user profile doesn't exist, return recently added recipes
-                recent_recipes = Recipe.objects.order_by('-created_at')[:8]
+                recent_recipes = Recipe.objects.order_by('-created_at')[:limit]
         else:
             # For non-authenticated users, return recently added recipes
-            recent_recipes = Recipe.objects.order_by('-created_at')[:8]
+            recent_recipes = Recipe.objects.order_by('-created_at')[:limit]
             
         serializer = RecipeListSerializer(recent_recipes, many=True)
-        return Response(serializer.data)
+        return Response({'results': serializer.data})
 
     @action(detail=True, methods=['post'])
     def track_view(self, request, pk=None):
