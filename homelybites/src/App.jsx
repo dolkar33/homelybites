@@ -59,20 +59,20 @@ const RootRoute = () => {
 };
 
 // Component to protect UserQuestion route from logged-in users
-const UserQuestionRoute = () => {
-  const { isLoggedIn, isLoading } = useAuth();
+// const UserQuestionRoute = () => {
+//   const { isLoggedIn, isLoading } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
-  }
+//   if (isLoading) {
+//     return (
+//       <div className="flex items-center justify-center min-h-screen">
+//         <div className="text-lg">Loading...</div>
+//       </div>
+//     );
+//   }
 
-  // If user is already logged in, redirect to Home instead of showing UserQuestion
-  return isLoggedIn ? <Navigate to="/Home" replace /> : <UserQuestion />;
-};
+//   // If user is already logged in, redirect to Home instead of showing UserQuestion
+//   return isLoggedIn ? <Navigate to="/Home" replace /> : <UserQuestion />;
+// };
 
 // Component to protect Login route from logged-in users
 const LoginRoute = () => {
@@ -109,9 +109,9 @@ const SignUpRoute = () => {
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginRoute />} />
-      <Route path="/signup" element={<SignUpRoute />} />
-      <Route path="/userquestion" element={<UserQuestionRoute />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<SignUp />} />
+      <Route path="/userquestion" element={<UserQuestion />} />
       <Route path="/Home" element={<MainPage />} />
       <Route path="/" element={<RootRoute />} />
       <Route path="/contact" element={<ContactUs />} />

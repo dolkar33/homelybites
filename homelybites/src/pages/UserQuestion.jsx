@@ -2,18 +2,15 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
+import axiosInstance from "../config/axiosInstance.js";
+import { customToast } from "./toast.jsx";
+import { Toaster } from "react-hot-toast";
 
 const dietaryOptions = ["Vegetarian", "Keto", "Gluten-free", "Vegan"];
 const allergyOptions = [
   "Lactose Intolerance",
   "Nut Allergy",
   "Gluten Intolerance",
-  "Shellfish Allergy",
-];
-const dislikeOptions = [
-  "Lactose Intolerance",
-  "Nut Allergy",
-  "Gluten Intolerance",  
   "Shellfish Allergy",
 ];
 
@@ -25,7 +22,6 @@ const UserQuestion = () => {
     dislikes: []
   });
   const [errors, setErrors] = useState({});
-
   const handleCheckboxChange = (category, option) => {
     setFormData(prev => ({
       ...prev,
@@ -52,28 +48,37 @@ const UserQuestion = () => {
     if (formData.allergies.length === 0) {
       newErrors.allergies = "Please select your food allergies/intolerances or check 'None'";
     }
-    if (formData.dislikes.length === 0) {
-      newErrors.dislikes = "Please select ingredients to avoid or check 'None'";
-    }
-    
+   
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
-      navigate("/Home"); // Navigate to the home/main page
+
+      try {
+      const response = await axiosInstance.post('/api/complete-user-questions/', formData);
+      if (response.status === 200) {
+        customToast.success("User questions submitted successfully");
+        setTimeout(() => {
+                    navigate('/Home');
+                }, 1500);
+      }
+      } catch (error) {
+    customToast.error("Failed to submit user questions. Please try again.");}
+     
     }
   };
 
   return (
     <div className="h-screen bg-[#faf9f7] flex flex-col">
       {/* Fixed Navbar */}
+      <Toaster />
       <div className="flex-shrink-0">
         <Navbar />
       </div>
-      
+
       {/* Main Content Area */}
       <div className="flex-1 flex px-4 md:px-8 overflow-hidden">
         <div className="flex w-full max-w-6xl mx-auto gap-8">
@@ -154,40 +159,7 @@ const UserQuestion = () => {
                   )}
                 </div>
                 
-                {/* Q3 */}
-                <div>
-                  <div className="mb-4 text-lg font-medium">
-                    3. Are there any ingredients you dislike or want to avoid? *
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-                    {dislikeOptions.map((option) => (
-                      <label
-                        key={option}
-                        className="flex items-center gap-3 text-lg cursor-pointer"
-                      >
-                        <input 
-                          type="checkbox" 
-                          className="accent-accent w-5 h-5"
-                          checked={formData.dislikes.includes(option)}
-                          onChange={() => handleCheckboxChange('dislikes', option)}
-                        />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                    <label className="flex items-center gap-3 text-lg cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="accent-accent w-5 h-5"
-                        checked={formData.dislikes.includes('None')}
-                        onChange={() => handleCheckboxChange('dislikes', 'None')}
-                      />
-                      <span>None</span>
-                    </label>
-                  </div>
-                  {errors.dislikes && (
-                    <p className="text-red-500 text-sm mt-2">{errors.dislikes}</p>
-                  )}
-                </div>
+               
 
                 {/* Add more questions here as needed */}
                 
