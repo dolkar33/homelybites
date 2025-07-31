@@ -9,41 +9,49 @@ const recentRecipes = [
     image: "/Images/HomePageImage/Image-1.png",
     title: "White Pasta",
     description: "White pasta is a smooth, soft Italian dish.",
+    slug: "white-pasta-1"
   },
   {
     image: "/Images/HomePageImage/Image-2.png",
     title: "White Pasta",
     description: "White pasta is a smooth, soft Italian dish.",
+    slug: "white-pasta-2"
   },
   {
     image: "/Images/HomePageImage/Image-3.png",
     title: "White Pasta",
     description: "White pasta is a smooth, soft Italian dish.",
+    slug: "white-pasta-3"
   },
   {
     image: "/Images/HomePageImage/Image-4.png",
     title: "White Pasta",
     description: "White pasta is a smooth, soft Italian dish.",
+    slug: "white-pasta-4"
   },
   {
     image: "/Images/HomePageImage/Image-1.png",
     title: "White Pasta",
     description: "White pasta is a smooth, soft Italian dish.",
+    slug: "white-pasta-5"
   },
   {
     image: "/Images/HomePageImage/Image-2.png",
     title: "White Pasta",
     description: "White pasta is a smooth, soft Italian dish.",
+    slug: "white-pasta-6"
   },
   {
     image: "/Images/HomePageImage/Image-3.png",
     title: "White Pasta",
     description: "White pasta is a smooth, soft Italian dish.",
+    slug: "white-pasta-7"
   },
   {
     image: "/Images/HomePageImage/Image-4.png",
     title: "White Pasta",
     description: "White pasta is a smooth, soft Italian dish.",
+    slug: "white-pasta-8"
   },
 ];
 
@@ -81,6 +89,7 @@ const RecentRecipes = () => {
                 image={recipe.image}
                 title={recipe.title}
                 description={recipe.description}
+                slug={recipe.slug}
               />
             ))}
           </div>
