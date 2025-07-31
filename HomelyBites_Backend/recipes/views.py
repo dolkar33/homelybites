@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Count, Avg, Q
-from django.contrib.auth.models import User
+
 from rest_framework import viewsets, status, generics, filters, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response

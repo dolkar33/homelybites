@@ -19,7 +19,7 @@ const UserProfile = () => {
 
   // State for profile response.data
   const [profileData, setProfileData] = useState({
-    dietary_preference: "",
+    dietary_preference: [],
     allergies: ""
   });
 
@@ -34,8 +34,13 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState('');
 
-  // State for dietary preferences
-  const [dietaryPlan, setDietaryPlan] = useState("Non-Vegetarian");
+  // State for dietary preferences - now array for multiple selections
+  const [dietaryPlan, setDietaryPlan] = useState([]);
+  
+  // State for allergies dropdown
+  const [isAllergyDropdownOpen, setIsAllergyDropdownOpen] = useState(false);
+  const [selectedAllergies, setSelectedAllergies] = useState([]);
+  const allergyDropdownRef = useRef(null);
   
   // State for password visibility
   const [showPassword, setShowPassword] = useState(false);
@@ -49,13 +54,20 @@ const UserProfile = () => {
   // State for success message
   const [successMessage, setSuccessMessage] = useState('');
 
-  const dietaryOptions = {
-    "Vegetarian": "vegetarian",
-    "Non-Vegetarian": "non-vegetarian", 
-    "Keto": "keto",
-    "Gluten Free": "gluten-free",
-    "No Dietary Plan": "no-dietary-plan"
-  };
+  const dietaryOptions = [
+    { label: "Vegetarian", value: "vegetarian" },
+    { label: "Non-Vegetarian", value: "non-vegetarian" },
+    { label: "Keto", value: "keto" },
+    { label: "Gluten Free", value: "gluten-free" },
+    { label: "No Dietary Plan", value: "no-dietary-plan" }
+  ];
+
+  const allergyOptions = [
+    "Lactose Intolerance",
+    "Nut Allergy", 
+    "Gluten Intolerance",
+    "Shellfish Allergy"
+  ];
 
   // Fetch user profile response.data on component mount
   useEffect(() => {
@@ -90,13 +102,18 @@ const UserProfile = () => {
 
         // Set profile data
         setProfileData({
-          dietary_preference: data.dietary_preference || "",
-          allergies: data.allergies || ""
+          dietary_preference: Array.isArray(data.dietary_preference) ? data.dietary_preference : [data.dietary_preference].filter(Boolean),
+          allergies: Array.isArray(data.allergies) ? data.allergies : (data.allergies ? [data.allergies] : [])
         });
 
-        // Set dietary plan for the radio buttons
+        // Set dietary plan for the checkboxes
         if (data.dietary_preference) {
-          setDietaryPlan(data.dietary_preference);
+          setDietaryPlan(Array.isArray(data.dietary_preference) ? data.dietary_preference : [data.dietary_preference]);
+        }
+
+        // Set selected allergies
+        if (data.allergies) {
+          setSelectedAllergies(Array.isArray(data.allergies) ? data.allergies : [data.allergies]);
         }
       }
     } catch (error) {
@@ -129,12 +146,56 @@ const UserProfile = () => {
       }));
     }
   };
-  const handleDietaryChange = (option) => {
-    setDietaryPlan(option);
-    setProfileData(prev => ({
-      ...prev,
-      dietary_preference: option
-    }));
+
+  // Handle multiple dietary plan selections
+  const handleDietaryChange = (optionValue) => {
+    setDietaryPlan(prev => {
+      const newSelection = prev.includes(optionValue)
+        ? prev.filter(item => item !== optionValue)
+        : [...prev, optionValue];
+      
+      setProfileData(prevData => ({
+        ...prevData,
+        dietary_preference: newSelection
+      }));
+      
+      return newSelection;
+    });
+  };
+
+  // Handle allergy selection - Multiple select
+  const handleAllergySelect = (allergy) => {
+    setSelectedAllergies(prev => {
+      const newSelection = prev.includes(allergy)
+        ? prev.filter(item => item !== allergy)
+        : [...prev, allergy];
+      
+      setProfileData(prevData => ({
+        ...prevData,
+        allergies: newSelection
+      }));
+      
+      return newSelection;
+    });
+    // Don't close dropdown for multi-select
+  };
+
+  // Toggle allergy dropdown and make page scrollable
+  const toggleAllergyDropdown = () => {
+    setIsAllergyDropdownOpen(!isAllergyDropdownOpen);
+    if (!isAllergyDropdownOpen) {
+      setIsScrollableMode(true);
+      // Auto scroll to dropdown position after a small delay to ensure DOM updates
+      setTimeout(() => {
+        if (allergyDropdownRef.current) {
+          allergyDropdownRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
+    }
   };
 
   // Compress image before preview
@@ -276,7 +337,7 @@ const UserProfile = () => {
       const updateData = {
         // Profile fields
         dietary_preference: dietaryPlan,
-        allergies: profileData.allergies,
+        allergies: selectedAllergies,
         
         // User fields (including phone)
         username: userInfo.username,
@@ -309,8 +370,8 @@ const UserProfile = () => {
 
         // Set profile response.data
         setProfileData({
-          dietary_preference: response.data.dietary_preference || "",
-          allergies: response.data.allergies || ""
+          dietary_preference: response.data.dietary_preference || [],
+          allergies: response.data.allergies || []
         });
         localStorage.setItem('currentUser', JSON.stringify(updatedUser));
 
@@ -424,7 +485,7 @@ const UserProfile = () => {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-full">
             
             {/* Left Panel - Profile Image and Dietary Plan */}
-            <div className="lg:col-span-2 bg-white rounded-3xl shadow-2xl p-6 flex flex-col">
+            <div className={`lg:col-span-2 bg-white rounded-3xl shadow-2xl p-6 flex flex-col ${isScrollableMode ? 'overflow-y-auto' : ''}`}>
               <button 
                 onClick={handleBack}
                 className="flex items-center gap-2 text-[#ff6b6b] mb-6 hover:opacity-80 transition-opacity"
@@ -503,47 +564,142 @@ const UserProfile = () => {
                 />
               </div>
               
-                <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto">
+                {/* Change Dietary Plan - Multiple Select with Checkboxes */}
                 <h3 className="text-lg font-bold mb-4 font-inter">Change Dietary Plan</h3>
                 <div className="space-y-2 mb-6">
-                  {Object.entries(dietaryOptions).map(([key, value]) => (
+                  {dietaryOptions.map((option) => (
                     <label
-                      key={key}
-                      className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                      key={option.value}
+                      className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors"
                     >
                       <div className="relative">
                         <input
-                          type="radio"
-                          name="dietary"
-                          value={value}
-                          checked={dietaryPlan.toLowerCase === value}
-                          onChange={() => handleDietaryChange(value)}
+                          type="checkbox"
+                          checked={dietaryPlan.includes(option.value)}
+                          onChange={() => handleDietaryChange(option.value)}
                           className="sr-only"
                         />
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                          dietaryPlan === value 
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                          dietaryPlan.includes(option.value)
                             ? 'bg-[#ff6b6b] border-[#ff6b6b]' 
-                            : 'bg-gray-200 border-gray-300'
+                            : 'bg-white border-gray-300'
                         }`}>
-                          {dietaryPlan === value && (
-                            <div className="w-2.5 h-2.5 bg-white rounded-full"></div>
+                          {dietaryPlan.includes(option.value) && (
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
                           )}
                         </div>
                       </div>
-                      <span className="text-base">{key}</span>
+                      <span className="text-base">{option.label}</span>
                     </label>
                   ))}
                 </div>
-                {/* Allergies Section */}
-                <div className="mb-4">
+
+                {/* Allergies Section - Multi-Select Dropdown */}
+                <div className="mb-4 relative" ref={allergyDropdownRef}>
                   <label className="block text-base font-medium mb-2">Allergies</label>
-                  <textarea
-                    value={profileData.allergies}
-                    onChange={(e) => setProfileData(prev => ({ ...prev, allergies: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none resize-none"
-                    rows="3"
-                    placeholder="Enter any food allergies (e.g., Gluten, Nuts, Shellfish)"
-                  />
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={toggleAllergyDropdown}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none bg-white text-left flex items-center justify-between min-h-[40px]"
+                    >
+                      <span className={selectedAllergies.length > 0 ? "text-gray-900" : "text-gray-500"}>
+                        {selectedAllergies.length > 0 
+                          ? selectedAllergies.length === 1 
+                            ? selectedAllergies[0]
+                            : `${selectedAllergies.length} allergies selected`
+                          : "Select allergies"
+                        }
+                      </span>
+                      <svg 
+                        className={`w-4 h-4 transition-transform flex-shrink-0 ${isAllergyDropdownOpen ? 'rotate-180' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {/* Dropdown Options */}
+                    {isAllergyDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 mt-1 max-h-48 overflow-y-auto">
+                        <div className="p-2 border-b border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedAllergies([]);
+                              setProfileData(prev => ({ ...prev, allergies: [] }));
+                            }}
+                            className="text-xs text-gray-500 hover:text-gray-700"
+                          >
+                            Clear all
+                          </button>
+                        </div>
+                        {allergyOptions.map((allergy) => (
+                          <label
+                            key={allergy}
+                            className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="relative flex-shrink-0">
+                              <input
+                                type="checkbox"
+                                checked={selectedAllergies.includes(allergy)}
+                                onChange={() => handleAllergySelect(allergy)}
+                                className="sr-only"
+                              />
+                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                selectedAllergies.includes(allergy)
+                                  ? 'bg-[#ff6b6b] border-[#ff6b6b]' 
+                                  : 'bg-white border-gray-300'
+                              }`}>
+                                {selectedAllergies.includes(allergy) && (
+                                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-sm">{allergy}</span>
+                          </label>
+                        ))}
+                        <div className="p-2 border-t border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => setIsAllergyDropdownOpen(false)}
+                            className="w-full bg-[#ff6b6b] text-white px-3 py-1.5 rounded text-xs hover:brightness-110 transition-all duration-200"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Selected allergies display */}
+                  {selectedAllergies.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {selectedAllergies.map((allergy) => (
+                        <span
+                          key={allergy}
+                          className="inline-flex items-center gap-1 bg-[#ff6b6b] text-white px-2 py-1 rounded-full text-xs"
+                        >
+                          {allergy}
+                          <button
+                            type="button"
+                            onClick={() => handleAllergySelect(allergy)}
+                            className="hover:bg-red-600 rounded-full p-0.5"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
