@@ -16,6 +16,7 @@ import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecentRecipes from "./pages/RecentRecipes";
 import FavPage from "./pages/FavPage";
 
+
 // Custom hook to check authentication status
 const useAuth = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);

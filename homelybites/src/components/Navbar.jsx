@@ -32,7 +32,7 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
   // Close mobile menu when screen size changes (any resize)
   useEffect(() => {
     let resizeTimer;
-    
+
     const handleResize = () => {
       // Use debounce to avoid excessive calls during resize
       clearTimeout(resizeTimer);
@@ -42,7 +42,7 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
     };
 
     window.addEventListener("resize", handleResize);
-    
+
     return () => {
       window.removeEventListener("resize", handleResize);
       clearTimeout(resizeTimer);
@@ -146,47 +146,53 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
             Contact
           </Link>
         </ul>
-        
+
         {/* Hamburger Menu Button */}
         <button
           className="xl:hidden md:hidden block text-3xl cursor-pointer ml-20 p-2 hover:bg-gray-100 rounded-lg transition-colors"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           aria-label="Toggle menu"
         >
-          <i className={`bx ${isMenuOpen ? 'bx-x' : 'bx-menu'} transition-transform duration-200`}></i>
+          <i
+            className={`bx ${
+              isMenuOpen ? "bx-x" : "bx-menu"
+            } transition-transform duration-200`}
+          ></i>
         </button>
-        
+
         {/* Mobile Menu */}
         <div
           className={`absolute xl:hidden md:hidden top-24 left-0 w-full bg-white/10 backdrop-blur-sm flex flex-col items-center gap-6 font-semibold text-md transform transition-all duration-300 shadow-lg z-40 ${
-            isMenuOpen ? "opacity-100 translate-y-0 visible" : "opacity-0 -translate-y-4 invisible pointer-events-none"
+            isMenuOpen
+              ? "opacity-100 translate-y-0 visible"
+              : "opacity-0 -translate-y-4 invisible pointer-events-none"
           }`}
         >
-          <li 
+          <li
             className="list-none w-full text-center p-4 hover:text-accent transition-all cursor-pointer"
             onClick={() => handleMobileMenuClick("/Home")}
           >
             Home
           </li>
-          <li 
+          <li
             className="list-none w-full text-center p-4 hover:text-accent transition-all cursor-pointer"
             onClick={() => handleMobileMenuClick("/aboutus")}
           >
             About Us
           </li>
-          <li 
+          <li
             className="list-none w-full text-center p-4 hover:text-accent transition-all cursor-pointer"
             onClick={() => handleMobileMenuClick("/recipe")}
           >
             Recipe
           </li>
-          <li 
+          <li
             className="list-none w-full text-center p-4 hover:text-accent transition-all cursor-pointer"
             onClick={() => handleMobileMenuClick("/community")}
           >
             Community
           </li>
-          <li 
+          <li
             className="list-none w-full text-center p-4 hover:text-accent transition-all cursor-pointer"
             onClick={() => handleMobileMenuClick("/contact")}
           >

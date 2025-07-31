@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
 from django.utils import timezone
 from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage
 from .serializers import (
     RecipeSerializer, 
     RecipeListSerializer,
@@ -367,12 +368,33 @@ def register_user(request):
 @permission_classes([AllowAny])
 def login_user(request):
     """Login a user and return JWT tokens."""
+    print("Login attempt received:", request.data)  # Debug log
+    
     serializer = UserLoginSerializer(data=request.data)
     if serializer.is_valid():
-        user = authenticate(
-            username=serializer.validated_data['username'],
-            password=serializer.validated_data['password']
-        )
+        username_or_email = serializer.validated_data['username']
+        password = serializer.validated_data['password']
+        
+        print(f"Attempting login with: {username_or_email}")  # Debug log
+        
+        # Check if input is an email
+        if '@' in username_or_email:
+            try:
+                user = CustomUser.objects.get(email=username_or_email)
+                username = user.username
+                print(f"Found user by email: {username}")  # Debug log
+            except CustomUser.DoesNotExist:
+                print(f"No user found with email: {username_or_email}")  # Debug log
+                return Response({
+                    'error': 'Invalid credentials'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            username = username_or_email
+            print(f"Using username directly: {username}")  # Debug log
+        
+        user = authenticate(username=username, password=password)
+        print(f"Authentication result: {user}")  # Debug log
+        
         if user:
             refresh = RefreshToken.for_user(user)
             profile = user.profile

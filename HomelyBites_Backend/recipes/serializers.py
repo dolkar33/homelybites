@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import Recipe, Category, UserProfile, CustomUser, UserRecipeInteraction, ContactMessage
+from .models import Recipe, Category, UserProfile, CustomUser, UserRecipeInteraction, ContactMessage
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
