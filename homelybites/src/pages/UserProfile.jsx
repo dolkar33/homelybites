@@ -61,7 +61,7 @@ const UserProfile = () => {
     { label: "Non-Vegetarian", value: "non-vegetarian" },
     { label: "Keto", value: "keto" },
     { label: "Gluten Free", value: "gluten-free" },
-    { label: "No Dietary Plan", value: "no-dietary-plan" }
+    { label: "Vegan", value: "vegan" }
   ];
 
   const allergyOptions = [

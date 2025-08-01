@@ -411,7 +411,7 @@ const RecipeSearchPage = () => {
                   />
                   <button
                     onClick={addIngredient}
-                    className="px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base #accent text-white rounded-lg shadow-md hover:bg-red-500 hover:shadow-lg transition-all font-medium"
+                    className="px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base bg-accent text-white rounded-lg shadow-md hover:bg-red-400 hover:shadow-lg transition-all font-medium"
                   >
                     Add
                   </button>

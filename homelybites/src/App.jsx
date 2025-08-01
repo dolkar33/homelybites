@@ -12,14 +12,11 @@ import CommunityPage from "./pages/CommunityPage";
 import Post from "./pages/Post";
 import RecipeSearchPage from "./pages/SearchPage";
 import RecipePage from "./pages/RecipePage";
-<<<<<<< HEAD
-import RecentRecipes from "./pages/RecentRecipes";
-import UserPage from "./pages/UserPage";
-=======
+import FavPage from "./pages/FavPage";
+
 import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecentRecipes from "./pages/RecentRecipes";
-import FavPage from "./pages/FavPage";
->>>>>>> dolumerge
+import UserPage from "./pages/UserPage";
 
 // Custom hook to check authentication status
 const useAuth = () => {
@@ -113,7 +110,11 @@ const SignUpRoute = () => {
 
 function App() {
   return (
-    <Routes>
+
+
+
+
+<Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/userquestion" element={<UserQuestion />} />
@@ -128,14 +129,9 @@ function App() {
       <Route path="/recipepage" element={<RecipePage />} />
       <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
       <Route path="/recent" element={<RecentRecipes />} />
-<<<<<<< HEAD
-      <Route path="/userpage" element={<UserPage />} />
-  
-=======
       <Route path="/FavPage" element={<FavPage />} />
-      {/* Redirect any unmatched routes to the root path */}
->>>>>>> dolumerge
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="/userpage" element={<UserPage />} />
+      <Route path="" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
