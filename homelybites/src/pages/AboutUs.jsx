@@ -85,12 +85,7 @@ const AboutUs = () => {
                 Community
               </h2>
               <p className="text-gray-700 font-inter leading-relaxed text-sm sm:text-base lg:text-lg xl:text-xl text-justify selection:bg-accent selection:text-white max-w-prose mx-auto lg:mx-0">
-                Lorem Ipsum is simply dummy text of the printing and typesetting
-                industry. Lorem Ipsum has been the industry's standard dummy
-                text ever since the 1500s, when an unknown printer took a galley
-                of type and scrambled it to make a type specimen book. It has
-                survived not only five centuries, but also the leap into
-                electronic typesetting, remaining essentially unchanged.
+                HomelyBites is more than just a recipe platform — it's a vibrant and supportive community of food lovers, home cooks, and culinary explorers. Our users connect to share ideas, tips, personal stories, and unique recipes that reflect cultures, lifestyles, and creativity from around the world. Whether you're sharing your grandmother’s special dish or seeking advice for your next meal, our platform is built to foster genuine connections around food. Together, we make cooking not just easier, but more meaningful.
               </p>
             </div>
           </div>

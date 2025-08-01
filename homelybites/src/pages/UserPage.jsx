@@ -9,7 +9,7 @@ import {
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 
-const CommunityPage = () => {
+const UserPage = () => {
   // Mock data - easy to replace with API calls later
   const [posts, setPosts] = useState([
     {
@@ -83,8 +83,8 @@ const CommunityPage = () => {
 
   // User profile data - easy to replace with API call
   const currentUser = {
-    name: "Jennie Kim",
-    avatar: "/Images/CommunityPage/jennie.jpg",
+    name: "Soobin Choi",
+    avatar: "/Images/CommunityPage/soobin.jpg",
     posts: 42,
     following: 42,
     followers: 42,
@@ -96,15 +96,15 @@ const CommunityPage = () => {
   const suggestedPeople = [
     {
       id: 1,
-      name: "Soobin",
-      username: "@soobinchoi",
-      avatar: "/Images/CommunityPage/soobin.jpg",
+      name: "Jennie",
+      username: "@jenniekim",
+      avatar: "/Images/CommunityPage/jennie.jpg",
     },
     {
       id: 2,
-      name: "Soobin",
-      username: "@soobinchoi",
-      avatar: "/Images/CommunityPage/soobin.jpg",
+      name: "Jennie",
+      username: "@jenniekim",
+      avatar: "/Images/CommunityPage/jennie.jpg",
     },
     {
       id: 3,
@@ -195,7 +195,6 @@ const CommunityPage = () => {
       <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto">
          
-
           <div className="grid grid-cols-12 gap-4 sm:gap-6">
             {/* Left Sidebar - Fixed */}
             <div className="col-span-3 space-y-4 sm:space-y-6">
@@ -312,35 +311,10 @@ const CommunityPage = () => {
               </div>
             </div>
 
-            {/* Main Content - Natural height without fixed height constraint */}
+            {/* Main Content - Expanded to take more space */}
             <div className="col-span-6">
               <div className="space-y-4 sm:space-y-6">
-                {/* Story Section */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <div className="flex items-center bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md">
-                      <img
-                        src={currentUser.avatar}
-                        alt="User"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <span className="text-sm sm:text-base text-gray-600 flex-1 font-medium">
-                      Let's Swap Stories, Recipes & Smiles
-                    </span>
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <button
-                        onClick={handleCreatePost}
-                        className="p-1.5 sm:p-2 rounded-full hover:bg-gray-200 transition-colors"
-                        title="Create Post"
-                      >
-                        <Image className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Posts Feed */}
+                {/* Posts Feed - Now starts immediately without the story section */}
                 {posts.map((post) => (
                   <div
                     key={post.id}
@@ -440,28 +414,19 @@ const CommunityPage = () => {
 
             {/* Right Sidebar - Fixed */}
             <div className="col-span-3">
-              <div className="sticky top-6 space-y-4 sm:space-y-6 h-screen overflow-y-auto pr-4 -mr-4"
-                style={{
-                  scrollbarWidth: 'none', /* Firefox */
-                  msOverflowStyle: 'none', /* IE and Edge */
-                }}
-              >
-                <style jsx>{`
-                  div::-webkit-scrollbar {
-                    display: none; /* Safari and Chrome */
-                  }
-                `}</style>
-                
+              <div className="sticky top-6 space-y-4 sm:space-y-6">
                 {/* Search Bar */}
-                <div className="relative">
-                  <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search......"
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-100 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base bg-transparent"
-                  />
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+                  <div className="relative">
+                    <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5 z-10" />
+                    <input
+                      type="text"
+                      placeholder="Search......"
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-100 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base bg-white"
+                    />
+                  </div>
                 </div>
 
                 {/* Suggested People - Enhanced with full clickable area */}
@@ -531,4 +496,4 @@ const CommunityPage = () => {
   );
 };
 
-export default CommunityPage;
+export default UserPage;
