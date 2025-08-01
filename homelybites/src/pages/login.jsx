@@ -6,13 +6,19 @@ import * as yup from "yup";
 import { Toaster } from "react-hot-toast";
 import axiosInstance from "../config/axiosInstance";
 import { customToast } from "./toast";
-import axios from "axios";
+
 // Yup validation schema
 const validationSchema = yup.object({
-  email: yup
+  username: yup
     .string()
-    .required("Email is required")
-    .email("Enter a valid email address"),
+    .required("Username is required")
+    .min(3, "Username must be at least 3 characters")
+    .max(20, "Username must not exceed 20 characters")
+    .matches(
+      /^[a-zA-Z0-9_]+$/,
+      "Username can only contain letters, numbers, and underscores"
+    ),
+
   password: yup
     .string()
     .required("Password is required")
@@ -28,11 +34,12 @@ const Login = () => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    clearErrors,
     reset,
   } = useForm({
     resolver: yupResolver(validationSchema),
     defaultValues: {
-      email: "",
+      username: "",
       password: "",
     },
   });
@@ -59,10 +66,8 @@ const Login = () => {
     setGeneralError("");
 
     try {
-      // Check your backend API documentation for the correct endpoint
-      // Common endpoints: /api/auth/login/, /auth/login/, /api/login/, /login/
-      const response = await axios.post("http://localhost:8000/api/login/", {
-        username: data.email,
+      const response = await axiosInstance.post("api/login/", {
+        username: data.username,
         password: data.password,
       });
 
@@ -80,24 +85,23 @@ const Login = () => {
         localStorage.setItem("authToken", response.data.access);
         localStorage.setItem("refreshToken", response.data.refresh);
 
-                
-                reset();
-                if (userData.has_completed_questions) {
-                    customToast.success('Welcome back! Redirecting to Home...');
-                    setTimeout(() => {
-                        navigate('/Home');
-                    }, 1500);
-                } else {
-                    customToast.success('Login successful! Redirecting to your questions...');
-                    setTimeout(() => {
-                    
-                    navigate('/userquestion');
-                }, 1500);
-                };
-                
-            }
-        } catch (error) {
-            console.error('Login error:', error);
+        reset();
+        if (userData.has_completed_questions) {
+          customToast.success("Welcome back! Redirecting to Home...");
+          setTimeout(() => {
+            navigate("/Home");
+          }, 1500);
+        } else {
+          customToast.success(
+            "Login successful! Redirecting to your questions..."
+          );
+          setTimeout(() => {
+            navigate("/userquestion");
+          }, 1500);
+        }
+      }
+    } catch (error) {
+      console.error("Login error:", error);
 
       if (error.response) {
         if (error.response.status === 401) {
@@ -132,58 +136,62 @@ const Login = () => {
   };
 
   return (
-    <div className="flex h-screen w-full">
+    <div className="flex h-screen w-full bg-white relative overflow-hidden">
       <Toaster />
-      {/* Left Side: Login Form */}
-      <div className="w-full md:w-1/2 flex flex-col justify-center items-center bg-white px-8">
-        <div className="w-full max-w-md mx-auto flex flex-col items-center">
-          <img
-            src="/Images/logo/logo-fyp.svg"
-            alt="HomelyBites Logo"
-            className="w-24 h-24 mb-6"
-          />
-          <h2 className="text-2xl font-bold font-amaranth mb-8 text-gray-800 text-center">
-            Welcome, Login!
-          </h2>
+
+      <div className="w-full md:w-1/2 flex flex-col justify-start items-center pt-16 px-8 overflow-hidden">
+        <div className="w-full max-w-md">
+          <div className="flex flex-col items-center mb-8">
+            <img
+              src="/Images/logo/logo-fyp.svg"
+              alt="HomelyBites Logo"
+              className="w-28 h-28"
+            />
+            <h2 className="text-2xl font-bold mt-4 text-gray-800">
+              Welcome, Login!
+            </h2>
+          </div>
+
           {generalError && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg w-full text-center">
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
               {generalError}
             </div>
           )}
+
           <form onSubmit={handleSubmit(onSubmit)} className="w-full">
-            <div className="mb-4">
+            <div className="mb-6">
               <input
-                type="email"
-                placeholder="Email Address"
-                {...register("email", {
+                type="text"
+                placeholder="Username"
+                {...register("username", {
                   onChange: handleInputChange,
                 })}
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-1 focus:ring-accent text-base ${
-                  errors.email ? "border-red-400" : "border-gray-400"
+                className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 text-base ${
+                  errors.username ? "border-red-400" : "border-gray-400"
                 }`}
               />
-              {errors.email && (
+              {errors.username && (
                 <p className="mt-1 text-xs text-red-600">
-                  {errors.email.message}
+                  {errors.username.message}
                 </p>
               )}
             </div>
-            <div className="mb-2 relative">
+
+            <div className="mb-5 relative">
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter Password"
                 {...register("password", {
                   onChange: handleInputChange,
                 })}
-                className={`w-full px-4 py-3 pr-10 border rounded-lg focus:outline-none focus:ring-1 focus:ring-accent text-base ${
+                className={`w-full px-4 py-4 pr-12 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 text-base ${
                   errors.password ? "border-red-400" : "border-gray-400"
                 }`}
               />
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none"
-                tabIndex={-1}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
               >
                 {showPassword ? (
                   <svg
@@ -227,7 +235,8 @@ const Login = () => {
                 </p>
               )}
             </div>
-            <div className="text-right mb-6">
+
+            <div className="text-right mb-6 mt-3">
               <button
                 type="button"
                 onClick={handleForgotPassword}
@@ -236,33 +245,38 @@ const Login = () => {
                 Forgot Password?
               </button>
             </div>
+
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 text-white rounded-full hover:opacity-80 transition-colors focus:outline-none focus:ring-2 focus:ring-accent text-lg mb-4 bg-accent"
-             
+              style={{ backgroundColor: "#FC7D7D" }}
+              className="w-full py-4 text-white rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 hover:opacity-90 disabled:opacity-50 text-base font-medium"
             >
               {isSubmitting ? "Logging in..." : "Login"}
             </button>
           </form>
-          <div className="mt-2 text-center text-sm text-gray-600">
+
+          <div className="mt-6 text-center text-sm text-gray-600">
             Don't have an account?{" "}
             <button
               onClick={handleSignUp}
-              className="text-accent hover:opacity-80 font-medium"
+              style={{ color: "#FC7D7D" }}
+              className="hover:opacity-80 font-medium"
             >
-              SignUp Now
+              SignUp
             </button>
           </div>
         </div>
       </div>
-      {/* Right Side: Chef Illustration */}
-      <div className="hidden md:flex md:w-1/2 h-screen bg-[#FFD6D6] items-center justify-center relative">
-        <img
-          src="/src/img/chef.png"
-          alt="Chef Illustration"
-          className="w-full h-full object-cover"
-        />
+
+      <div className="hidden md:block md:w-1/2 bg-pink-200 overflow-hidden">
+        <div className="h-full flex items-center justify-center">
+          <img
+            src="/src/img/chef.png"
+            alt="Chef Illustration"
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
       </div>
     </div>
   );

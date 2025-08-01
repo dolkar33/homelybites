@@ -9,16 +9,16 @@ const AboutUs = () => {
       <Navbar />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 xl:py-20">
+      <main className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 xl:px-16 py-8 sm:py-12 lg:py-16 xl:py-20">
         {/* Our Missions Section */}
         <section className="mb-12 sm:mb-16 lg:mb-20 xl:mb-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 xl:gap-16 items-center">
-            {/* Text Content */}
-            <div className="order-2 lg:order-1 space-y-6 sm:space-y-8">
-              <h2 className="text-center text-2xl sm:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-accent font-inter leading-tight">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 xl:gap-12 items-center">
+            {/* Text Content - Now first in order */}
+            <div className="space-y-6 sm:space-y-8">
+              <h2 className="text-center lg:text-left text-2xl sm:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-accent font-inter leading-tight">
                 Our Missions
               </h2>
-              <p className="text-gray-700 font-inter leading-relaxed text-sm sm:text-base lg:text-lg xl:text-xl text-justify selection:bg-accent selection:text-white max-w-prose mx-auto lg:mx-0">
+              <p className="text-gray-700 font-inter leading-relaxed text-sm sm:text-base lg:text-lg xl:text-xl text-justify lg:text-left selection:bg-accent selection:text-white max-w-prose mx-auto lg:mx-0">
                 Our Mission is to provide a tailored recipes which is tasty,
                 healthy and also make people taste home wherever and whenever
                 they want. We not only aim to make people use home ingredients
@@ -29,8 +29,8 @@ const AboutUs = () => {
               </p>
             </div>
 
-            {/* Image */}
-            <div className="order-1 lg:order-2">
+            {/* Image - Now second in order */}
+            <div>
               <div className="relative bg-gray-200 rounded-xl lg:rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[3/2] lg:aspect-[4/3] shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02]">
                 <div className="absolute inset-0">
                   {/* Kitchen scene */}
