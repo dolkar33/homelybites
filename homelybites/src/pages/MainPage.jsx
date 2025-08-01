@@ -6,14 +6,7 @@ import CategoryButton from "../components/CategoryButton";
 import { recipeAPI } from "../services/api";
 import { Carousel, Row, Col } from "react-bootstrap";
 
-const categories = [
-  "breakfast",
-  "soup",
-  "lunch",
-  "dessert",
-  "salad",
-  "drink",
-];
+const categories = ["breakfast", "soup", "lunch", "dessert", "salad", "drink"];
 
 const MainPage = () => {
   const [activeCategory, setActiveCategory] = useState(categories[0]);
