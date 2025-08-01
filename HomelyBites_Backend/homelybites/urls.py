@@ -18,14 +18,24 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from recipes.views import ContactMessageViewSet
+
+router = DefaultRouter()
+router.register(r'contact-messages', ContactMessageViewSet, basename='contactmessage')
+
+from recipes.views import register_user
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('recipes.urls')),  # This will include all recipes URLs
+    path('api/', include(router.urls)),           # exposes /api/contact-messages/
+    path('api/', include('recipes.urls')),        # exposes /api/login/, /api/register/, etc.
+    path('api/community/', include('community.urls')),
+    path('api/recent-recipes/', include('recent_recipes.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

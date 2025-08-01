@@ -1,11 +1,15 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-const RecipeCard = ({ image, title, description }) => {
+const RecipeCard = ({ image, title, description, slug }) => {
   const navigate = useNavigate();
 
   const handleNavigateToRecipe = () => {
-    navigate('/recipepage');
+    if (slug) {
+      navigate(`/recipes/${slug}`);
+    } else {
+      navigate('/recipepage'); // fallback
+    }
   };
 
   return (

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage
 from django.contrib.admin.sites import NotRegistered
 
 # Unregister the default User model if it's already registered
@@ -57,3 +57,10 @@ class UserRecipeInteractionAdmin(admin.ModelAdmin):
     list_filter = ('interaction_type', 'timestamp')
     search_fields = ('user__username', 'recipe__title')
     readonly_fields = ('timestamp',)
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ('name', 'email', 'subject', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('name', 'email', 'subject', 'message')
+    readonly_fields = ('created_at',)

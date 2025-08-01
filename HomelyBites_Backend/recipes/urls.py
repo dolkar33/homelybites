@@ -6,11 +6,13 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import UserProfile, Recipe
 from .serializers import RecipeListSerializer, UserProfileSerializer
+from .views import RecipeViewSet, CategoryViewSet,UserProfileViewSet
+#from .views import UserProfileViewSet
 
 router = DefaultRouter()
-router.register(r'categories', views.CategoryViewSet)
-router.register(r'recipes', views.RecipeViewSet)
-router.register(r'user-profiles', views.UserProfileViewSet)
+router.register(r'recipes', RecipeViewSet, basename='recipe')
+router.register(r'categories', CategoryViewSet)
+router.register(r'user-profiles', UserProfileViewSet)#Views nikalera try gara paxi
 
 urlpatterns = [
     # Specific paths for function-based views

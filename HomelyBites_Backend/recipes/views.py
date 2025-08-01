@@ -6,7 +6,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
 from django.utils import timezone
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage
 from .serializers import (
     RecipeSerializer, 
     RecipeListSerializer,
@@ -14,6 +14,7 @@ from .serializers import (
     UserProfileSerializer,
     UserRecipeInteractionSerializer,
     UserSerializer,
+    ContactMessageSerializer,
     UserRegistrationSerializer,
     UserLoginSerializer,
     PasswordResetSerializer,
@@ -174,6 +175,52 @@ class RecipeViewSet(viewsets.ModelViewSet):
         
         serializer = UserRecipeInteractionSerializer(interaction)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def recent(self, request):
+        """
+        Get recently viewed recipes for the authenticated user.
+        For non-authenticated users, return recently added recipes.
+        """
+        if request.user.is_authenticated:
+            # Get user's recently viewed recipes
+            try:
+                user_profile = UserProfile.objects.get(user=request.user)
+                recent_recipes = Recipe.objects.filter(
+                    user_interactions__user=request.user
+                ).order_by('-user_interactions__viewed_at')[:8]
+                
+                # If we have less than 8 recent recipes, add recently added recipes
+                if recent_recipes.count() < 8:
+                    recent_added = Recipe.objects.order_by('-created_at')[:8]
+                    # Combine the two querysets without duplicates
+                    recent_recipes = (recent_recipes | recent_added).distinct()[:8]
+            except UserProfile.DoesNotExist:
+                # If user profile doesn't exist, return recently added recipes
+                recent_recipes = Recipe.objects.order_by('-created_at')[:8]
+        else:
+            # For non-authenticated users, return recently added recipes
+            recent_recipes = Recipe.objects.order_by('-created_at')[:8]
+            
+        serializer = RecipeListSerializer(recent_recipes, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def track_view(self, request, pk=None):
+        """
+        Track when a user views a recipe.
+        """
+        recipe = self.get_object()
+        
+        if request.user.is_authenticated:
+            # Create or update the user interaction
+            UserInteraction.objects.update_or_create(
+                user=request.user,
+                recipe=recipe,
+                defaults={'viewed_at': timezone.now()}
+            )
+        
+        return Response({'status': 'success'})
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
@@ -346,6 +393,19 @@ def login_user(request):
             'error': 'Invalid credentials'
         }, status=status.HTTP_401_UNAUTHORIZED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class ContactMessageViewSet(viewsets.ModelViewSet):
+    queryset = ContactMessage.objects.all()
+    serializer_class = ContactMessageSerializer
+    permission_classes = [AllowAny]  # Allow anyone to submit contact messages
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(
+            {"message": "Thank you for your message. We will get back to you soon!"},
+            status=status.HTTP_201_CREATED
+        )
 
 def homepage(request):
     """Render the homepage."""

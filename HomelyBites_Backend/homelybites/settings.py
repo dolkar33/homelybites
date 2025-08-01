@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-q2d%d=5%yqn3yz*t1gunoknm^5fx2p)q!bs2dv6xfl#s@44rep
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'recipes',
+    'community',
+    'recent_recipes',
 ]
 
 MIDDLEWARE = [
@@ -160,15 +162,35 @@ SIMPLE_JWT = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # For development only, set specific origins in production
-CORS_ALLOW_CREDENTIALS = True
-
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Your React app's URL
+    "http://localhost:5173",  # Vite default port
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",  
+    "http://127.0.0.1:5174",  
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
 # Spoonacular API settings
-SPOONACULAR_API_KEY = '28757902a1544a44b3466566d399895d'
+SPOONACULAR_API_KEY = 'b4b8be0a733f497789c7bcd463aa556e'
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -180,4 +202,4 @@ EMAIL_HOST_PASSWORD = 'your_app_password'
 DEFAULT_FROM_EMAIL = 'your_email@gmail.com'
 
 # Frontend URL for password reset
-FRONTEND_URL = 'http://localhost:5173'  # Update to match your frontend URL
+FRONTEND_URL = 'http://localhost:5174'  # Update to match your frontend URL
