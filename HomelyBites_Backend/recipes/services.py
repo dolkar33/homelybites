@@ -60,42 +60,75 @@ class SpoonacularService:
             # Handle API errors
             return {"error": f"API Error: {response.status_code}", "message": response.text}
     
-    def import_recipe_to_db(self, recipe_data):
+    def get_nutrition_widget(self, recipe_id):
         """
-        Import a recipe from Spoonacular API to the database
+        Get nutrition widget data for a recipe by ID
         """
-        # Check if recipe already exists
-        if Recipe.objects.filter(spoonacular_id=recipe_data['id']).exists():
-            return Recipe.objects.get(spoonacular_id=recipe_data['id'])
-        
-        # Create recipe
-        recipe = Recipe(
-            title=recipe_data['title'],
-            slug=slugify(recipe_data['title']),
-            spoonacular_id=recipe_data['id'],
-            image_url=recipe_data.get('image', ''),
-            prep_time=recipe_data.get('preparationMinutes', recipe_data.get('readyInMinutes', 30)),
-            cook_time=recipe_data.get('cookingMinutes', 30),
-            difficulty='medium',  # Default value, adjust based on your logic
-        )
-        
-        # Process ingredients
-        ingredients_list = []
-        for ingredient in recipe_data.get('extendedIngredients', []):
-            ingredients_list.append(f"{ingredient.get('amount', '')} {ingredient.get('unit', '')} {ingredient.get('name', '')}")
-        
-        recipe.ingredients = "\n".join(ingredients_list)
-        
-        # Process instructions
-        if 'analyzedInstructions' in recipe_data and recipe_data['analyzedInstructions']:
-            steps = recipe_data['analyzedInstructions'][0].get('steps', [])
-            instructions_list = [step['step'] for step in steps]
-            recipe.instructions = "\n".join(instructions_list)
+        endpoint = f"{self.BASE_URL}/recipes/{recipe_id}/nutritionWidget.json"
+        params = {"apiKey": self.api_key}
+        response = requests.get(endpoint, params=params)
+        if response.status_code == 200:
+            return response.json()
         else:
-            recipe.instructions = recipe_data.get('instructions', '')
-        
-        # Process nutritional information
-        nutrition_data = recipe_data.get('nutrition', {}).get('nutrients', [])
+            return None  # or handle error as needed
+
+    def import_recipe_to_db(self, recipe_data):
+
+        recipe_id = recipe_data['id']
+        # Check if recipe already exists
+        if Recipe.objects.filter(spoonacular_id=recipe_id).exists():
+            return Recipe.objects.get(spoonacular_id=recipe_id)
+
+        # Fetch full recipe details
+        details = self.get_recipe_by_id(recipe_id)
+        if not details or 'error' in details:
+            print(f"Error fetching details for recipe {recipe_id}: {details.get('message', 'Unknown error') if details else 'No details'}")
+            return None
+
+        # Fetch nutrition widget (for more user-friendly nutrition info)
+        nutrition_widget = self.get_nutrition_widget(recipe_id)
+
+        # DEBUG: Print details and nutrition_widget for troubleshooting
+        import pprint
+        print("=== Spoonacular Details ===")
+        pprint.pprint(details)
+        print("=== Nutrition Widget ===")
+        pprint.pprint(nutrition_widget)
+
+        # Create recipe instance
+        recipe = Recipe(
+            title=details['title'],
+            slug=slugify(details['title']),
+            spoonacular_id=recipe_id,
+            image_url=details.get('image', ''),
+            prep_time=details.get('preparationMinutes', details.get('readyInMinutes', 30)),
+            cook_time=details.get('cookingMinutes', 30),
+            difficulty='medium',  # You can adjust this logic
+        )
+
+        # Ingredients
+        ingredients_list = []
+        for ingredient in details.get('extendedIngredients', []):
+            ingredients_list.append(f"{ingredient.get('amount', '')} {ingredient.get('unit', '')} {ingredient.get('name', '')}")
+        recipe.ingredients = "\n".join(ingredients_list)
+
+        # Instructions (robust, multi-section, fallback)
+        instructions_text = ''
+        if 'analyzedInstructions' in details and details['analyzedInstructions']:
+            instructions_sections = []
+            for section in details['analyzedInstructions']:
+                steps = section.get('steps', [])
+                if steps:
+                    instructions_sections.extend([step.get('step', '') for step in steps if step.get('step')])
+            instructions_text = "\n".join(instructions_sections)
+        if not instructions_text:
+            instructions_text = details.get('instructions', '') or recipe_data.get('instructions', '')
+        recipe.instructions = instructions_text
+
+        # Nutrition (from details['nutrition'] if present, else from widget, fallback to recipe_data)
+        nutrition_data = details.get('nutrition', {}).get('nutrients', [])
+        if not nutrition_data:
+            nutrition_data = recipe_data.get('nutrition', {}).get('nutrients', [])
         for nutrient in nutrition_data:
             if nutrient.get('name') == 'Calories':
                 recipe.calories = f"{nutrient.get('amount', '')} {nutrient.get('unit', '')}"
@@ -107,21 +140,29 @@ class SpoonacularService:
                 recipe.protein = f"{nutrient.get('amount', '')} {nutrient.get('unit', '')}"
             elif nutrient.get('name') == 'Carbohydrates':
                 recipe.carbohydrates = f"{nutrient.get('amount', '')} {nutrient.get('unit', '')}"
-        
+
+        # If widget data is available, optionally overwrite for user-friendly values
+        if nutrition_widget:
+            recipe.calories = nutrition_widget.get('calories', recipe.calories)
+            recipe.fat = nutrition_widget.get('fat', recipe.fat)
+            recipe.sugar = nutrition_widget.get('sugar', recipe.sugar)
+            recipe.protein = nutrition_widget.get('protein', recipe.protein)
+            recipe.carbohydrates = nutrition_widget.get('carbs', recipe.carbohydrates)
+
         recipe.save()
-        
-        # Process categories
-        if 'dishTypes' in recipe_data:
-            for dish_type in recipe_data['dishTypes']:
+
+        # Categories
+        if 'dishTypes' in details:
+            for dish_type in details['dishTypes']:
                 category_slug = slugify(dish_type)
                 category, created = Category.objects.get_or_create(
                     slug=category_slug,
                     defaults={'name': dish_type.title()}
                 )
                 recipe.categories.add(category)
-        
+
         return recipe
-    
+
     def import_random_recipes(self, number=10, tags=None):
         """
         Import random recipes from Spoonacular API

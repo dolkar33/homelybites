@@ -19,7 +19,10 @@ class RecipeListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Recipe
-        fields = ['id', 'title', 'slug', 'image_url', 'prep_time', 'cook_time', 'difficulty', 'categories']
+        fields = [
+    'id', 'title', 'slug', 'image_url', 'prep_time', 'cook_time', 'difficulty', 'categories',
+    'instructions', 'calories', 'fat', 'sugar', 'protein', 'carbohydrates'
+]
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
