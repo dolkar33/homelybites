@@ -16,7 +16,6 @@ import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecentRecipes from "./pages/RecentRecipes";
 import FavPage from "./pages/FavPage";
 
-
 // Custom hook to check authentication status
 const useAuth = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -25,13 +24,13 @@ const useAuth = () => {
   useEffect(() => {
     const checkAuthStatus = () => {
       try {
-        const currentUser = localStorage.getItem('currentUser');
+        const currentUser = localStorage.getItem("currentUser");
         if (currentUser) {
           const user = JSON.parse(currentUser);
           setIsLoggedIn(user.isLoggedIn === true);
         }
       } catch (error) {
-        console.error('Error checking auth status:', error);
+        console.error("Error checking auth status:", error);
         setIsLoggedIn(false);
       } finally {
         setIsLoading(false);
@@ -120,7 +119,7 @@ function App() {
       <Route path="/aboutus" element={<AboutUs />} />
       <Route path="/community" element={<CommunityPage />} />
       <Route path="/post" element={<Post />} />
-      <Route path="/recipe" element={<RecipeSearchPage/>} />
+      <Route path="/recipe" element={<RecipeSearchPage />} />
       <Route path="/recipepage" element={<RecipePage />} />
       <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
       <Route path="/recent" element={<RecentRecipes />} />
