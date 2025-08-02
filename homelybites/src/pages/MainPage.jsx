@@ -5,6 +5,7 @@ import RecipeCard from "../components/RecipeCard";
 import CategoryButton from "../components/CategoryButton";
 import { recipeAPI } from "../services/api";
 import { Carousel, Row, Col } from "react-bootstrap";
+import axios from "axios";
 
 const categories = ["breakfast", "soup", "lunch", "dessert", "salad", "drink"];
 
@@ -17,6 +18,7 @@ const MainPage = () => {
   const [hasMore, setHasMore] = useState(true);
   const [popularRecipes, setPopularRecipes] = useState([]);
   const [recentRecipes, setRecentRecipes] = useState([]);
+  const [recommendedRecipes, setRecommendedRecipes] = useState([]);
 
   // Fetch recipes by category with pagination
   useEffect(() => {
@@ -53,63 +55,21 @@ const MainPage = () => {
     fetchRecipes();
   }, [activeCategory, page]);
 
-  const recommendedRecipes = [
-    {
-      id: 1,
-      title: "Creamy Mushroom Pasta",
-      ingredients: ["pasta", "mushrooms", "cream", "garlic"],
-      instructions: "Boil pasta. Sauté mushrooms. Mix with cream and serve.",
-      spoonacular_id: "12345",
-      image: "/Images/Dummy/mushroom_pasta.jpg",
-      tags: ["pasta", "vegetarian", "quick"],
-    },
-    {
-      id: 2,
-      title: "Avocado Toast",
-      ingredients: ["bread", "avocado", "salt", "lemon"],
-      instructions:
-        "Toast bread. Smash avocado with salt and lemon. Spread and serve.",
-      spoonacular_id: "67890",
-      image: "/Images/Dummy/avocado_toast.jpg",
-      tags: ["breakfast", "healthy", "vegan"],
-    },
-    {
-      id: 3,
-      title: "Berry Smoothie",
-      ingredients: ["berries", "banana", "yogurt", "honey"],
-      instructions: "Blend all ingredients until smooth. Serve chilled.",
-      spoonacular_id: "54321",
-      image: "/Images/Dummy/berry_smoothie.jpg",
-      tags: ["drink", "healthy", "quick"],
-    },
-    {
-      id: 4,
-      title: "Chicken Stir Fry",
-      ingredients: ["chicken", "veggies", "soy sauce", "garlic"],
-      instructions:
-        "Stir fry chicken and vegetables. Add soy sauce. Cook and serve.",
-      spoonacular_id: "98765",
-      image: "/Images/Dummy/chicken_stir_fry.jpg",
-      tags: ["lunch", "protein", "asian"],
-    },
-  ];
-
-  // Fetch popular recipes
   useEffect(() => {
-    const fetchPopularRecipes = async () => {
+    const fetchRecommendedRecipes = async () => {
       try {
-        const response = await recipeAPI.getRecipes({
-          sort: "popular",
-          limit: 4,
-        });
-        setPopularRecipes(response.data.results || []);
-      } catch (err) {
-        console.error("Error fetching popular recipes:", err);
+        const response = await axios.get(
+          "http://localhost:8000/api/recommendations/hybrid/"
+        );
+        setRecommendedRecipes(response.data);
+      } catch (error) {
+        console.error("Error fetching recommended recipes:", error);
       }
     };
 
-    fetchPopularRecipes();
+    fetchRecommendedRecipes();
   }, []);
+  // Fetch popular recipes
 
   // Fetch recent recipes for "What others are cooking" section
   useEffect(() => {
@@ -284,15 +244,18 @@ const MainPage = () => {
                         >
                           <RecipeCard
                             key={recipe.id}
-                            image={recipe.image}
+                            image={recipe.image_url || "/Images/default.jpg"}
                             title={recipe.title}
-                            description={recipe.instructions}
-                            slug={recipe.title
-                              .toLowerCase()
-                              .replace(/\s+/g, "-")}
+                            description={
+                              recipe.instructions || "No instructions available"
+                            }
+                            slug={
+                              recipe.slug ||
+                              recipe.title.toLowerCase().replace(/\s+/g, "-")
+                            }
                             difficulty={"Easy"}
-                            prepTime={10}
-                            cookTime={15}
+                            prepTime={recipe.prep_time || 10}
+                            cookTime={recipe.cook_time || 15}
                           />
                         </Col>
                       ))}
@@ -303,12 +266,6 @@ const MainPage = () => {
           </div>
 
           {/* Popular Recipes */}
-          <div className="mt-[6vh]">
-            <h2 className="text-2xl md:text-3xl font-bold mb-[2vh] text-center md:text-left">
-              Popular Recipes
-            </h2>
-            {renderRecipeCards(popularRecipes)}
-          </div>
 
           {/* What others are cooking */}
           <div className="mt-[6vh] mb-[6vh]">
