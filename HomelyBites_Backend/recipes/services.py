@@ -109,8 +109,11 @@ class SpoonacularService:
         # Ingredients
         ingredients_list = []
         for ingredient in details.get('extendedIngredients', []):
-            ingredients_list.append(f"{ingredient.get('amount', '')} {ingredient.get('unit', '')} {ingredient.get('name', '')}")
+            ingredients_list.append(
+                f"{ingredient.get('amount', '')} {ingredient.get('unit', '')} {ingredient.get('name', '')}"
+            )
         recipe.ingredients = "\n".join(ingredients_list)
+
 
         # Instructions (robust, multi-section, fallback)
         instructions_text = ''

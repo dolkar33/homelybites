@@ -22,7 +22,7 @@ class Recipe(models.Model):
     
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
-    ingredients = models.TextField()
+    ingredients = models.TextField(null=True, blank=True)
     instructions = models.TextField()
     prep_time = models.IntegerField(help_text="Preparation time in minutes", null=True, blank=True)
     cook_time = models.IntegerField(help_text="Cooking time in minutes", null=True, blank=True)
