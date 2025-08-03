@@ -36,7 +36,7 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.username
     
     def get_avatar(self, obj):
-        """Return full URL for profile picture"""
+        """Return full URL for profile picture or null if none exists"""
         if obj.profile_picture:
             request = self.context.get('request')
             if request:
@@ -57,7 +57,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get_is_following(self, obj):
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
             return Follow.objects.filter(follower=request.user, following=obj).exists()
         return False
 
@@ -92,14 +92,14 @@ class PostSerializer(serializers.ModelSerializer):
     def get_isLiked(self, obj):
         """Return if current user liked this post"""
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
             return Like.objects.filter(user=request.user, post=obj).exists()
         return False
     
     def get_isSaved(self, obj):
         """Return if current user saved this post"""
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
             return SavedPost.objects.filter(user=request.user, post=obj).exists()
         return False
     

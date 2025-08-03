@@ -9,7 +9,7 @@ from .views import (
 router = DefaultRouter()
 router.register(r'posts', PostViewSet, basename='post')
 router.register(r'hashtags', TagViewSet, basename='hashtag')
-router.register(r'users', UserViewSet, basename='user')
+router.register(r'community-users', UserViewSet, basename='community-user')
 router.register(r'follows', FollowViewSet, basename='follow')
 router.register(r'suggestions', SuggestedUserViewSet, basename='suggestion')
 
