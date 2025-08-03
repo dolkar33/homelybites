@@ -777,7 +777,10 @@ def update_user_profile(request):
                 return Response({'error': 'Image size must be less than 5MB'}, status=status.HTTP_400_BAD_REQUEST)
             if not image.content_type.startswith('image/'):
                 return Response({'error': 'File must be an image'}, status=status.HTTP_400_BAD_REQUEST)
+            # Save to both UserProfile and CustomUser
             profile.profile_image = image
+            user.profile_picture = image  # This will save to the CustomUser model
+            user.save()
         profile.save()
         return Response({
             'user': {
