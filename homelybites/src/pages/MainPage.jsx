@@ -3,7 +3,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import RecipeCard from "../components/RecipeCard";
 import CategoryButton from "../components/CategoryButton";
-import { recipeAPI } from "../services/api";
+import { recipeAPI } from "../services/MainPageURL";
 import { Carousel, Row, Col } from "react-bootstrap";
 import axios from "axios";
 
@@ -24,7 +24,7 @@ const MainPage = () => {
     const fetchWhatOthersAreCooking = async () => {
       try {
         const response = await recipeAPI.getWhatOthersAreCooking();
-        setRecentRecipes((response.data || []).slice(0, 4)); // Optional: limit to 4
+        setRecentRecipes((response.data || []).slice(0, 8)); // Optional: limit to 4
       } catch (err) {
         console.error("Error fetching 'What others are cooking' recipes:", err);
       }
@@ -35,20 +35,20 @@ const MainPage = () => {
 
   // ? Recipes You Would Love ( AI PART Integration Needed )
 
-  useEffect(() => {
-    const fetchRecommendedRecipes = async () => {
-      try {
-        const response = await axios.get(
-          "http://localhost:8000/api/recommendations/hybrid/"
-        );
-        setRecommendedRecipes(response.data);
-      } catch (error) {
-        console.error("Error fetching recommended recipes:", error);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchRecommendedRecipes = async () => {
+  //     try {
+  //       const response = await axios.get(
+  //         "http://localhost:8000/api/recommendations/hybrid/"
+  //       );
+  //       setRecommendedRecipes(response.data);
+  //     } catch (error) {
+  //       console.error("Error fetching recommended recipes:", error);
+  //     }
+  //   };
 
-    fetchRecommendedRecipes();
-  }, []);
+  //   fetchRecommendedRecipes();
+  // }, []);
 
   const loadMore = () => {
     if (!loading && hasMore) {
@@ -182,8 +182,18 @@ const MainPage = () => {
           </div>
 
           {/* Recipes You Would Love */}
-
+          
           <div className="mt-[4vh] mb-[6vh]">
+  <h2 className="text-2xl md:text-3xl font-bold mb-[2vh] text-center md:text-left">
+    Recipes You Would Love
+  </h2>
+  <div className="bg-gray-100 text-gray-600 text-center py-6 rounded-lg">
+    AI-based recommendations coming soon...
+  </div>
+</div>
+
+        
+          {/* <div className="mt-[4vh] mb-[6vh]">
             <h2 className="text-2xl md:text-3xl font-bold mb-[2vh] text-center md:text-left">
               Recipes You Would Love
             </h2>
@@ -225,7 +235,7 @@ const MainPage = () => {
                   </Carousel.Item>
                 ))}
             </Carousel>
-          </div>
+          </div> */}
 
           {/* Popular Recipes */}
 
