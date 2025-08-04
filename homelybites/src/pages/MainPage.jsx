@@ -16,44 +16,24 @@ const MainPage = () => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [popularRecipes, setPopularRecipes] = useState([]);
   const [recentRecipes, setRecentRecipes] = useState([]);
   const [recommendedRecipes, setRecommendedRecipes] = useState([]);
 
-  // Fetch recipes by category with pagination
+  // WhatOthersAreCooking Fetching PART ( NEw logic )
   useEffect(() => {
-    const fetchRecipes = async () => {
+    const fetchWhatOthersAreCooking = async () => {
       try {
-        setLoading(true);
-        setError(null);
-
-        // For category-based filtering, we'll use the main recipes endpoint
-        // Note: Your backend might need to support category filtering
-        const response = await recipeAPI.getRecipes({
-          category: activeCategory,
-          page: page,
-          limit: 8,
-        });
-
-        if (page === 1) {
-          setRecipes(response.data.results || []);
-        } else {
-          setRecipes((prev) => [...prev, ...(response.data.results || [])]);
-        }
-
-        setHasMore(response.data.next !== null);
+        const response = await recipeAPI.getWhatOthersAreCooking();
+        setRecentRecipes((response.data || []).slice(0, 4)); // Optional: limit to 4
       } catch (err) {
-        setError(
-          err.message || "Failed to fetch recipes. Please try again later."
-        );
-        console.error("Error fetching recipes:", err);
-      } finally {
-        setLoading(false);
+        console.error("Error fetching 'What others are cooking' recipes:", err);
       }
-    };
+    };  
 
-    fetchRecipes();
-  }, [activeCategory, page]);
+    fetchWhatOthersAreCooking();
+  }, []);
+
+  // ? Recipes You Would Love ( AI PART Integration Needed )
 
   useEffect(() => {
     const fetchRecommendedRecipes = async () => {
@@ -68,24 +48,6 @@ const MainPage = () => {
     };
 
     fetchRecommendedRecipes();
-  }, []);
-  // Fetch popular recipes
-
-  // Fetch recent recipes for "What others are cooking" section
-  useEffect(() => {
-    const fetchRecentRecipes = async () => {
-      try {
-        const response = await recipeAPI.getRecipes({
-          sort: "recent",
-          limit: 4,
-        });
-        setRecentRecipes(response.data.results || []);
-      } catch (err) {
-        console.error("Error fetching recent recipes:", err);
-      }
-    };
-
-    fetchRecentRecipes();
   }, []);
 
   const loadMore = () => {
