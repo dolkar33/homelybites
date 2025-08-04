@@ -151,13 +151,33 @@ const RecipeSearchPage = () => {
   // Function to toggle favorites
   const toggleFavorite = (recipeId) => {
     const newFavorites = new Set(favorites);
+    const recipeToToggle = recipes.find((r) => r.id === recipeId);
+  
+    let favoriteDetails = JSON.parse(localStorage.getItem("favoriteRecipeDetails") || "[]");
+    let favoriteIds = JSON.parse(localStorage.getItem("favoriteRecipes") || "[]");
+  
     if (newFavorites.has(recipeId)) {
+      // Remove from favorites
       newFavorites.delete(recipeId);
+      favoriteDetails = favoriteDetails.filter((r) => r.id !== recipeId);
+      favoriteIds = favoriteIds.filter((id) => id !== recipeId);
     } else {
+      // Add to favorites
       newFavorites.add(recipeId);
+      if (recipeToToggle && !favoriteDetails.find((r) => r.id === recipeId)) {
+        favoriteDetails.push(recipeToToggle);
+      }
+      if (!favoriteIds.includes(recipeId)) {
+        favoriteIds.push(recipeId);
+      }
     }
+  
+    // Update states and localStorage
     setFavorites(newFavorites);
+    localStorage.setItem("favoriteRecipeDetails", JSON.stringify(favoriteDetails));
+    localStorage.setItem("favoriteRecipes", JSON.stringify(favoriteIds));
   };
+  
 
   // Function to handle search (connect to backend here)
   const handleSearch = async (ingredients = selectedIngredients) => {
@@ -264,6 +284,13 @@ const RecipeSearchPage = () => {
       sessionStorage.setItem("aleartShown", "true");
     }
   }, []);
+  
+  // Loads favorites from localStorage. 
+  useEffect(() => {
+    const savedFavorites = JSON.parse(localStorage.getItem("favoriteRecipes") || "[]");
+    setFavorites(new Set(savedFavorites));
+  }, []);
+  
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
