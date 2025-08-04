@@ -136,37 +136,39 @@ const Login = () => {
   };
 
   return (
-    <div className="flex h-screen w-full bg-white relative overflow-hidden">
+    <div className="flex min-h-screen w-full bg-white relative">
+      {/* Toast Container */}
       <Toaster />
 
-      <div className="w-full md:w-1/2 flex flex-col justify-start items-center pt-16 px-8 overflow-hidden">
-        <div className="w-full max-w-md">
-          <div className="flex flex-col items-center mb-8">
+      {/* Left side - Login Form */}
+      <div className="w-full md:w-1/2 flex flex-col justify-start pt-[5vh] sm:pt-[6vh] px-4 sm:px-6 md:px-8 h-[100vh]">
+        <div className="w-full max-w-md mx-auto">
+          <div className="flex flex-col items-center mb-[4vh] sm:mb-[5vh]">
             <img
               src="/Images/logo/logo-fyp.svg"
               alt="HomelyBites Logo"
-              className="w-28 h-28"
+              className="w-[12vh] h-[12vh] sm:w-[16vh] sm:h-[16vh]"
             />
-            <h2 className="text-2xl font-bold mt-4 text-gray-800">
+            <h2 className="text-xl sm:text-2xl font-bold mt-[2vh] sm:mt-[3vh] text-gray-800">
               Welcome, Login!
             </h2>
           </div>
 
           {generalError && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            <div className="mb-[2vh] p-3 bg-red-100 text-red-700 rounded-lg">
               {generalError}
             </div>
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="w-full">
-            <div className="mb-6">
+            <div className="mb-[3vh]">
               <input
                 type="text"
                 placeholder="Username"
                 {...register("username", {
                   onChange: handleInputChange,
                 })}
-                className={`w-full px-4 py-4 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 text-base ${
+                className={`w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent ${
                   errors.username ? "border-red-400" : "border-gray-400"
                 }`}
               />
@@ -177,14 +179,14 @@ const Login = () => {
               )}
             </div>
 
-            <div className="mb-5 relative">
+            <div className="mb-[2vh] relative">
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter Password"
                 {...register("password", {
                   onChange: handleInputChange,
                 })}
-                className={`w-full px-4 py-4 pr-12 border rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-300 text-base ${
+                className={`w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent ${
                   errors.password ? "border-red-400" : "border-gray-400"
                 }`}
               />
@@ -236,11 +238,11 @@ const Login = () => {
               )}
             </div>
 
-            <div className="text-right mb-6 mt-3">
+            <div className="text-right mb-6 mt-[1vh]">
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="text-xs sm:text-sm text-gray-500 hover:text-gray-700"
               >
                 Forgot Password?
               </button>
@@ -249,34 +251,32 @@ const Login = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              style={{ backgroundColor: "#FC7D7D" }}
-              className="w-full py-4 text-white rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 hover:opacity-90 disabled:opacity-50 text-base font-medium"
+              className="w-full py-[1.5vh] sm:py-[2vh] text-sm sm:text-base text-white rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 bg-accent"
             >
               {isSubmitting ? "Logging in..." : "Login"}
             </button>
-          </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
-            Don't have an account?{" "}
-            <button
-              onClick={handleSignUp}
-              style={{ color: "#FC7D7D" }}
-              className="hover:opacity-80 font-medium"
-            >
-              SignUp
-            </button>
-          </div>
+            <div className="mt-[3vh] text-center text-xs sm:text-sm text-greyy">
+              Don't have an account?{" "}
+              <button
+                type="button"
+                onClick={handleSignUp}
+                className="text-accent hover:opacity-80 font-medium"
+              >
+                SignUp
+              </button>
+            </div>
+          </form>
         </div>
       </div>
 
-      <div className="hidden md:block md:w-1/2 bg-pink-200 overflow-hidden">
-        <div className="h-full flex items-center justify-center">
-          <img
-            src="/src/img/chef.png"
-            alt="Chef Illustration"
-            className="max-w-full max-h-full object-contain"
-          />
-        </div>
+      {/* Right side - Image */}
+      <div className="hidden md:flex md:w-1/2 min-h-screen bg-accent items-center justify-center relative">
+        <img
+          src="/src/img/chef.png"
+          alt="Chef Illustration"
+          className="w-full h-full object-cover"
+        />
       </div>
     </div>
   );
