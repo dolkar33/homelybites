@@ -3,6 +3,16 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import FileExtensionValidator
 from django.utils.translation import gettext_lazy as _
 
+class Cuisine(models.Model):
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name_plural = "Cuisines"
+
 class Category(models.Model):
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
@@ -19,10 +29,11 @@ class Recipe(models.Model):
         ('medium', 'Medium'),
         ('hard', 'Hard'),
     ]
+    cuisines = models.ManyToManyField('Cuisine', related_name='recipes', blank=True)
     
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
-    ingredients = models.TextField()
+    ingredients = models.TextField(null=True, blank=True)
     instructions = models.TextField()
     prep_time = models.IntegerField(help_text="Preparation time in minutes", null=True, blank=True)
     cook_time = models.IntegerField(help_text="Cooking time in minutes", null=True, blank=True)
@@ -46,6 +57,12 @@ class Recipe(models.Model):
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
     password_reset_token = models.CharField(max_length=100, null=True, blank=True)
+    profile_picture = models.ImageField(upload_to='profile_images/', null=True, blank=True)
+    bio = models.TextField(blank=True)
+    posts_count = models.IntegerField(default=0)
+    following_count = models.IntegerField(default=0)
+    followers_count = models.IntegerField(default=0)
+    is_verified = models.BooleanField(default=False)
 
     class Meta:
         app_label = 'recipes'

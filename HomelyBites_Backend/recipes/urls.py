@@ -8,12 +8,13 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import UserProfile, Recipe
 from .serializers import RecipeListSerializer, UserProfileSerializer
-from .views import RecipeViewSet, CategoryViewSet,UserProfileViewSet
+from .views import RecipeViewSet, CategoryViewSet, UserProfileViewSet, CuisineViewSet
 #from .views import UserProfileViewSet
 
 router = DefaultRouter()
 router.register(r'recipes', RecipeViewSet, basename='recipe')
 router.register(r'categories', CategoryViewSet)
+router.register(r'cuisines', CuisineViewSet)
 router.register(r'user-profiles', UserProfileViewSet)#Views nikalera try gara paxi
 
 urlpatterns = [
@@ -25,6 +26,7 @@ urlpatterns = [
     path('recommendations/', views.recommend_recipes, name='recommend_recipes'),
     path('search/', views.search_recipes, name='search_recipes'),
     path('import_from_spoonacular/', views.import_from_spoonacular, name='import_from_spoonacular'),
+    path('import-cuisines/', views.import_cuisines_from_spoonacular, name='import_cuisines_from_spoonacular'),
     path('password-reset/', views.password_reset_request, name='password_reset_request'),
     path('password-reset-confirm/', views.password_reset_confirm, name='password_reset_confirm'),
     path('change-password/', views.change_password, name='change_password'),

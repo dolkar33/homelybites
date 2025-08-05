@@ -5,9 +5,26 @@ from rest_framework import viewsets, status, generics, filters, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
+from .services import SpoonacularService
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def import_cuisines_from_spoonacular(request):
+    """
+    Fetch recipes from Spoonacular and import unique cuisines.
+    """
+    service = SpoonacularService()
+    number = int(request.data.get('number', 50))
+    # Fetch random recipes (or use search)
+    result = service.search_recipes(number=number)
+    recipes = result.get('results', [])
+    cuisines_added = service.import_cuisines_from_recipes(recipes)
+    return Response({
+        "added": cuisines_added,
+        "count": len(cuisines_added)
+    })
 from django.utils import timezone
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage
+from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage, Cuisine
 from .serializers import (
     RecipeSerializer, 
     RecipeListSerializer,
@@ -20,7 +37,8 @@ from .serializers import (
     UserLoginSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
-    PasswordChangeSerializer
+    PasswordChangeSerializer,
+    CuisineSerializer
 )
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -31,6 +49,11 @@ from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.contrib.auth import get_user_model
+
+class CuisineViewSet(viewsets.ModelViewSet):
+    queryset = Cuisine.objects.all()
+    serializer_class = CuisineSerializer
+    lookup_field = 'slug'
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -68,6 +91,19 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if max_prep_time:
             queryset = queryset.filter(prep_time__lte=int(max_prep_time))
         
+        # Filter by cuisine if provided
+        cuisine = self.request.query_params.get('cuisine', None)
+        if cuisine:
+            queryset = queryset.filter(cuisines__slug=cuisine)
+
+        # Filter by calories if provided
+        min_calories = self.request.query_params.get('min_calories', None)
+        max_calories = self.request.query_params.get('max_calories', None)
+        if min_calories is not None:
+            queryset = queryset.filter(calories__isnull=False).extra(where=["CAST(calories as INTEGER) >= %s"], params=[int(min_calories)])
+        if max_calories is not None:
+            queryset = queryset.filter(calories__isnull=False).extra(where=["CAST(calories as INTEGER) <= %s"], params=[int(max_calories)])
+
         return queryset
     
     @action(detail=False, methods=['get'])
@@ -799,7 +835,10 @@ def update_user_profile(request):
                 return Response({'error': 'Image size must be less than 5MB'}, status=status.HTTP_400_BAD_REQUEST)
             if not image.content_type.startswith('image/'):
                 return Response({'error': 'File must be an image'}, status=status.HTTP_400_BAD_REQUEST)
+            # Save to both UserProfile and CustomUser
             profile.profile_image = image
+            user.profile_picture = image  # This will save to the CustomUser model
+            user.save()
         profile.save()
         return Response({
             'user': {
