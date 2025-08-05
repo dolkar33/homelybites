@@ -3,6 +3,16 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import FileExtensionValidator
 from django.utils.translation import gettext_lazy as _
 
+class Cuisine(models.Model):
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name_plural = "Cuisines"
+
 class Category(models.Model):
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
@@ -19,6 +29,7 @@ class Recipe(models.Model):
         ('medium', 'Medium'),
         ('hard', 'Hard'),
     ]
+    cuisines = models.ManyToManyField('Cuisine', related_name='recipes', blank=True)
     
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
