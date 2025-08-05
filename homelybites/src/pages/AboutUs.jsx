@@ -52,8 +52,8 @@ const AboutUs = () => {
                   </div>
 
                   {/* Overlay element */}
-                  <div className="absolute top-3 right-3 sm:top-4 sm:right-4 lg:top-6 lg:right-6 bg-white/95 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-4 shadow-lg transform hover:scale-105 transition-all duration-300">
-                    <div className="text-xs text-[14px] md:text-[18px] lg:text-[19px] xl:text-[20px] font-poppins text-gray-800 font-medium whitespace-nowrap">
+                  <div className="absolute top-3 right-3 sm:top-4 sm:right-4 lg:top-6 lg:right-6 bg-white/95 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-4 shadow-lg transform hover:scale-105 transition-all duration-300 cursor-pointer">
+                    <div className="text-xs text-[14px] md:text-[18px] lg:text-[19px] xl:text-[20px] font-poppins text-gray-800 font-medium whitespace-nowrap ">
                       Our Websites Tutorial
                     </div>
                   </div>
