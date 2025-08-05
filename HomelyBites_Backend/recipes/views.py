@@ -95,6 +95,15 @@ class RecipeViewSet(viewsets.ModelViewSet):
         cuisine = self.request.query_params.get('cuisine', None)
         if cuisine:
             queryset = queryset.filter(cuisines__slug=cuisine)
+
+        # Filter by calories if provided
+        min_calories = self.request.query_params.get('min_calories', None)
+        max_calories = self.request.query_params.get('max_calories', None)
+        if min_calories is not None:
+            queryset = queryset.filter(calories__isnull=False).extra(where=["CAST(calories as INTEGER) >= %s"], params=[int(min_calories)])
+        if max_calories is not None:
+            queryset = queryset.filter(calories__isnull=False).extra(where=["CAST(calories as INTEGER) <= %s"], params=[int(max_calories)])
+
         return queryset
     
     @action(detail=False, methods=['get'])
