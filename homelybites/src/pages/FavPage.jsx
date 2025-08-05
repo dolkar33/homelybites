@@ -3,7 +3,6 @@ import { Heart, Star, X } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
-
 const FavPage = () => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,23 +95,26 @@ const FavPage = () => {
 
   if (loading) {
     return (
-      
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
-          <div className="animate-spin rounded-full h-8 sm:h-10 lg:h-12 xl:h-16 w-8 sm:w-10 lg:w-12 xl:w-16 border-b-2 border-red-400 mx-auto"></div>
-          <p className="mt-3 sm:mt-4 text-sm sm:text-base lg:text-lg text-gray-600">
-            Loading favorites...
-          </p>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
+            <div className="animate-spin rounded-full h-8 sm:h-10 lg:h-12 xl:h-16 w-8 sm:w-10 lg:w-12 xl:w-16 border-b-2 border-red-400 mx-auto"></div>
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base lg:text-lg text-gray-600">
+              Loading favorites...
+            </p>
+          </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-
-      <Navbar/>
-      <div className="w-full px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Navbar />
+      
+      <div className="flex-1 w-full px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-6 sm:mb-8 lg:mb-10 text-center">
             My Favorite Recipes
@@ -132,7 +134,7 @@ const FavPage = () => {
                 </p>
                 <button 
                   onClick={() => window.history.back()}
-                  className="px-6 sm:px-8 py-2 sm:py-3 bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium"
+                  className="px-6 sm:px-8 py-2 sm:py-3 bg-accent text-white rounded-lg hover:bg-accent transition-colors font-medium"
                 >
                   Browse Recipes
                 </button>
@@ -167,7 +169,7 @@ const FavPage = () => {
                           >
                             <X
                               size={24}
-                              className="sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-400 hover:text-red-500 transition-colors"
+                              className="sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-400 hover:text-accent transition-colors"
                             />
                           </button>
                         </div>
@@ -203,7 +205,7 @@ const FavPage = () => {
                       </div>
 
                       <div className="flex gap-2 sm:gap-3">
-                        <button className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 text-sm sm:text-base bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors">
+                        <button className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 text-sm sm:text-base bg-accent text-white rounded-md hover:bg-red-400 transition-colors">
                           Go to Recipe
                         </button>
                         <button 
@@ -221,7 +223,8 @@ const FavPage = () => {
           )}
         </div>
       </div>
-      <Footer/>
+      
+      <Footer />
     </div>
   );
 };
