@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axiosInstance from "../config/axiosInstance";
 import {
   Heart,
   Bookmark,
@@ -10,173 +11,122 @@ import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 
 const CommunityPage = () => {
-  // Mock data - easy to replace with API calls later
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      author: {
-        name: "Jennie Kim",
-        avatar: "/Images/CommunityPage/jennie.jpg",
-        posts: 42,
-        following: 42,
-        followers: 42,
-      },
-      title: "Best Places to grab a quick Snack",
-      image: "/Images/CommunityPage/ramen.jpeg",
-      likes: 24,
-      isLiked: false,
-      isSaved: false,
-      description: "Let's Swap Stories, Recipes & Smiles",
-    },
-    {
-      id: 2,
-      author: {
-        name: "Choi Soobin",
-        avatar: "/Images/CommunityPage/soobin.jpg",
-        posts: 42,
-        following: 42,
-        followers: 42,
-      },
-      title: "Best Places to grab a quick Snack",
-      image: "/Images/CommunityPage/ramen.jpeg",
-      likes: 18,
-      isLiked: true,
-      isSaved: true,
-      description: "Perfect grilling session with friends!",
-    },
-    {
-      id: 3,
-      author: {
-        name: "Jennie Kim",
-        avatar: "/Images/CommunityPage/jennie.jpg",
-        posts: 42,
-        following: 42,
-        followers: 42,
-      },
-      title: "Amazing Pasta Recipe",
-      image: "/Images/CommunityPage/ramen.jpeg",
-      likes: 35,
-      isLiked: false,
-      isSaved: false,
-      description: "Delicious homemade pasta",
-    },
-    {
-      id: 4,
-      author: {
-        name: "Choi Soobin",
-        avatar: "/Images/CommunityPage/soobin.jpg",
-        posts: 42,
-        following: 42,
-        followers: 42,
-      },
-      title: "Healthy Breakfast Ideas",
-      image: "/Images/CommunityPage/ramen.jpeg",
-      likes: 28,
-      isLiked: true,
-      isSaved: false,
-      description: "Start your day right!",
-    },
-  ]);
-
+  const [activeCategory, setActiveCategory] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [posts, setPosts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState("Recipes");
+  const isReady = !loading && !error && currentUser && categories.length > 0 && posts.length >= 0;
 
-  // User profile data - easy to replace with API call
-  const currentUser = {
-    name: "Jennie Kim",
-    avatar: "/Images/CommunityPage/jennie.jpg",
-    posts: 42,
-    following: 42,
-    followers: 42,
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const postsRes = await axiosInstance.get("/api/posts/");
+        console.log('Posts response:', postsRes.data);
+        setPosts(postsRes.data.results || []);
+        
+        const catRes = await axiosInstance.get("/api/categories/");
+        console.log('Categories response:', catRes.data);
+        setCategories(catRes.data.results || []);
+        setActiveCategory(catRes.data.results?.[0] || "");
 
-  const categories = ["Recipes", "Videos", "Blogs", "Questions"];
+        try {
+          const userRes = await axiosInstance.get("/api/user-profiles/my_profile/");
+          console.log('User profile response:', userRes.data);
+          setCurrentUser({
+            name: userRes.data.user.first_name + " " + userRes.data.user.last_name,
+            avatar: userRes.data.avatar || "/Images/CommunityPage/jennie.jpg",
+            posts: userRes.data.posts || 0,
+            following: userRes.data.following || 0,
+            followers: userRes.data.followers || 0,
+          });
+        } catch (e) {
+          console.log('User profile failed, setting guest user:', e);
+          setCurrentUser({
+            name: "Guest User",
+            avatar: "/Images/CommunityPage/jennie.jpg",
+            posts: 0,
+            following: 0,
+            followers: 0,
+          });
+        }
+      } catch (err) {
+        console.log('Data fetch error:', err);
+        setError("Failed to load community data");
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
 
-  // Mock data for suggested people
-  const suggestedPeople = [
-    {
-      id: 1,
-      name: "Soobin",
-      username: "@soobinchoi",
-      avatar: "/Images/CommunityPage/soobin.jpg",
-    },
-    {
-      id: 2,
-      name: "Soobin",
-      username: "@soobinchoi",
-      avatar: "/Images/CommunityPage/soobin.jpg",
-    },
-    {
-      id: 3,
-      name: "Randy",
-      username: "@randyortan",
-      avatar: "/Images/CommunityPage/jennie.jpg",
-    },
-  ];
-
-  // Mock trending hashtags
-  const trendingHashtags = [
-    "#keemananoodles",
-    "#sadekomomo",
-    "#foodlover",
-    "#recipeshare",
-    "#cooking",
-    "#healthyfood"
-  ];
-
-  // Actions - ready for backend integration
-  const handleLike = (postId) => {
-    setPosts(
-      posts.map((post) =>
+  const handleLike = async (postId) => {
+    try {
+      await axiosInstance.post(`/api/posts/${postId}/like/`);
+      setPosts(posts => posts.map(post =>
         post.id === postId
-          ? {
-              ...post,
-              isLiked: !post.isLiked,
-              likes: post.isLiked ? post.likes - 1 : post.likes + 1,
-            }
+          ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
           : post
-      )
-    );
+      ));
+    } catch (e) {
+      setError('Failed to like/unlike post');
+    }
   };
 
-  const handleSave = (postId) => {
-    setPosts(
-      posts.map((post) =>
+  const handleSave = async (postId) => {
+    try {
+      await axiosInstance.post(`/api/posts/${postId}/save/`);
+      setPosts(posts => posts.map(post =>
         post.id === postId ? { ...post, isSaved: !post.isSaved } : post
-      )
-    );
+      ));
+    } catch (e) {
+      setError('Failed to save/unsave post');
+    }
   };
 
-  const handleSearch = (term) => {
+  const handleSearch = async (term) => {
     setSearchTerm(term);
+    if (!term) {
+      try {
+        const postsRes = await axiosInstance.get("/api/posts/");
+        setPosts(postsRes.data);
+      } catch (e) {
+        setError('Failed to reload posts');
+      }
+      return;
+    }
+    try {
+      const res = await axiosInstance.get(`/api/search/?q=${encodeURIComponent(term)}`);
+      setPosts(res.data.posts || []);
+    } catch (e) {
+      setError('Search failed');
+    }
   };
 
-  const handleCategoryChange = (category) => {
+  const handleCategoryChange = async (category) => {
     setActiveCategory(category);
+    try {
+      const res = await axiosInstance.get(`/api/posts/?category=${encodeURIComponent(category)}`);
+      setPosts(res.data);
+    } catch (e) {
+      setError('Failed to filter by category');
+    }
   };
 
   const handleCreatePost = () => {
     window.location.href = "/post";
   };
 
-  // Enhanced user profile navigation - you can pass user data or just the ID
   const handleUserProfileClick = (user) => {
-    // Option 1: Navigate with user ID in URL params
     window.location.href = `/UserPage?userId=${user.id}&username=${user.username}`;
-    
-    // Option 2: Store user data in sessionStorage for the UserPage to access
-    // sessionStorage.setItem('selectedUser', JSON.stringify(user));
-    // window.location.href = "/UserPage";
-    
-    // Option 3: If using React Router, you would use navigate with state
-    // navigate('/UserPage', { state: { user } });
   };
 
-  // Handle clicking on post author profile
   const handlePostAuthorClick = (author) => {
-    // You can create a user object from the author data
     const userProfile = {
-      id: author.name.replace(/\s+/g, '').toLowerCase(), // Generate ID from name
+      id: author.name.replace(/\s+/g, '').toLowerCase(), 
       name: author.name,
       username: `@${author.name.replace(/\s+/g, '').toLowerCase()}`,
       avatar: author.avatar,
@@ -187,6 +137,15 @@ const CommunityPage = () => {
     handleUserProfileClick(userProfile);
   };
 
+  console.log('Render state:', { loading, error, currentUser, categoriesLength: categories.length, postsLength: posts.length });
+  
+  if (loading) return <div className="flex items-center justify-center h-screen text-xl">Loading...</div>;
+  if (error) return <div className="flex items-center justify-center h-screen text-xl text-red-500">{error}</div>;
+  if (!currentUser) {
+    console.log('No current user, showing fallback');
+    return <div className="flex items-center justify-center h-screen text-xl text-gray-500">Loading user profile...</div>;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Navigation Bar */}
@@ -194,8 +153,6 @@ const CommunityPage = () => {
 
       <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto">
-         
-
           <div className="grid grid-cols-12 gap-4 sm:gap-6">
             {/* Left Sidebar - Fixed */}
             <div className="col-span-3 space-y-4 sm:space-y-6">
@@ -276,15 +233,6 @@ const CommunityPage = () => {
                         Saved Recipes
                       </span>
                     </a>
-                    <a
-                      href="#"
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
-                    >
-                      <span className="text-lg sm:text-xl">📈</span>
-                      <span className="text-sm sm:text-base font-medium">
-                        Popular This week
-                      </span>
-                    </a>
                   </nav>
                 </div>
 
@@ -294,19 +242,23 @@ const CommunityPage = () => {
                     Categories
                   </h3>
                   <nav className="space-y-2 sm:space-y-3">
-                    {categories.map((category) => (
-                      <button
-                        key={category}
-                        onClick={() => handleCategoryChange(category)}
-                        className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
-                          activeCategory === category
-                            ? "text-red-500 bg-red-50"
-                            : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
-                        }`}
-                      >
-                        • {category}
-                      </button>
-                    ))}
+                    {Array.isArray(categories) && categories.length > 0 ? (
+                      categories.map((category) => (
+                        <button
+                          key={category.id || category.name || category}
+                          onClick={() => handleCategoryChange(category.id || category.name || category)}
+                          className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
+                            (activeCategory === (category.id || category.name || category))
+                              ? "text-red-500 bg-red-50"
+                              : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          • {category.name || category}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="text-gray-400 text-sm">No categories found.</div>
+                    )}
                   </nav>
                 </div>
               </div>
@@ -341,100 +293,108 @@ const CommunityPage = () => {
                 </div>
 
                 {/* Posts Feed */}
-                {posts.map((post) => (
-                  <div
-                    key={post.id}
-                    className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 overflow-hidden"
-                  >
-                    {/* Post Header - Made clickable */}
-                    <div className="p-4 sm:p-6 flex items-center">
-                      <div 
-                        className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors"
-                        onClick={() => handlePostAuthorClick(post.author)}
-                      >
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md">
-                          <img
-                            src={post.author.avatar}
-                            alt={post.author.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <h4 className="text-base sm:text-lg font-bold text-gray-800 hover:text-red-500 transition-colors">
-                            {post.author.name}
-                          </h4>
-                          <p className="text-sm sm:text-base text-gray-600 font-medium">
-                            {post.title}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Post Image */}
-                    <div className="px-6 pb-6">
-                      <div className="relative rounded-2xl overflow-hidden shadow-lg">
-                        <img
-                          src={post.image}
-                          alt={post.title}
-                          className="w-full h-80 object-cover"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Post Actions */}
-                    <div className="px-6 pb-6">
-                      <div className="flex items-center space-x-4 mb-4">
-                        <button
-                          onClick={() => handleLike(post.id)}
-                          className={`flex items-center space-x-2 transition-all duration-200 ${
-                            post.isLiked ? "text-red-500" : "text-gray-600"
-                          }`}
-                        >
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                              post.isLiked
-                                ? "bg-red-100"
-                                : "bg-gray-100 hover:bg-gray-200"
-                            }`}
-                          >
-                            <Heart
-                              className={`w-5 h-5 ${
-                                post.isLiked ? "fill-current" : ""
-                              }`}
-                            />
-                          </div>
-                        </button>
-
-                        <button
-                          onClick={() => handleSave(post.id)}
-                          className={`flex items-center space-x-2 transition-all duration-200 ${
-                            post.isSaved ? "text-red-500" : "text-gray-600"
-                          }`}
-                        >
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                              post.isSaved
-                                ? "bg-red-100"
-                                : "bg-gray-100 hover:bg-gray-200"
-                            }`}
-                          >
-                            <Bookmark
-                              className={`w-5 h-5 ${
-                                post.isSaved ? "fill-current" : ""
-                              }`}
-                            />
-                          </div>
-                        </button>
-                      </div>
-
-                      {post.likes > 0 && (
-                        <p className="text-gray-600 font-medium">
-                          {post.likes} {post.likes === 1 ? "like" : "likes"}
-                        </p>
-                      )}
-                    </div>
+                {posts.length === 0 ? (
+                  <div className="flex items-center justify-center h-40 text-lg text-gray-400">
+                    No posts yet!
                   </div>
-                ))}
+                ) : (
+                  <div>
+                    {posts.map((post) => (
+                      <div
+                        key={post.id}
+                        className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 overflow-hidden"
+                      >
+                        {/* Post Header - Made clickable */}
+                        <div className="p-4 sm:p-6 flex items-center">
+                          <div 
+                            className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors"
+                            onClick={() => handlePostAuthorClick(post.author)}
+                          >
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md">
+                              <img
+                                src={post.author.avatar}
+                                alt={post.author.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div>
+                              <h4 className="text-base sm:text-lg font-bold text-gray-800 hover:text-red-500 transition-colors">
+                                {post.author.name}
+                              </h4>
+                              <p className="text-sm sm:text-base text-gray-600 font-medium">
+                                {post.title}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Post Image */}
+                        <div className="px-6 pb-6">
+                          <div className="relative rounded-2xl overflow-hidden shadow-lg">
+                            <img
+                              src={post.image}
+                              alt={post.title}
+                              className="w-full h-80 object-cover"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Post Actions */}
+                        <div className="px-6 pb-6">
+                          <div className="flex items-center space-x-4 mb-4">
+                            <button
+                              onClick={() => handleLike(post.id)}
+                              className={`flex items-center space-x-2 transition-all duration-200 ${
+                                post.isLiked ? "text-red-500" : "text-gray-600"
+                              }`}
+                            >
+                              <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                                  post.isLiked
+                                    ? "bg-red-100"
+                                    : "bg-gray-100 hover:bg-gray-200"
+                                }`}
+                              >
+                                <Heart
+                                  className={`w-5 h-5 ${
+                                    post.isLiked ? "fill-current" : ""
+                                  }`}
+                                />
+                              </div>
+                            </button>
+
+                            <button
+                              onClick={() => handleSave(post.id)}
+                              className={`flex items-center space-x-2 transition-all duration-200 ${
+                                post.isSaved ? "text-red-500" : "text-gray-600"
+                              }`}
+                            >
+                              <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+                                  post.isSaved
+                                    ? "bg-red-100"
+                                    : "bg-gray-100 hover:bg-gray-200"
+                                }`}
+                              >
+                                <Bookmark
+                                  className={`w-5 h-5 ${
+                                    post.isSaved ? "fill-current" : ""
+                                  }`}
+                                />
+                              </div>
+                            </button>
+                          </div>
+
+                          {post.likes > 0 && (
+                            <p className="text-gray-600 font-medium">
+                              {post.likes} {post.likes === 1 ? "like" : "likes"}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -462,62 +422,6 @@ const CommunityPage = () => {
                     onChange={(e) => handleSearch(e.target.value)}
                     className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-100 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base bg-transparent"
                   />
-                </div>
-
-                {/* Suggested People - Enhanced with full clickable area */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6">
-                    Suggested people
-                  </h3>
-                  <div className="flex items-center justify-between">
-                    <div 
-                      className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors flex-1"
-                      onClick={() => handleUserProfileClick(suggestedPeople[0])}
-                    >
-                      <div className="w-10 h-10 rounded-full overflow-hidden hover:ring-2 hover:ring-red-500 hover:ring-offset-2 transition-all duration-200">
-                        <img
-                          src={suggestedPeople[0].avatar}
-                          alt={suggestedPeople[0].name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-800 text-sm hover:text-red-500 transition-colors">
-                          {suggestedPeople[0].name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {suggestedPeople[0].username}
-                        </p>
-                      </div>
-                    </div>
-                    <button 
-                      className="bg-red-500 text-white px-4 py-1 rounded-full text-xs font-medium hover:bg-red-400 transition-colors ml-2"
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent triggering profile click
-                        // Handle follow logic here
-                        console.log('Follow clicked for:', suggestedPeople[0].name);
-                      }}
-                    >
-                      Follow
-                    </button>
-                  </div>
-                </div>
-
-                {/* You may also like */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6">
-                    You may also like
-                  </h3>
-                  <div className="space-y-2 sm:space-y-3">
-                    {trendingHashtags.map((hashtag, index) => (
-                      <div
-                        key={index}
-                        className="text-sm text-gray-600 hover:text-red-500 cursor-pointer transition-colors"
-                      >
-                        {hashtag}
-                      </div>
-                    ))}
-                  </div>
                 </div>
               </div>
             </div>
