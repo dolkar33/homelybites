@@ -1,6 +1,11 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import Recipe, Category, UserProfile, CustomUser, UserRecipeInteraction, ContactMessage
+from .models import Recipe, Category, UserProfile, CustomUser, UserRecipeInteraction, ContactMessage, Cuisine
+
+class CuisineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cuisine
+        fields = ['id', 'name', 'slug']
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -9,6 +14,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class RecipeSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
+    cuisines = CuisineSerializer(many=True, read_only=True)
     
     class Meta:
         model = Recipe
@@ -16,11 +22,12 @@ class RecipeSerializer(serializers.ModelSerializer):
 
 class RecipeListSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
+    cuisines = CuisineSerializer(many=True, read_only=True)
     
     class Meta:
         model = Recipe
         fields = [
-    'id', 'title', 'slug', 'image_url', 'prep_time', 'cook_time', 'difficulty', 'categories',
+    'id', 'title', 'slug', 'image_url', 'prep_time', 'cook_time', 'difficulty', 'categories', 'cuisines',
     'instructions', 'calories', 'fat', 'sugar', 'protein', 'carbohydrates'
 ]
 

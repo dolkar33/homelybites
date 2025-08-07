@@ -1,11 +1,28 @@
 import requests
 import os
 from django.conf import settings
-from .models import Recipe, Category
+from .models import Recipe, Category, Cuisine
 from slugify import slugify
 
 class SpoonacularService:
     BASE_URL = "https://api.spoonacular.com"
+    
+    def import_cuisines_from_recipes(self, recipes):
+        """
+        Given a list of recipe dicts (from Spoonacular), extract and save unique cuisines.
+        """
+        from slugify import slugify
+        cuisines_added = []
+        for recipe in recipes:
+            for cuisine_name in recipe.get('cuisines', []):
+                slug = slugify(cuisine_name)
+                cuisine, created = Cuisine.objects.get_or_create(
+                    slug=slug,
+                    defaults={'name': cuisine_name}
+                )
+                if created:
+                    cuisines_added.append(cuisine.name)
+        return cuisines_added
     
     def __init__(self):
         # Get API key from settings
@@ -109,8 +126,11 @@ class SpoonacularService:
         # Ingredients
         ingredients_list = []
         for ingredient in details.get('extendedIngredients', []):
-            ingredients_list.append(f"{ingredient.get('amount', '')} {ingredient.get('unit', '')} {ingredient.get('name', '')}")
+            ingredients_list.append(
+                f"{ingredient.get('amount', '')} {ingredient.get('unit', '')} {ingredient.get('name', '')}"
+            )
         recipe.ingredients = "\n".join(ingredients_list)
+
 
         # Instructions (robust, multi-section, fallback)
         instructions_text = ''
@@ -161,6 +181,15 @@ class SpoonacularService:
                 )
                 recipe.categories.add(category)
 
+        # Link cuisines to recipe
+        if 'cuisines' in details:
+            for cuisine_name in details['cuisines']:
+                slug = slugify(cuisine_name)
+                cuisine, _ = Cuisine.objects.get_or_create(
+                    slug=slug,
+                    defaults={'name': cuisine_name}
+                )
+                recipe.cuisines.add(cuisine)
         return recipe
 
     def import_random_recipes(self, number=10, tags=None):

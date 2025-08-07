@@ -104,7 +104,7 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
       {/* Logo Section*/}
       <Link to="/" className="flex items-center">
         <img
-          src="./Images/logo/logo2.png"
+          src="/Images/logo/logo2.png"
           alt="HomelyBites Logo"
           className="h-10 lg-11 hover:scale-105 transition-all"
         />
