@@ -123,16 +123,31 @@ const RecipeSearchPage = () => {
   const toggleFavorite = (recipeId) => {
     const newFavorites = new Set(favorites);
     const recipeToToggle = recipes.find((r) => r.id === recipeId);
+    let updatedFavoriteRecipes = [];
 
-    // Using in-memory storage for favorites in this environment
-    if (newFavorites.has(recipeId)) {
-      newFavorites.delete(recipeId);
-    } else {
-      newFavorites.add(recipeId);
+    // Load existing favorites from localStorage
+    const savedFavorites = localStorage.getItem("favoriteRecipeDetails");
+    if (savedFavorites) {
+      updatedFavoriteRecipes = JSON.parse(savedFavorites);
     }
 
+    if (newFavorites.has(recipeId)) {
+      newFavorites.delete(recipeId);
+      // Remove from localStorage
+      updatedFavoriteRecipes = updatedFavoriteRecipes.filter(r => r.id !== recipeId);
+    } else {
+      newFavorites.add(recipeId);
+      // Add to localStorage if not already present
+      if (recipeToToggle && !updatedFavoriteRecipes.some(r => r.id === recipeId)) {
+        // Save minimal data or all relevant fields
+        updatedFavoriteRecipes.push(recipeToToggle);
+      }
+    }
+    // Save updated favorites to localStorage
+    localStorage.setItem("favoriteRecipeDetails", JSON.stringify(updatedFavoriteRecipes));
     setFavorites(newFavorites);
   };
+
 
   // Function to build API URL with filters
   const buildApiUrl = (

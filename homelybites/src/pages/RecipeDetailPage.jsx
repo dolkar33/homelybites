@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { recipeAPI } from '../services/api';
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import BackButton from "../components/BackButton";
 
 const RecipeDetailPage = () => {
   const { slug } = useParams();
@@ -59,13 +60,7 @@ const RecipeDetailPage = () => {
     <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
       <div className="max-w-5xl mx-auto w-full px-4 py-8">
-        <button onClick={() => navigate(-1)} className="mb-6 text-blue-500 hover:underline flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-          Back to Recipes
-        </button>
-        
+        <BackButton />
         <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6 text-center">{recipe.title}</h1>
         
         {recipe.image_url && (

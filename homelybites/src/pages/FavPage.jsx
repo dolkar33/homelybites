@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { Heart, Star, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 const FavPage = () => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Mock favorites data (fallback)
   const mockFavorites = [
     {
       id: 1,
       title: "Chicken Tikka Masala",
+      name: "Chicken Tikka Masala",  // Added name property to match API structure
       image: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&h=300&fit=crop",
       alt: "Chicken Tikka Masala",
       rating: 4.0,
@@ -19,10 +22,12 @@ const FavPage = () => {
       calories: "High Cal",
       cuisineType: "Indian",
       description: "Best Recipe for Chicken Tikka Masala with minimum things",
+      slug: "chicken-tikka-masala", // Added slug property
     },
     {
       id: 2,
       title: "Thai Style Noodles",
+      name: "Thai Style Noodles",  // Added name property to match API structure
       image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=300&fit=crop",
       alt: "Thai Style Noodles",
       rating: 4.0,
@@ -30,6 +35,7 @@ const FavPage = () => {
       calories: "Med Cal",
       cuisineType: "Thai",
       description: "Best Recipe for Thai Style Noodles with minimum things",
+      slug: "thai-style-noodles", // Added slug property
     },
   ];
 
@@ -54,6 +60,16 @@ const FavPage = () => {
 
     loadFavorites();
   }, []);
+
+  // Function to navigate to recipe detail page (matching RecipeSearchPage)
+  const goToRecipe = (slug) => {
+    // Navigate to recipe details page using the recipe slug
+    if (slug) {
+      navigate(`/recipes/${slug}`);
+    } else {
+      navigate("/recipes"); // fallback
+    }
+  };
 
   // Function to remove from favorites
   const removeFromFavorites = (recipeId) => {
@@ -134,7 +150,7 @@ const FavPage = () => {
                 </p>
                 <button 
                   onClick={() => window.history.back()}
-                  className="px-6 sm:px-8 py-2 sm:py-3 bg-accent text-white rounded-lg hover:bg-accent transition-colors font-medium"
+                  className="px-6 sm:px-8 py-2 sm:py-3 bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium"
                 >
                   Browse Recipes
                 </button>
@@ -151,8 +167,11 @@ const FavPage = () => {
                     <div className="flex-shrink-0">
                       <img
                         src={recipe.image}
-                        alt={recipe.alt || recipe.title}
+                        alt={recipe.alt || recipe.name || recipe.title}
                         className="w-20 sm:w-24 lg:w-32 h-20 sm:h-24 lg:h-32 object-cover rounded-lg"
+                        onError={(e) => {
+                          e.target.src = "https://via.placeholder.com/150x150?text=Recipe";
+                        }}
                       />
                     </div>
 
@@ -160,7 +179,7 @@ const FavPage = () => {
                       <div>
                         <div className="flex items-start justify-between mb-2 sm:mb-3">
                           <h3 className="font-bold text-lg sm:text-xl lg:text-2xl leading-tight pr-2">
-                            {recipe.title}
+                            {recipe.name || recipe.title}
                           </h3>
                           <button
                             onClick={() => removeFromFavorites(recipe.id)}
@@ -169,7 +188,7 @@ const FavPage = () => {
                           >
                             <X
                               size={24}
-                              className="sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-400 hover:text-accent transition-colors"
+                              className="sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-400 hover:text-red-400 transition-colors"
                             />
                           </button>
                         </div>
@@ -205,7 +224,10 @@ const FavPage = () => {
                       </div>
 
                       <div className="flex gap-2 sm:gap-3">
-                        <button className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 text-sm sm:text-base bg-accent text-white rounded-md hover:bg-red-400 transition-colors">
+                        <button 
+                          onClick={() => goToRecipe(recipe.slug)}
+                          className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 text-sm sm:text-base bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors"
+                        >
                           Go to Recipe
                         </button>
                         <button 
