@@ -14,6 +14,7 @@ import MyPost from "./pages/MyPost";
 import RecipeSearchPage from "./pages/SearchPage";
 import RecipePage from "./pages/RecipePage";
 import FavPage from "./pages/FavPage";
+import SavedPost from "./pages/SavedPost";
 
 import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecentRecipes from "./pages/RecentRecipes";
@@ -109,32 +110,34 @@ const SignUpRoute = () => {
   return isLoggedIn ? <Navigate to="/Home" replace /> : <SignUp />;
 };
 
+import { CustomToaster } from "./pages/toast";
+
 function App() {
   return (
-
-
-
-
-<Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<SignUp />} />
-      <Route path="/userquestion" element={<UserQuestion />} />
-      <Route path="/Home" element={<MainPage />} />
-      <Route path="/" element={<RootRoute />} />
-      <Route path="/contact" element={<ContactUs />} />
-      <Route path="/userprofile" element={<UserProfile />} />
-      <Route path="/aboutus" element={<AboutUs />} />
-      <Route path="/community" element={<CommunityPage />} />
-      <Route path="/MyPost" element={<MyPost />} />
-      <Route path="/post" element={<Post />} />
-      <Route path="/recipe" element={<RecipeSearchPage/>} />
-      <Route path="/recipepage" element={<RecipePage />} />
-      <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
-      <Route path="/recent" element={<RecentRecipes />} />
-      <Route path="/FavPage" element={<FavPage />} />
-      <Route path="/userpage" element={<UserPage />} />
-      <Route path="" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <CustomToaster />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/userquestion" element={<UserQuestion />} />
+        <Route path="/Home" element={<MainPage />} />
+        <Route path="/" element={<RootRoute />} />
+        <Route path="/contact" element={<ContactUs />} />
+        <Route path="/userprofile" element={<UserProfile />} />
+        <Route path="/aboutus" element={<AboutUs />} />
+        <Route path="/community" element={<CommunityPage />} />
+        <Route path="/MyPost" element={<MyPost />} />
+        <Route path="/post" element={<Post />} />
+        <Route path="/recipe" element={<RecipeSearchPage />} />
+        <Route path="/recipepage" element={<RecipePage />} />
+        <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
+        <Route path="/recent" element={<RecentRecipes />} />
+        <Route path="/FavPage" element={<FavPage />} />
+        <Route path="/saved-posts" element={<SavedPost />} />
+        <Route path="/userpage" element={<UserPage />} />
+        <Route path="" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

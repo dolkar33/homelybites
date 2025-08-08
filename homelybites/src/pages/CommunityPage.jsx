@@ -270,12 +270,12 @@ const handleFollow = (idx) => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate('/FavPage')}
+                      onClick={() => navigate('/saved-posts')}
                       className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left"
                     >
                       <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span className="text-sm sm:text-base font-medium">
-                        Saved Recipes
+                        Saved Posts
                       </span>
                     </button>
                   </nav>

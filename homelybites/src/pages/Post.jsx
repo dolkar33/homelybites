@@ -3,23 +3,27 @@ import { X, Image, Upload, ArrowLeft } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
+import axiosInstance from '../config/axiosInstance';
+import { customToast } from './toast.jsx';
 
 <Navbar />
 
 
 const categoriesList = [
-  "Recipe",
-  "Cooking Tip",
-  "Restaurant Review",
-  "General Discussion",
-  "Question"
+  { value: 'recipe', label: 'Recipe' },
+  { value: 'tip', label: 'Cooking Tip' },
+  { value: 'review', label: 'Restaurant Review' },
+  { value: 'general', label: 'General Discussion' },
+  { value: 'question', label: 'Question' }
 ];
+
+import { useNavigate } from 'react-router-dom';
 
 const PostPage = () => {
   const [uploadError, setUploadError] = useState('');
   const [videoThumbnails, setVideoThumbnails] = useState({});
   const [newPost, setNewPost] = useState({
-    content: '',
+    description: '',
     images: [],
     title: '',
     category: ''
@@ -146,16 +150,41 @@ const PostPage = () => {
     }));
   };
 
-  const handleCreatePost = () => {
-    if (!newPost.content.trim() && newPost.images.length === 0) return;
-    
-    // TODO: Add API call to create post
-    console.log('Creating post:', newPost);
-    
-    // Reset form and show success message or navigate back
-    setNewPost({ content: '', images: [], title: '' });
-    alert('Post created successfully!');
-    
+  const handleCreatePost = async () => {
+    if (!newPost.description.trim() && newPost.images.length === 0) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('description', newPost.description);
+      formData.append('title', newPost.title);
+      formData.append('category', newPost.category || selectedCategory);
+      newPost.images.forEach((img, idx) => {
+        formData.append('files', img.file); // backend should accept 'files' as a list
+        if (img.isVideo && img.thumbnail) {
+          // If backend supports video thumbnail
+          formData.append(`thumbnails`, img.thumbnail);
+        }
+      });
+
+      // Optionally show loading state here
+      // setLoading(true);
+      const response = await axiosInstance.post('/api/posts/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      // setLoading(false);
+      if (response.status === 201 || response.status === 200) {
+        setNewPost({ description: '', images: [], title: '', category: '' });
+        customToast.success('Post created successfully!');
+      } else {
+        alert('Failed to create post.');
+      }
+    } catch (error) {
+      // setLoading(false);
+      const msg = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to create post.';
+      alert(msg);
+    }
   };
 
   const handleGoBack = () => {
@@ -168,13 +197,12 @@ const PostPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <Navbar />
-      
-      <div className="flex-1 px-4 md:px-8 py-6">
-        <div className="max-w-4xl mx-auto">
-          {/* Back Button */}
-          <div className="mb-6">
+    <>
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Navbar />
+        
+        <div className="flex-2 px-5 md:px-12 py-3">
+          <div className="mb-4">
             <button 
               onClick={handleGoBack}
               className="flex items-center gap-2 text-red-500 hover:text-red-600 transition-colors"
@@ -183,12 +211,16 @@ const PostPage = () => {
               <span className="text-lg font-medium">Back</span>
             </button>
           </div>
-
+          <div className="max-w-4xl mx-auto">
           {/* Main Content */}
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="p-6 border-b border-gray-100">
               <h2 className="text-3xl font-bold text-gray-800 text-center">Create Post</h2>
+              {/* Show post title live preview if present */}
+              {newPost.title && (
+                <h3 className="text-2xl font-semibold text-red-500 text-center mt-2">{newPost.title}</h3>
+              )}
             </div>
 
             {/* Content */}
@@ -206,12 +238,23 @@ const PostPage = () => {
                   <span className="font-bold text-gray-800">{currentUser.name}</span>
                 </div>
                 
-                <div className="flex bg-white rounded-xl p-3 gap-3 relative items-center">
+                {/* Post Title Input */}
+<div className="mb-4">
+  <input
+    type="text"
+    placeholder="Title of your post"
+    value={newPost.title}
+    onChange={e => setNewPost(prev => ({ ...prev, title: e.target.value }))}
+    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none text-lg font-semibold mb-2"
+    maxLength={100}
+  />
+</div>
+<div className="flex bg-white rounded-xl p-3 gap-3 relative items-center">
                   <input
                     type="text"
                     placeholder="What is in your mind?"
-                    value={newPost.content}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, content: e.target.value }))}
+                    value={newPost.description}
+                    onChange={(e) => setNewPost(prev => ({ ...prev, description: e.target.value }))}
                     className="flex-1 outline-none text-gray-600"
                   />
                   {/* Category Dropdown */}
@@ -221,18 +264,18 @@ const PostPage = () => {
                       className={`flex items-center px-3 py-2 rounded-lg bg-accent text-white font-semibold focus:outline-none focus:ring-2 focus:ring-accent transition-colors hover:bg-accent/80 ${dropdownOpen ? 'ring-2 ring-accent' : ''}`}
                       onClick={() => setDropdownOpen((open) => !open)}
                     >
-                      {selectedCategory || 'Categories'}
+                      {categoriesList.find(cat => cat.value === selectedCategory)?.label || 'Categories'}
                       <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     {dropdownOpen && (
                       <div className="absolute right-0 mt-2 w-44 rounded-lg shadow bg-white z-10 border border-gray-100">
                         {categoriesList.map((cat) => (
                           <button
-                            key={cat}
-                            className={`block w-full text-left px-4 py-2 text-gray-800 hover:bg-red-100 hover:text-red-500 transition-colors ${selectedCategory === cat ? 'bg-red-50 text-red-500' : ''}`}
-                            onClick={() => { setSelectedCategory(cat); setDropdownOpen(false); setNewPost(prev => ({ ...prev, category: cat })); }}
+                            key={cat.value}
+                            className={`block w-full text-left px-4 py-2 text-gray-800 hover:bg-red-100 hover:text-red-500 transition-colors ${selectedCategory === cat.value ? 'bg-red-50 text-red-500' : ''}`}
+                            onClick={() => { setSelectedCategory(cat.value); setDropdownOpen(false); setNewPost(prev => ({ ...prev, category: cat.value })); }}
                           >
-                            {cat}
+                            {cat.label}
                           </button>
                         ))}
                       </div>
@@ -331,18 +374,18 @@ const PostPage = () => {
             <div className="p-6 border-t border-gray-100 flex justify-center">
               <button
                 onClick={handleCreatePost}
-                disabled={!newPost.content.trim() && newPost.images.length === 0}
+                disabled={!newPost.description.trim() && newPost.images.length === 0}
                 className="px-12 py-3 bg-red-400 text-white rounded-xl hover:bg-red-500 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed font-bold text-lg"
               >
                 Create Post
               </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
       <Footer />
-    </div>
+    </>
   );
 };
 

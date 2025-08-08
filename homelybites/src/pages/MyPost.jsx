@@ -209,9 +209,24 @@ const MyPost = () => {
                           <div className="text-gray-700 text-sm mb-2">{post.content}</div>
                           {post.images && post.images.length > 0 && (
                             <div className="flex gap-2 flex-wrap mb-2">
-                              {post.images.map((img, idx) => (
-                                <img key={idx} src={img.url || img} alt="post-img" className="w-20 h-20 object-cover rounded-lg border" />
-                              ))}
+                              {post.images.map((media, idx) => {
+                                const url = media.url || media;
+                                const type = media.type || (typeof media === 'string' ? '' : '');
+                                // Guess type from url extension if not present
+                                const isVideo = type ? type.startsWith('video') : /\.mp4$|\.webm$|\.ogg$/i.test(url);
+                                const isImage = type ? type.startsWith('image') : /\.jpg$|\.jpeg$|\.png$|\.gif$|\.bmp$|\.webp$/i.test(url);
+                                if (isVideo) {
+                                  return (
+                                    <video key={idx} src={url} controls className="w-32 h-20 rounded-lg border bg-black" />
+                                  );
+                                } else if (isImage) {
+                                  return (
+                                    <img key={idx} src={url} alt="post-img" className="w-20 h-20 object-cover rounded-lg border" />
+                                  );
+                                } else {
+                                  return null;
+                                }
+                              })}
                             </div>
                           )}
                           <div className="flex gap-4 text-xs text-gray-500 mt-auto">
