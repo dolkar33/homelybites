@@ -10,6 +10,7 @@ import ContactUs from "./pages/ContactUs";
 import AboutUs from "./pages/AboutUs";
 import CommunityPage from "./pages/CommunityPage";
 import Post from "./pages/Post";
+import MyPost from "./pages/MyPost";
 import RecipeSearchPage from "./pages/SearchPage";
 import RecipePage from "./pages/RecipePage";
 import FavPage from "./pages/FavPage";
@@ -124,6 +125,7 @@ function App() {
       <Route path="/userprofile" element={<UserProfile />} />
       <Route path="/aboutus" element={<AboutUs />} />
       <Route path="/community" element={<CommunityPage />} />
+      <Route path="/MyPost" element={<MyPost />} />
       <Route path="/post" element={<Post />} />
       <Route path="/recipe" element={<RecipeSearchPage/>} />
       <Route path="/recipepage" element={<RecipePage />} />

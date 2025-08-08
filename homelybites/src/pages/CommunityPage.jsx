@@ -9,8 +9,41 @@ import {
 } from "lucide-react";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import { useNavigate } from "react-router-dom";
+
+const mockSuggestedUsers = [
+  {
+    id: 1,
+    name: "Lisa Manoban",
+    username: "@lisam",
+    avatar: "/Images/CommunityPage/lisa.jpg",
+    isFollowing: false,
+  },
+  {
+    id: 2,
+    name: "Kim Jisoo",
+    username: "@jisoo",
+    avatar: "/Images/CommunityPage/jisoo.jpg",
+    isFollowing: false,
+  },
+  {
+    id: 3,
+    name: "Park Chaeyoung",
+    username: "@roses",
+    avatar: "/Images/CommunityPage/rose.jpg",
+    isFollowing: false,
+  },
+  {
+    id: 4,
+    name: "Choi Soobin",
+    username: "@soobin",
+    avatar: "/Images/CommunityPage/soobin.jpg",
+    isFollowing: false,
+  },
+];
 
 const CommunityPage = () => {
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -18,6 +51,15 @@ const CommunityPage = () => {
   const [error, setError] = useState("");
   const [posts, setPosts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+const [suggestedUsers, setSuggestedUsers] = useState(mockSuggestedUsers);
+
+const handleFollow = (idx) => {
+  setSuggestedUsers((prev) =>
+    prev.map((user, i) =>
+      i === idx ? { ...user, isFollowing: !user.isFollowing } : user
+    )
+  );
+};
   const isReady = !loading && !error && currentUser && categories.length > 0 && posts.length >= 0;
 
   useEffect(() => {
@@ -206,33 +248,36 @@ const CommunityPage = () => {
                     Navigation
                   </h3>
                   <nav className="space-y-3 sm:space-y-4">
-                    <a
-                      href="#"
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
+                    <button
+                      type="button"
+                      onClick={() => navigate('/')}
+                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left"
                     >
                       <span className="text-lg sm:text-xl">🏠</span>
                       <span className="text-sm sm:text-base font-medium">
                         Home Page
                       </span>
-                    </a>
-                    <a
-                      href="#"
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/MyPost')}
+                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left"
                     >
                       <span className="text-lg sm:text-xl">⚡</span>
                       <span className="text-sm sm:text-base font-medium">
                         My Post
                       </span>
-                    </a>
-                    <a
-                      href="#"
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/FavPage')}
+                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left"
                     >
                       <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span className="text-sm sm:text-base font-medium">
                         Saved Recipes
                       </span>
-                    </a>
+                    </button>
                   </nav>
                 </div>
 
@@ -242,23 +287,29 @@ const CommunityPage = () => {
                     Categories
                   </h3>
                   <nav className="space-y-2 sm:space-y-3">
-                    {Array.isArray(categories) && categories.length > 0 ? (
-                      categories.map((category) => (
+                    {(Array.isArray(categories) && categories.length > 0 ? categories : [
+                      "Recipe",
+                      "Cooking Tip",
+                      "Restaurant Review",
+                      "General Discussion",
+                      "Question"
+                    ]).map((category, idx) => {
+                      // Support both backend and static category objects/strings
+                      const catName = category.name || category;
+                      return (
                         <button
-                          key={category.id || category.name || category}
-                          onClick={() => handleCategoryChange(category.id || category.name || category)}
+                          key={category.id || catName || idx}
+                          onClick={() => handleCategoryChange(catName)}
                           className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
-                            (activeCategory === (category.id || category.name || category))
+                            (activeCategory === catName)
                               ? "text-red-500 bg-red-50"
                               : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
                           }`}
                         >
-                          • {category.name || category}
+                          • {catName}
                         </button>
-                      ))
-                    ) : (
-                      <div className="text-gray-400 text-sm">No categories found.</div>
-                    )}
+                      );
+                    })}
                   </nav>
                 </div>
               </div>
@@ -420,8 +471,32 @@ const CommunityPage = () => {
                     placeholder="Search......"
                     value={searchTerm}
                     onChange={(e) => handleSearch(e.target.value)}
-                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-100 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base bg-transparent"
+                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-300 rounded-xl sm:rounded-2xl focus:outline-none text-sm sm:text-base bg-transparent"
                   />
+                </div>
+                {/* SUGGESTED_PEOPLE_INSERTION_POINT */}
+                {/* Suggested People */}
+                <div className="bg-white rounded-xl shadow p-4 mt-4">
+                  <h3 className="font-semibold text-gray-800 mb-3 text-lg">Suggested People</h3>
+                  <div className="space-y-3">
+                    {suggestedUsers.map((user, idx) => (
+                      <div key={user.id} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full object-cover border" />
+                          <div>
+                            <div className="font-medium text-gray-800 text-sm">{user.name}</div>
+                            <div className="text-xs text-gray-500">{user.username}</div>
+                          </div>
+                        </div>
+                        <button
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors duration-150 ${user.isFollowing ? 'bg-gray-200 text-gray-500' : 'bg-accent text-white hover:bg-accent/80'}`}
+                          onClick={() => handleFollow(idx)}
+                        >
+                          {user.isFollowing ? 'Following' : 'Follow'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
