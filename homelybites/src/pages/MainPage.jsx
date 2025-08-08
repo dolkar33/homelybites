@@ -5,18 +5,19 @@ import RecipeCard from "../components/RecipeCard";
 import CategoryButton from "../components/CategoryButton";
 import { recipeAPI } from "../services/MainPageURL";
 import { Carousel, Row, Col } from "react-bootstrap";
+
 import axios from "axios";
 
 const categories = ["breakfast", "soup", "lunch", "dessert", "salad", "drink"];
 
 // Map frontend categories to backend category names
 const categoryMapping = {
-  "breakfast": "Breakfast",
-  "soup": "Soup", 
-  "lunch": "Main Course",
-  "dessert": "Dessert",
-  "salad": "Salad",
-  "drink": "Beverage"
+  breakfast: "Breakfast",
+  soup: "Soup",
+  lunch: "Main Course",
+  dessert: "Dessert",
+  salad: "Salad",
+  drink: "Beverage",
 };
 
 const MainPage = () => {
@@ -28,8 +29,6 @@ const MainPage = () => {
   const [hasMore, setHasMore] = useState(true);
   const [recentRecipes, setRecentRecipes] = useState([]);
   const [recommendedRecipes, setRecommendedRecipes] = useState([]);
-
-  
 
   useEffect(() => {
     const fetchRecipesByCategory = async () => {
@@ -43,49 +42,59 @@ const MainPage = () => {
         }
 
         // Fixed: Use getRecipeByCategory (without 's')
-        const mappedCategory = categoryMapping[activeCategory] || activeCategory;
+        const mappedCategory =
+          categoryMapping[activeCategory] || activeCategory;
         const response = await recipeAPI.getRecipeByCategory(
           mappedCategory,
           page
         );
 
-        console.log(`📋 Recipes received for ${activeCategory} (mapped to ${mappedCategory}):`, response.data);
+        console.log(
+          `📋 Recipes received for ${activeCategory} (mapped to ${mappedCategory}):`,
+          response.data
+        );
         console.log(`🔢 Number of recipes:`, response.data?.length || 0);
 
         let filteredRecipes = response.data || [];
-        
+
         // Client-side filtering as backup if backend doesn't filter properly
         if (filteredRecipes.length > 0) {
           const categoryKeywords = {
-            "breakfast": ["breakfast", "morning", "brunch"],
-            "soup": ["soup"],
-            "lunch": ["main course", "lunch", "main dish", "dinner"],
-            "dessert": ["dessert", "sweet"],
-            "salad": ["salad"],
-            "drink": ["beverage", "drink", "cocktail", "smoothie"]
+            breakfast: ["breakfast", "morning", "brunch"],
+            soup: ["soup"],
+            lunch: ["main course", "lunch", "main dish", "dinner"],
+            dessert: ["dessert", "sweet"],
+            salad: ["salad"],
+            drink: ["beverage", "drink", "cocktail", "smoothie"],
           };
-          
+
           const keywords = categoryKeywords[activeCategory] || [activeCategory];
-          
-          filteredRecipes = filteredRecipes.filter(recipe => {
-            return recipe.categories.some(cat => 
-              keywords.some(keyword => 
-                cat.name.toLowerCase().includes(keyword.toLowerCase()) ||
-                cat.slug.toLowerCase().includes(keyword.toLowerCase())
+
+          filteredRecipes = filteredRecipes.filter((recipe) => {
+            return recipe.categories.some((cat) =>
+              keywords.some(
+                (keyword) =>
+                  cat.name.toLowerCase().includes(keyword.toLowerCase()) ||
+                  cat.slug.toLowerCase().includes(keyword.toLowerCase())
               )
             );
           });
-          
-          console.log(`🎯 Filtered recipes for ${activeCategory}:`, filteredRecipes.length);
+
+          console.log(
+            `🎯 Filtered recipes for ${activeCategory}:`,
+            filteredRecipes.length
+          );
         }
 
         if (filteredRecipes && filteredRecipes.length > 0) {
           if (page === 1) {
             // First page - replace recipes
             setRecipes(filteredRecipes);
+
           } else {
             // Subsequent pages - append recipes
             setRecipes((prevRecipes) => [...prevRecipes, ...filteredRecipes]);
+
           }
 
           // Check if there are more pages
@@ -93,12 +102,15 @@ const MainPage = () => {
         } else {
           if (page === 1) {
             setRecipes([]);
+
           }
           setHasMore(false);
         }
       } catch (err) {
         console.error(`Error fetching ${activeCategory} recipes:`, err);
-        setError(`Failed to load ${activeCategory} recipes. Please try again.`);
+        const errorMessage = `Failed to load ${activeCategory} recipes. Please try again.`;
+        setError(errorMessage);
+
         if (page === 1) {
           setRecipes([]);
         }
@@ -115,30 +127,19 @@ const MainPage = () => {
     const fetchWhatOthersAreCooking = async () => {
       try {
         const response = await recipeAPI.getWhatOthersAreCooking();
-        setRecentRecipes((response.data || []).slice(0, 8)); // Optional: limit to 8
+        const recipes = (response.data || []).slice(0, 8);
+        setRecentRecipes(recipes);
+        if (recipes.length > 0) {
+
+        }
       } catch (err) {
         console.error("Error fetching 'What others are cooking' recipes:", err);
+
       }
     };
 
     fetchWhatOthersAreCooking();
   }, []);
-
-  // Recipes You Would Love ( AI PART Integration uses recommended wala endpoint not hybird wala aaile )
-  // useEffect(() => {
-  //   const fetchRecommendedRecipes = async () => {
-  //     try {
-  //       const response = await axios.get(
-  //         "http://localhost:8000/api/recipes/recommended/"
-  //       );
-  //       setRecommendedRecipes(response.data.slice(0, 9)); // Limit to 9 for carousel (3x3)
-  //     } catch (error) {
-  //       console.error("Error fetching recommended recipes:", error);
-  //     }
-  //   };
-
-  //   fetchRecommendedRecipes();
-  // }, []);
 
   const loadMore = () => {
     if (!loading && hasMore) {
@@ -150,6 +151,7 @@ const MainPage = () => {
     setActiveCategory(category);
     setPage(1);
     setHasMore(true);
+
   };
 
   const renderRecipeCards = (recipeList, isLoading = false) => {
@@ -175,6 +177,7 @@ const MainPage = () => {
             onClick={() => {
               setPage(1);
               setError(null);
+
             }}
             className="ml-2 text-blue-500 hover:text-blue-700"
           >
@@ -212,6 +215,7 @@ const MainPage = () => {
               difficulty={recipe.difficulty}
               prepTime={recipe.prep_time}
               cookTime={recipe.cook_time}
+
             />
           ))}
         </div>
@@ -234,6 +238,9 @@ const MainPage = () => {
     <>
       <div className="min-h-screen flex flex-col bg-white">
         <Navbar />
+
+
+
         {/* Hero Section */}
         <div className="max-w-5xl mx-auto w-full px-4 mt-[4.5vh]">
           <div className="rounded-3xl overflow-hidden w-full h-[30vh] md:h-[40vh] flex items-center justify-center bg-[#FDEBED] relative mb-[5vh]">
@@ -270,7 +277,7 @@ const MainPage = () => {
               ))}
             </div>
           </div>
-          
+
           {/*Category Recipe Sections */}
           <div className="mt-[4vh] mb-[6vh]">
             <h2 className="text-2xl md:text-3xl font-bold mb-[2vh] text-center md:text-left">
@@ -285,7 +292,7 @@ const MainPage = () => {
             <h2 className="text-2xl md:text-3xl font-bold mb-[2vh] text-center md:text-left">
               Recipes You Would Love
             </h2>
-            
+
             {recommendedRecipes.length > 0 ? (
               <Carousel>
                 {recommendedRecipes
@@ -308,8 +315,8 @@ const MainPage = () => {
                               image={recipe.image_url || "/Images/default.jpg"}
                               title={recipe.title}
                               description={
-                                recipe.description || 
-                                recipe.instructions || 
+                                recipe.description ||
+                                recipe.instructions ||
                                 "No description available"
                               }
                               slug={
