@@ -44,18 +44,18 @@ const MainPage = () => {
         // Fixed: Use getRecipeByCategory (without 's')
         const mappedCategory =
           categoryMapping[activeCategory] || activeCategory;
-        const response = await recipeAPI.getRecipeByCategory(
+        const { items, count, next } = await recipeAPI.getRecipeByCategory(
           mappedCategory,
           page
         );
 
         console.log(
           `📋 Recipes received for ${activeCategory} (mapped to ${mappedCategory}):`,
-          response.data
+          items
         );
-        console.log(`🔢 Number of recipes:`, response.data?.length || 0);
+        console.log(`🔢 Number of recipes:`, items?.length || 0, `(total: ${count})`);
 
-        let filteredRecipes = response.data || [];
+        let filteredRecipes = items || [];
 
         // Client-side filtering as backup if backend doesn't filter properly
         if (filteredRecipes.length > 0) {
@@ -90,19 +90,16 @@ const MainPage = () => {
           if (page === 1) {
             // First page - replace recipes
             setRecipes(filteredRecipes);
-
           } else {
             // Subsequent pages - append recipes
             setRecipes((prevRecipes) => [...prevRecipes, ...filteredRecipes]);
-
           }
 
-          // Check if there are more pages
-          setHasMore(filteredRecipes.length === 12); // Assuming 12 recipes per page
+          // Use backend pagination hint
+          setHasMore(Boolean(next));
         } else {
           if (page === 1) {
             setRecipes([]);
-
           }
           setHasMore(false);
         }
@@ -126,11 +123,11 @@ const MainPage = () => {
   useEffect(() => {
     const fetchWhatOthersAreCooking = async () => {
       try {
-        const response = await recipeAPI.getWhatOthersAreCooking();
-        const recipes = (response.data || []).slice(0, 12);
+        const { items } = await recipeAPI.getWhatOthersAreCooking();
+        const recipes = (items || []).slice(0, 12);
         setRecentRecipes(recipes);
-        if (recipes.length > 0) {
 
+        if (recipes.length > 0) {
         }
       } catch (err) {
         console.error("Error fetching 'What others are cooking' recipes:", err);
