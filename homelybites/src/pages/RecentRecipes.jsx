@@ -86,9 +86,14 @@ const RecentRecipes = () => {
             {recentRecipes.map((recipe, index) => (
               <RecipeCard 
                 key={index} 
-                image={recipe.image}
+                image={recipe.image_url || "/public/Images/Image-1.png"}
                 title={recipe.title}
-                description={recipe.description}
+                description={
+                  recipe.description ||
+                  `${recipe.prep_time ? `Prep: ${recipe.prep_time}min` : ""}${recipe.prep_time && recipe.cook_time ? " | " : ""}${recipe.cook_time ? `Cook: ${recipe.cook_time}min` : ""}` ||
+                  recipe.difficulty ||
+                  "Delicious recipe"
+                }
                 slug={recipe.slug}
               />
             ))}

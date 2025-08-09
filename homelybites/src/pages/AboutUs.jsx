@@ -4,34 +4,42 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 const AboutUs = () => {
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
+
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 xl:py-20">
-        
+      <main className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 xl:px-16 py-8 sm:py-12 lg:py-16 xl:py-20">
         {/* Our Missions Section */}
         <section className="mb-12 sm:mb-16 lg:mb-20 xl:mb-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 xl:gap-16 items-center">
-            
-            {/* Text Content */}
-            <div className="order-2 lg:order-1 space-y-6 sm:space-y-8">
-              <h2 className="text-center text-2xl sm:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-accent font-inter leading-tight">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 xl:gap-12 items-center">
+            {/* Text Content - Now first in order */}
+            <div className="space-y-6 sm:space-y-8">
+              <h2 className="text-center text-2xl sm:text-3xl lg:text-4xl xl:text-5xl 2xl:text-5xl font-bold text-accent font-poppins leading-tight">
                 Our Missions
               </h2>
-              <p className="text-gray-700 font-inter leading-relaxed text-sm sm:text-base lg:text-lg xl:text-xl text-justify selection:bg-accent selection:text-white max-w-prose mx-auto lg:mx-0">
-                Our Mission is to provide a tailored recipes which is tasty, healthy and also make people taste home wherever and whenever they want. We not only aim to make people use home ingredients and reduce food waste. 
-                <span className="text-accent font-sans font-extrabold block mt-4 sm:inline sm:mt-0 sm:ml-2">
+              <p className="text-gray-700 font-poppins leading-relaxed text-[14px] md:text-[18px] lg:text-[19px] xl:text-[20px]   text-justify lg:text-left selection:bg-accent selection:text-white max-w-prose mx-auto lg:mx-0">
+                HomelyBites is on a mission to make cooking easy, fun, and
+                personalized for everyone. We help you turn everyday ingredients
+                into delicious meals tailored to your health and dietary needs.
+                By reducing food waste and simplifying meal planning, we make
+                your kitchen more efficient and creative. Our platform also
+                brings people together through a vibrant cooking community.
+                Because good food should be shared, enjoyed, and never
+                stressful!.
+                {/* Our Mission is to provide a tailored recipes which is tasty,
+                healthy and also make people taste home wherever and whenever
+                they want. We not only aim to make people use home ingredients
+                and reduce food waste.<br></br> */}
+                <div className="text-accent font-sans font-extrabold block  sm:inline sm:mt-0 sm:ml-2">
                   "YApping is left to be filled here".
-                </span>
+                </div>
               </p>
             </div>
 
-            {/* Image */}
-            <div className="order-1 lg:order-2">
-              <div className="relative bg-gray-200 rounded-xl lg:rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[3/2] lg:aspect-[4/3] shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02]">
+            {/* Image - Now second in order */}
+            <div>
+              <div className="relative bg-gray-200 rounded-xl lg:rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[3/2] lg:aspect-[4/3] shadow-lg hover:shadow-2xl transition-all duration-1000 transform hover:scale-[1.02]">
                 <div className="absolute inset-0">
                   {/* Kitchen scene */}
                   <div className="w-full h-full flex items-center">
@@ -42,10 +50,10 @@ const AboutUs = () => {
                       loading="lazy"
                     />
                   </div>
-                  
+
                   {/* Overlay element */}
-                  <div className="absolute top-3 right-3 sm:top-4 sm:right-4 lg:top-6 lg:right-6 bg-white/95 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-4 shadow-lg transform hover:scale-105 transition-all duration-300">
-                    <div className="text-xs sm:text-sm lg:text-base text-gray-800 font-medium whitespace-nowrap">
+                  <div className="absolute top-3 right-3 sm:top-4 sm:right-4 lg:top-6 lg:right-6 bg-white/95 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-4 shadow-lg transform hover:scale-105 transition-all duration-300 cursor-pointer">
+                    <div className="text-xs text-[14px] md:text-[18px] lg:text-[19px] xl:text-[20px] font-poppins text-gray-800 font-medium whitespace-nowrap ">
                       Our Websites Tutorial
                     </div>
                   </div>
@@ -60,16 +68,15 @@ const AboutUs = () => {
 
         {/* Community Section */}
         <section className="mb-12 sm:mb-16 lg:mb-20 xl:mb-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 xl:gap-16 items-center">
-            
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 xl:gap-16 items-start">
             {/* Image */}
             <div className="order-1">
-              <div className="relative bg-gray-200 rounded-xl lg:rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[3/2] md:aspect-square lg:aspect-[4/3] shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:scale-[1.02]">
+              <div className="relative bg-gray-200 rounded-xl lg:rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[3/2] md:aspect-square lg:aspect-[4/3] shadow-lg hover:shadow-2xl transition-all duration-1000 transform hover:scale-[1.02] mt-[70px]">
                 <div className="absolute inset-0">
                   {/* Community kitchen scene */}
                   <div className="w-full h-full flex items-center justify-center">
-                    <img 
-                      src="Images/aboutimg/gcook.png" 
+                    <img
+                      src="Images/aboutimg/gcook.png"
                       alt="Community Cooking"
                       className="w-full h-full object-cover object-center"
                       loading="lazy"
@@ -79,18 +86,53 @@ const AboutUs = () => {
               </div>
             </div>
 
-            {/* Text Content */}
-            <div className="order-2 space-y-6 sm:space-y-8">
-              <h2 className="text-center text-2xl sm:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-accent font-inter leading-tight">
-                Community
+            {/* Text Content - Modified to expand below image */}
+            <div className="order-2 lg:order-2 space-y-6 sm:space-y-8">
+              <h2 className="text-center text-2xl sm:text-3xl lg:text-4xl xl:text-5xl 2xl:text-5xl font-bold text-accent font-poppins leading-tight">
+                Our Flavorful Community
               </h2>
-              <p className="text-gray-700 font-inter leading-relaxed text-sm sm:text-base lg:text-lg xl:text-xl text-justify selection:bg-accent selection:text-white max-w-prose mx-auto lg:mx-0">
-                Lorem Ipsum is simply dummy text of the printing and typesetting
-                industry. Lorem Ipsum has been the industry's standard dummy
-                text ever since the 1500s, when an unknown printer took a galley
-                of type and scrambled it to make a type specimen book. It has
-                survived not only five centuries, but also the leap into
-                electronic typesetting, remaining essentially unchanged.
+              <p className="text-gray-700 font-poppins leading-relaxed text-[14px] md:text-[18px] lg:text-[19px] xl:text-[20px] text-justify selection:bg-accent selection:text-white max-w-prose mx-auto lg:mx-0">
+                At HomelyBites, we don't just serve recipes we serve up
+                connections, creativity, and a whole lot of kitchen fun! Our
+                community is where food lovers of all kinds come together to
+                chop, stir, sprinkle, and share.
+                <div className="text-[14px] md:text-[18px] lg:text-[19px] xl:text-[20px] text-gray-700 font-poppins">
+                  <br />
+                  Think of it like your cozy virtual kitchen party where you
+                  can:
+                  <br />
+                  &#8226; 📸 Snap and share your sizzling dishes and oven-fresh
+                  bakes. <br />
+                  &#8226; ✍️ Blog your kitchen adventures like burnt toast and
+                  all.
+                  <br />
+                  &#8226; 🎥 Drop videos, swap tips, and cheer each other on.
+                  <br />
+                  &#8226; 💬 Follow foodie friends and peek into their delicious
+                  feeds.
+                  <br />
+                  <br />
+                </div>
+              </p>
+            </div>
+          </div>
+
+          {/* Expanded text section that spans full width below the grid */}
+          <div className="mt-0 sm:mt-10 lg:mt-12 xl:mt-16">
+            <div className="text-[14px] md:text-[18px] lg:text-[19px] xl:text-[20px] text-gray-700 font-poppins leading-relaxed max-w-4xl mx-auto text-justify lg:text-left space-y-4">
+              <p>
+                Whether you're a total kitchen newbie, a midnight snacker, or a
+                meal-prepping pro there's a spot at the table for you. We're
+                here to laugh at our cooking fails, celebrate the wins, and turn
+                everyday meals into something magical.
+              </p>
+              <p className="m-0">
+                So grab your apron, hit that{" "}
+                <span className="text-accent font-medium text-lg">
+                  "Get Started"
+                </span>{" "}
+                button, and let's make this community the tastiest thing on the
+                internet.
               </p>
             </div>
           </div>

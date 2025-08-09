@@ -12,6 +12,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import BackButton from "../components/BackButton";
 
 // Yup validation schema
 const validationSchema = yup.object({
@@ -150,10 +151,17 @@ const ContactPage = () => {
       {/* Navbar - Fixed at top */}
       <Navbar />
 
+      <div className="w-full px-3 sm:px-4 lg:px-6 py-2">
+        <div className="max-w-7xl mx-auto">
+          <BackButton />
+        </div>
+      </div>
+
       {/* Main Content - Takes remaining space */}
       <div className="flex-1 px-4 sm:px-6 md:px-9 py-4 sm:py-9">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-9">
+          
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-black mb-3 sm:mb-4 font-poppins">
             Get In Touch
           </h1>
@@ -380,5 +388,3 @@ const ContactPage = () => {
 };
 
 export default ContactPage;
-
-
