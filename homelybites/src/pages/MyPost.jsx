@@ -13,7 +13,7 @@ const CATEGORIES = [
 ];
 
 function shuffleArray(array) {
-  // Fisher-Yates shuffle
+ 
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -32,7 +32,7 @@ const MyPost = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch user profile and categories (from backend if available)
+
     const fetchUserAndCategories = async () => {
       setLoading(true);
       setError("");
@@ -47,7 +47,7 @@ const MyPost = () => {
           following: userRes.data.following || 0,
           followers: userRes.data.followers || 0,
         });
-        // Fetch categories from backend if endpoint exists
+        
         try {
           const catRes = await axiosInstance.get("/api/categories/");
           if (catRes.data && catRes.data.results && catRes.data.results.length > 0) {
@@ -66,7 +66,7 @@ const MyPost = () => {
     if (currentUser) {
       fetchPosts(activeCategory);
     }
-    // eslint-disable-next-line
+
   }, [currentUser, activeCategory]);
 
   const fetchPosts = async (category = "") => {
@@ -103,7 +103,7 @@ const MyPost = () => {
         <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-12 gap-4 sm:gap-6">
-              {/* Left Sidebar - Fixed */}
+              {/* Left Sidebar */}
               <div className="col-span-3 space-y-4 sm:space-y-6">
                 <div className="sticky top-6 space-y-4 sm:space-y-6">
                   {/* Profile Section */}
