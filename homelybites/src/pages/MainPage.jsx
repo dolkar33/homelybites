@@ -127,7 +127,7 @@ const MainPage = () => {
     const fetchWhatOthersAreCooking = async () => {
       try {
         const response = await recipeAPI.getWhatOthersAreCooking();
-        const recipes = (response.data || []).slice(0, 8);
+        const recipes = (response.data || []).slice(0, 12);
         setRecentRecipes(recipes);
         if (recipes.length > 0) {
 
