@@ -163,9 +163,9 @@ const MyPost = () => {
                         <span className="text-lg sm:text-xl">⚡</span>
                         <span className="text-sm sm:text-base font-medium">My Post</span>
                       </button>
-                      <button type="button" onClick={() => navigate('/FavPage')} className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left">
+                      <button type="button" onClick={() => navigate('/saved-posts')} className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left">
                         <span className="text-lg sm:text-xl">🔖</span>
-                        <span className="text-sm sm:text-base font-medium">Saved Recipes</span>
+                        <span className="text-sm sm:text-base font-medium">Saved Posts</span>
                       </button>
                     </nav>
                   </div>

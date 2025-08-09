@@ -68,7 +68,7 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
   };
 
   const handleFavouritesClick = () => {
-    navigate("/FavPage");
+    navigate("/community?view=saved");
     setShowDropdown(false);
   };
 

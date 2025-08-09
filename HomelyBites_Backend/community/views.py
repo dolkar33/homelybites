@@ -17,13 +17,27 @@ class PostViewSet(viewsets.ModelViewSet):
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
+    @staticmethod
+    def _normalize_category_param(raw):
+
+        if not raw:
+            return None
+        def norm(s):
+            return str(s).strip().lower().replace('-', ' ').replace('_', ' ')
+        key = norm(raw)
+        for value, label in Post.CATEGORY_CHOICES:
+            if key in (norm(value), norm(label)):
+                return value
+        return None
+    
     def get_queryset(self):
         queryset = Post.objects.select_related('author').prefetch_related('tags', 'likes')
         
         # Filter by category
-        category = self.request.query_params.get('category')
-        if category:
-            queryset = queryset.filter(category=category)
+        raw_category = self.request.query_params.get('category')
+        category_value = self._normalize_category_param(raw_category)
+        if category_value:
+            queryset = queryset.filter(category=category_value)
         
         # Filter by tag
         tag = self.request.query_params.get('tag')
@@ -94,6 +108,11 @@ class PostViewSet(viewsets.ModelViewSet):
             Q(author=request.user) | Q(author__in=following_users)
         ).select_related('author').prefetch_related('tags', 'likes').order_by('-created_at')
         
+        # Optional category filter
+        category_value = self._normalize_category_param(request.query_params.get('category'))
+        if category_value:
+            queryset = queryset.filter(category=category_value)
+        
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -102,18 +121,42 @@ class PostViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
-    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
-    def saved(self, request):
-        """Get user's saved posts"""
-        saved_posts = SavedPost.objects.filter(user=request.user).select_related('post__author')
-        posts = [saved.post for saved in saved_posts]
-        
-        page = self.paginate_queryset(posts)
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated], url_path='liked')
+    def liked(self, request):
+        """Get posts the current user has liked (supports optional ?category=)"""
+        liked_post_ids = Like.objects.filter(user=request.user).values_list('post_id', flat=True)
+        queryset = Post.objects.filter(id__in=liked_post_ids).select_related('author').prefetch_related('tags', 'likes').order_by('-created_at')
+
+        category_value = self._normalize_category_param(request.query_params.get('category'))
+        if category_value:
+            queryset = queryset.filter(category=category_value)
+
+        page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
-        serializer = self.get_serializer(posts, many=True)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def saved(self, request):
+        """Get user's saved posts"""
+        # Build a queryset of the user's saved Post objects
+        saved_post_ids = SavedPost.objects.filter(user=request.user).values_list('post_id', flat=True)
+        queryset = Post.objects.filter(id__in=saved_post_ids).select_related('author').prefetch_related('tags', 'likes').order_by('-created_at')
+
+        # Optional category filter using normalization
+        category_value = self._normalize_category_param(request.query_params.get('category'))
+        if category_value:
+            queryset = queryset.filter(category=category_value)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
@@ -134,12 +177,17 @@ class PostViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
-    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    @action(detail=False, methods=['get'], url_path='my-posts', permission_classes=[permissions.IsAuthenticated])
     def my_posts(self, request):
-        """Get current user's posts"""
+        """Get current user's posts (supports optional ?category=)"""
         queryset = Post.objects.filter(
             author=request.user
         ).select_related('author').prefetch_related('tags', 'likes').order_by('-created_at')
+
+        # Optional category filter, mirroring get_queryset behavior
+        category_value = self._normalize_category_param(request.query_params.get('category'))
+        if category_value:
+            queryset = queryset.filter(category=category_value)
         
         page = self.paginate_queryset(queryset)
         if page is not None:
