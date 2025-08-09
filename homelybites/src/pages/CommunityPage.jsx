@@ -9,6 +9,7 @@ import {
   Image,
 } from "lucide-react";
 import Footer from "../components/Footer";
+import Toast from "../components/Toast";
 import Navbar from "../components/Navbar";
 import { useNavigate, useLocation } from "react-router-dom";
 import PostFeed from "../components/PostFeed";
@@ -202,7 +203,6 @@ const CommunityPage = () => {
   console.log("Render state:", { loading, error, currentUser, categoriesLength: categories.length, postsLength: posts.length });
 
   if (loading) return <div className="flex items-center justify-center h-screen text-xl">Loading...</div>;
-  if (error) return <div className="flex items-center justify-center h-screen text-xl text-red-500">{error}</div>;
   if (!currentUser) {
     console.log("No current user, showing fallback");
     return <div className="flex items-center justify-center h-screen text-xl text-gray-500">Loading user profile...</div>;
@@ -212,6 +212,15 @@ const CommunityPage = () => {
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Navigation Bar */}
       <Navbar />
+
+      <Toast
+        show={Boolean(error)}
+        message={error}
+        variant="error"
+        onClose={() => setError("")}
+        autoHideDuration={3000}
+        position="top-right"
+      />
 
       <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto">

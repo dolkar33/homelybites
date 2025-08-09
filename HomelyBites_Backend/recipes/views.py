@@ -490,7 +490,7 @@ def my_profile(request):
         serializer = UserProfileSerializer(user_profile, context={'request': request})
         return Response(serializer.data)
     elif request.method == 'PUT':
-        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
+        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -786,12 +786,6 @@ def update_user_profile(request):
                 profile.allergies = ','.join([a.strip() for a in allergies])
             else:
                 profile.allergies = allergies.strip()
-        if 'dislikes' in request.data:
-            dislikes = request.data['dislikes']
-            if isinstance(dislikes, list):
-                profile.dislikes = ','.join([d.strip() for d in dislikes])
-            else:
-                profile.dislikes = dislikes.strip()
         if 'profile_image' in request.FILES:
             image = request.FILES['profile_image']
             if image.size > 5 * 1024 * 1024:
@@ -814,7 +808,6 @@ def update_user_profile(request):
             'profile': {
                 'dietary_preference': profile.dietary_preference.split(',') if profile.dietary_preference else [],
                 'allergies': profile.allergies.split(',') if profile.allergies else [],
-                'dislikes': profile.dislikes.split(',') if profile.dislikes else [],
                 'profile_image': profile.profile_image.url if profile.profile_image else None
             },
             'message': 'Profile updated successfully'

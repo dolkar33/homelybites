@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../config/axiosInstance";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
+import Toast from "../components/Toast.jsx";
  
 
 const UserProfile = () => {
@@ -278,6 +279,7 @@ const UserProfile = () => {
     const fileUrl = URL.createObjectURL(processedFile);
 
     setProfileImage(fileUrl);
+    setSelectedFile(processedFile);
 
     } catch (error) {
       setUploadError(error.message);
@@ -453,26 +455,21 @@ const UserProfile = () => {
         return;
       }
 
-      let response;
-      if (selectedFile) {
-        // (No longer send image here)
-      } else {
-        // If no image, send JSON as before
-        const updateData = {
-          dietary_preference: dietaryPlan,
-          allergies: selectedAllergies,
-          username: userInfo.username,
-          email: userInfo.email,
-          first_name: userInfo.first_name,
-          last_name: userInfo.last_name,
-          // Do NOT include current_password or new_password here
-        };
 
-        response = await axiosInstance.put(
-          'api/user-profiles/update/',
-          updateData
-        );
-      }
+      const updateData = {
+        dietary_preference: dietaryPlan,
+        allergies: selectedAllergies,
+        username: userInfo.username,
+        email: userInfo.email,
+        first_name: userInfo.first_name,
+        last_name: userInfo.last_name,
+     
+      };
+
+      const response = await axiosInstance.put(
+        'api/user-profiles/update/',
+        updateData
+      );
 
       if (response.status === 200) {
         setSuccessMessage('Profile updated successfully!');
@@ -493,7 +490,7 @@ const UserProfile = () => {
           last_name: response.data.user.last_name || ""
         });
 
-        // Set profile response.data (normalize allergies possibly as CSV)
+
         const updatedAllergies = Array.isArray(response.data.allergies)
           ? response.data.allergies
           : (typeof response.data.allergies === 'string'
@@ -506,7 +503,7 @@ const UserProfile = () => {
         });
         localStorage.setItem('currentUser', JSON.stringify(updatedUser));
 
-        // Auto hide success message after 3 seconds
+        
         setTimeout(() => {
           setSuccessMessage('');
         }, 3000);
@@ -560,55 +557,23 @@ const UserProfile = () => {
         <Navbar />
       </div>
       
-      {/* Success Message */}
-      {successMessage && (
-        <div className="fixed top-4 right-4 bg-green-100 border-l-4 border-green-500 p-4 rounded shadow-md z-50 animate-fade-in-down">
-          <div className="flex items-center">
-            <div className="mr-2">
-              <svg className="h-6 w-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-bold text-green-800">Success!</p>
-              <p className="text-green-700">{successMessage}</p>
-            </div>
-            <button 
-              onClick={() => setSuccessMessage('')}
-              className="ml-4 text-green-500 hover:opacity-80"
-            >
-              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+      <Toast
+        show={Boolean(successMessage)}
+        message={successMessage}
+        variant="success"
+        onClose={() => setSuccessMessage("")}
+        autoHideDuration={3000}
+        position="top-right"
+      />
 
-      {/* Error Message */}
-      {apiError && (
-        <div className="fixed top-4 right-4 bg-red-100 border-l-4 border-red-500 p-4 rounded shadow-md z-50">
-          <div className="flex items-center">
-            <div className="mr-2">
-              <svg className="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-bold text-red-800">Error!</p>
-              <p className="text-red-700">{apiError}</p>
-            </div>
-            <button 
-              onClick={() => setApiError('')}
-              className="ml-4 text-red-500 hover:opacity-80"
-            >
-              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+      <Toast
+        show={Boolean(apiError)}
+        message={apiError}
+        variant="error"
+        onClose={() => setApiError("")}
+        autoHideDuration={3000}
+        position="top-right"
+      />
       
       {/* Main Content Area */}
       <div className="flex-1 px-4 md:px-8 py-6 pb-12">
@@ -670,24 +635,6 @@ const UserProfile = () => {
                   >
                     {isUploading ? "Uploading..." : "Change Profile"}
                   </button>
-                  
-                  {/* Show additional options if image is selected */}
-                  {selectedFile && (
-                    <div className="flex gap-2 justify-center">
-                      <button 
-                        onClick={handleResetImage}
-                        className="bg-gray-500 w-20 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-600 transition-all duration-200"
-                      >
-                        Reset
-                      </button>
-                      <button 
-                        onClick={handleRemoveImage}
-                        className="bg-red-400 w-20 text-white px-4 py-2 rounded-md text-sm hover:bg-red-500 transition-all duration-200"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  )}
                 </div>
                 
                 {/* Hidden file input */}
