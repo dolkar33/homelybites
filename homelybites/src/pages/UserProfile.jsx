@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../config/axiosInstance";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
-import { baseURL } from "../config/axiosInstance";
+ 
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -22,12 +22,11 @@ const UserProfile = () => {
   // State for profile response.data
   const [profileData, setProfileData] = useState({
     dietary_preference: [],
-    allergies: ""
+    allergies: []
   });
 
-  // State for profile image
-  const [profileImage, setProfileImage] = useState("/Images/user.jpg");
-  const [originalProfileImage] = useState("/Images/user.jpg");
+  // State for profile image (empty => show SVG icon fallback)
+  const [profileImage, setProfileImage] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
 
   // State for loading and errors
@@ -104,9 +103,15 @@ const UserProfile = () => {
         });
 
         // Set profile data
+        const allergiesArr = Array.isArray(data.allergies)
+          ? data.allergies
+          : (typeof data.allergies === 'string'
+              ? data.allergies.split(',').map(s => s.trim()).filter(Boolean)
+              : (data.allergies ? [data.allergies] : []));
+
         setProfileData({
           dietary_preference: Array.isArray(data.dietary_preference) ? data.dietary_preference : [data.dietary_preference].filter(Boolean),
-          allergies: Array.isArray(data.allergies) ? data.allergies : (data.allergies ? [data.allergies] : [])
+          allergies: allergiesArr
         });
 
         // Set dietary plan for the checkboxes
@@ -114,13 +119,13 @@ const UserProfile = () => {
           setDietaryPlan(Array.isArray(data.dietary_preference) ? data.dietary_preference : [data.dietary_preference]);
         }
 
-        // Set selected allergies
+        // Set selected allergies (normalize string CSV -> array)
         if (data.allergies) {
-          setSelectedAllergies(Array.isArray(data.allergies) ? data.allergies : [data.allergies]);
+          setSelectedAllergies(allergiesArr);
         }
 
-        // Set profile image directly from backend
-        setProfileImage(data.profile_image || "/Images/user.jpg");
+        // Set profile image directly from backend; empty => show SVG icon
+        setProfileImage(data.profile_image || "");
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -269,14 +274,10 @@ const UserProfile = () => {
         processedFile = await compressImage(file);
       }
 
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        // No cache busting needed for preview (local blob)
-        setProfileImage(e.target.result);
-        setSelectedFile(processedFile);
-      };
-      reader.readAsDataURL(processedFile);
+      
+    const fileUrl = URL.createObjectURL(processedFile);
+
+    setProfileImage(fileUrl);
 
     } catch (error) {
       setUploadError(error.message);
@@ -288,7 +289,7 @@ const UserProfile = () => {
 
   // Reset profile image to original
   const handleResetImage = () => {
-    setProfileImage("/Images/user.jpg");
+    setProfileImage("");
     setSelectedFile(null);
     setUploadError('');
     if (fileInputRef.current) {
@@ -400,7 +401,7 @@ const UserProfile = () => {
       );
       if (response.data.profile_image) {
         // Add cache-busting param to force reload
-        const cacheBustedUrl = response.data.profile_image ? `${response.data.profile_image}${response.data.profile_image.includes('?') ? '&' : '?'}t=${Date.now()}` : "/Images/user.jpg";
+        const cacheBustedUrl = response.data.profile_image ? `${response.data.profile_image}${response.data.profile_image.includes('?') ? '&' : '?'}t=${Date.now()}` : "";
         setProfileImage(cacheBustedUrl);
         setSelectedFile(null);
         setSuccessMessage('Profile image updated successfully!');
@@ -492,10 +493,16 @@ const UserProfile = () => {
           last_name: response.data.user.last_name || ""
         });
 
-        // Set profile response.data
+        // Set profile response.data (normalize allergies possibly as CSV)
+        const updatedAllergies = Array.isArray(response.data.allergies)
+          ? response.data.allergies
+          : (typeof response.data.allergies === 'string'
+              ? response.data.allergies.split(',').map(s => s.trim()).filter(Boolean)
+              : (response.data.allergies ? [response.data.allergies] : []));
+
         setProfileData({
           dietary_preference: response.data.dietary_preference || [],
-          allergies: response.data.allergies || []
+          allergies: updatedAllergies
         });
         localStorage.setItem('currentUser', JSON.stringify(updatedUser));
 
@@ -623,12 +630,13 @@ const UserProfile = () => {
                 <div className="w-32 h-32 mx-auto rounded-2xl overflow-hidden mb-3 shadow-lg relative">
                   {profileImage ? (
                     <img 
-                      src={profileImage?.startsWith('http') ? profileImage : baseURL + profileImage}
+                      src={profileImage}
                       alt="Profile" 
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.target.onerror = null;
-                        setProfileImage("/Images/user.jpg");
+                        // Clear to trigger SVG icon fallback
+                        setProfileImage("");
                       }}
                     />
                   ) : (
@@ -754,7 +762,7 @@ const UserProfile = () => {
                     
                     {/* Dropdown Options */}
                     {isAllergyDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 mt-1 max-h-48 overflow-y-auto">
+                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 mt-1">
                         <div className="p-2 border-b border-gray-200">
                           <button
                             type="button"
@@ -767,33 +775,35 @@ const UserProfile = () => {
                             Clear all
                           </button>
                         </div>
-                        {allergyOptions.map((allergy) => (
-                          <label
-                            key={allergy}
-                            className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 transition-colors"
-                          >
-                            <div className="relative flex-shrink-0">
-                              <input
-                                type="checkbox"
-                                checked={selectedAllergies.includes(allergy)}
-                                onChange={() => handleAllergySelect(allergy)}
-                                className="sr-only"
-                              />
-                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                                selectedAllergies.includes(allergy)
-                                  ? 'bg-[#ff6b6b] border-[#ff6b6b]' 
-                                  : 'bg-white border-gray-300'
-                              }`}>
-                                {selectedAllergies.includes(allergy) && (
-                                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                )}
+                        <div className="max-h-48 overflow-y-auto">
+                          {allergyOptions.map((allergy) => (
+                            <label
+                              key={allergy}
+                              className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="relative flex-shrink-0">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedAllergies.includes(allergy)}
+                                  onChange={() => handleAllergySelect(allergy)}
+                                  className="sr-only"
+                                />
+                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                  selectedAllergies.includes(allergy)
+                                    ? 'bg-[#ff6b6b] border-[#ff6b6b]' 
+                                    : 'bg-white border-gray-300'
+                                }`}>
+                                  {selectedAllergies.includes(allergy) && (
+                                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            <span className="text-sm">{allergy}</span>
-                          </label>
-                        ))}
+                              <span className="text-sm">{allergy}</span>
+                            </label>
+                          ))}
+                        </div>
                         <div className="p-2 border-t border-gray-200">
                           <button
                             type="button"
@@ -803,10 +813,12 @@ const UserProfile = () => {
                             Done
                           </button>
                         </div>
+                        
                       </div>
+                      
                     )}
                   </div>
-                  {/* Selected allergies display */}
+                    {/* Selected allergies display */}
                   {selectedAllergies.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {selectedAllergies.map((allergy) => (

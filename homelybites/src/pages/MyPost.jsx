@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import PersonIcon from "@mui/icons-material/Person";
 import axiosInstance from "../config/axiosInstance";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -29,6 +30,8 @@ const MyPost = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
+  // Sidebar profile image src; empty => show SVG fallback
+  const [profileImgSrc, setProfileImgSrc] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,14 +42,16 @@ const MyPost = () => {
       try {
         // Fetch current user profile
         const userRes = await axiosInstance.get("/api/user-profiles/my_profile/");
-        setCurrentUser({
+        const userPayload = {
           id: userRes.data.user.id,
           name: userRes.data.user.first_name + " " + userRes.data.user.last_name,
           profile_image: userRes.data.profile_image,
           posts: userRes.data.posts || 0,
           following: userRes.data.following || 0,
           followers: userRes.data.followers || 0,
-        });
+        };
+        setCurrentUser(userPayload);
+        setProfileImgSrc(userPayload.profile_image || "");
         
         try {
           const catRes = await axiosInstance.get("/api/categories/");
@@ -109,12 +114,17 @@ const MyPost = () => {
                   {/* Profile Section */}
                   <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                     <div className="text-center mb-4 sm:mb-6">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md">
-                        <img
-                          src={currentUser?.avatar || "/Images/CommunityPage/jennie.jpg"}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md relative flex items-center justify-center bg-gray-100">
+                        {profileImgSrc ? (
+                          <img
+                            src={profileImgSrc}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                            onError={() => setProfileImgSrc("")}
+                          />
+                        ) : (
+                          <PersonIcon style={{ fontSize: 40, color: '#9ca3af' }} />
+                        )}
                       </div>
                       <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
                         {currentUser?.name || "My Profile"}
@@ -199,7 +209,28 @@ const MyPost = () => {
                       {posts.map((post) => (
                         <div key={post.id} className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-2">
                           <div className="flex items-center gap-3 mb-2">
-                            <img src={post.author?.profile_image || "/Images/user.jpg"} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                              {post.author?.profile_image ? (
+                                <>
+                                  <img
+                                    src={post.author.profile_image}
+                                    alt="avatar"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      // Hide broken image and show SVG fallback sibling
+                                      e.currentTarget.style.display = 'none';
+                                      const fallback = e.currentTarget.nextElementSibling;
+                                      if (fallback) fallback.style.display = 'flex';
+                                    }}
+                                  />
+                                  <div style={{display:'none'}} className="items-center justify-center w-full h-full">
+                                    <PersonIcon style={{ fontSize: 24, color: '#9ca3af', margin: '0 auto' }} />
+                                  </div>
+                                </>
+                              ) : (
+                                <PersonIcon style={{ fontSize: 24, color: '#9ca3af', margin: '0 auto' }} />
+                              )}
+                            </div>
                             <div>
                               <div className="font-semibold text-gray-900 text-sm">{post.author?.name || post.author_name || "Unknown"}</div>
                               <div className="text-xs text-gray-500">{post.category || "-"}</div>

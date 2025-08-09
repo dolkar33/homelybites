@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import PersonIcon from "@mui/icons-material/Person";
 import axiosInstance from "../config/axiosInstance";
 import {
   Heart,
@@ -51,15 +52,16 @@ const CommunityPage = () => {
   const [error, setError] = useState("");
   const [posts, setPosts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-const [suggestedUsers, setSuggestedUsers] = useState(mockSuggestedUsers);
+  const [suggestedUsers, setSuggestedUsers] = useState(mockSuggestedUsers);
 
-const handleFollow = (idx) => {
-  setSuggestedUsers((prev) =>
-    prev.map((user, i) =>
-      i === idx ? { ...user, isFollowing: !user.isFollowing } : user
-    )
-  );
-};
+  const handleFollow = (idx) => {
+    setSuggestedUsers((prev) =>
+      prev.map((user, i) =>
+        i === idx ? { ...user, isFollowing: !user.isFollowing } : user
+      )
+    );
+  };
+
   const isReady = !loading && !error && currentUser && categories.length > 0 && posts.length >= 0;
 
   useEffect(() => {
@@ -68,17 +70,17 @@ const handleFollow = (idx) => {
       setError("");
       try {
         const postsRes = await axiosInstance.get("/api/posts/");
-        console.log('Posts response:', postsRes.data);
+        console.log("Posts response:", postsRes.data);
         setPosts(postsRes.data.results || []);
-        
+
         const catRes = await axiosInstance.get("/api/categories/");
-        console.log('Categories response:', catRes.data);
+        console.log("Categories response:", catRes.data);
         setCategories(catRes.data.results || []);
         setActiveCategory(catRes.data.results?.[0] || "");
 
         try {
           const userRes = await axiosInstance.get("/api/user-profiles/my_profile/");
-          console.log('User profile response:', userRes.data);
+          console.log("User profile response:", userRes.data);
           setCurrentUser({
             name: userRes.data.user.first_name + " " + userRes.data.user.last_name,
             profile_image: userRes.data.profile_image,
@@ -87,7 +89,7 @@ const handleFollow = (idx) => {
             followers: userRes.data.followers || 0,
           });
         } catch (e) {
-          console.log('User profile failed, setting guest user:', e);
+          console.log("User profile failed, setting guest user:", e);
           setCurrentUser({
             name: "Guest User",
             profile_image: "",
@@ -98,7 +100,7 @@ const handleFollow = (idx) => {
           });
         }
       } catch (err) {
-        console.log('Data fetch error:', err);
+        console.log("Data fetch error:", err);
         setError("Failed to load community data");
       }
       setLoading(false);
@@ -109,24 +111,28 @@ const handleFollow = (idx) => {
   const handleLike = async (postId) => {
     try {
       await axiosInstance.post(`/api/posts/${postId}/like/`);
-      setPosts(posts => posts.map(post =>
-        post.id === postId
-          ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
-          : post
-      ));
+      setPosts((posts) =>
+        posts.map((post) =>
+          post.id === postId
+            ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
+            : post
+        )
+      );
     } catch (e) {
-      setError('Failed to like/unlike post');
+      setError("Failed to like/unlike post");
     }
   };
 
   const handleSave = async (postId) => {
     try {
       await axiosInstance.post(`/api/posts/${postId}/save/`);
-      setPosts(posts => posts.map(post =>
-        post.id === postId ? { ...post, isSaved: !post.isSaved } : post
-      ));
+      setPosts((posts) =>
+        posts.map((post) =>
+          post.id === postId ? { ...post, isSaved: !post.isSaved } : post
+        )
+      );
     } catch (e) {
-      setError('Failed to save/unsave post');
+      setError("Failed to save/unsave post");
     }
   };
 
@@ -137,7 +143,7 @@ const handleFollow = (idx) => {
         const postsRes = await axiosInstance.get("/api/posts/");
         setPosts(postsRes.data);
       } catch (e) {
-        setError('Failed to reload posts');
+        setError("Failed to reload posts");
       }
       return;
     }
@@ -145,7 +151,7 @@ const handleFollow = (idx) => {
       const res = await axiosInstance.get(`/api/search/?q=${encodeURIComponent(term)}`);
       setPosts(res.data.posts || []);
     } catch (e) {
-      setError('Search failed');
+      setError("Search failed");
     }
   };
 
@@ -155,7 +161,7 @@ const handleFollow = (idx) => {
       const res = await axiosInstance.get(`/api/posts/?category=${encodeURIComponent(category)}`);
       setPosts(res.data);
     } catch (e) {
-      setError('Failed to filter by category');
+      setError("Failed to filter by category");
     }
   };
 
@@ -169,23 +175,23 @@ const handleFollow = (idx) => {
 
   const handlePostAuthorClick = (author) => {
     const userProfile = {
-      id: author.name.replace(/\s+/g, '').toLowerCase(), 
+      id: author.name.replace(/\s+/g, "").toLowerCase(),
       name: author.name,
-      username: `@${author.name.replace(/\s+/g, '').toLowerCase()}`,
+      username: `@${author.name.replace(/\s+/g, "").toLowerCase()}`,
       avatar: author.avatar,
       posts: author.posts,
       following: author.following,
-      followers: author.followers
+      followers: author.followers,
     };
     handleUserProfileClick(userProfile);
   };
 
-  console.log('Render state:', { loading, error, currentUser, categoriesLength: categories.length, postsLength: posts.length });
-  
+  console.log("Render state:", { loading, error, currentUser, categoriesLength: categories.length, postsLength: posts.length });
+
   if (loading) return <div className="flex items-center justify-center h-screen text-xl">Loading...</div>;
   if (error) return <div className="flex items-center justify-center h-screen text-xl text-red-500">{error}</div>;
   if (!currentUser) {
-    console.log('No current user, showing fallback');
+    console.log("No current user, showing fallback");
     return <div className="flex items-center justify-center h-screen text-xl text-gray-500">Loading user profile...</div>;
   }
 
@@ -203,12 +209,26 @@ const handleFollow = (idx) => {
                 {/* Profile Section */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                   <div className="text-center mb-4 sm:mb-6">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md">
-                      <img
-                        src={currentUser?.profile_image || "/Images/user.jpg"}
-                        alt={currentUser?.name || "User"}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md relative flex items-center justify-center bg-gray-100">
+                      {currentUser?.profile_image ? (
+                        <>
+                          <img
+                            src={currentUser.profile_image}
+                            alt={currentUser?.name || "User"}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                              const fallback = e.currentTarget.nextElementSibling;
+                              if (fallback) fallback.style.display = "flex";
+                            }}
+                          />
+                          <div style={{ display: "none" }} className="items-center justify-center w-full h-full">
+                            <PersonIcon style={{ fontSize: 40, color: "#9ca3af" }} />
+                          </div>
+                        </>
+                      ) : (
+                        <PersonIcon style={{ fontSize: 40, color: "#9ca3af" }} />
+                      )}
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
                       {currentUser?.name}
@@ -251,7 +271,7 @@ const handleFollow = (idx) => {
                   <nav className="space-y-3 sm:space-y-4">
                     <button
                       type="button"
-                      onClick={() => navigate('/')}
+                      onClick={() => navigate("/")}
                       className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left"
                     >
                       <span className="text-lg sm:text-xl">🏠</span>
@@ -261,7 +281,7 @@ const handleFollow = (idx) => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate('/MyPost')}
+                      onClick={() => navigate("/MyPost")}
                       className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left"
                     >
                       <span className="text-lg sm:text-xl">⚡</span>
@@ -271,7 +291,7 @@ const handleFollow = (idx) => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate('/saved-posts')}
+                      onClick={() => navigate("/saved-posts")}
                       className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left"
                     >
                       <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -302,7 +322,7 @@ const handleFollow = (idx) => {
                           key={category.id || catName || idx}
                           onClick={() => handleCategoryChange(catName)}
                           className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
-                            (activeCategory === catName)
+                            activeCategory === catName
                               ? "text-red-500 bg-red-50"
                               : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
                           }`}
@@ -322,16 +342,31 @@ const handleFollow = (idx) => {
                 {/* Story Section */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                   <div className="flex items-center bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md">
-                      <img
-                        src={currentUser.avatar}
-                        alt="User"
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md flex items-center justify-center bg-gray-100">
+                      {currentUser?.profile_image ? (
+                        <>
+                          <img
+                            src={currentUser.profile_image}
+                            alt="User"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                              const fallback = e.currentTarget.nextElementSibling;
+                              if (fallback) fallback.style.display = "flex";
+                            }}
+                          />
+                          <div style={{ display: "none" }} className="items-center justify-center w-full h-full">
+                            <PersonIcon style={{ fontSize: 32, color: "#9ca3af" }} />
+                          </div>
+                        </>
+                      ) : (
+                        <PersonIcon style={{ fontSize: 32, color: "#9ca3af" }} />
+                      )}
                     </div>
                     <span className="text-sm sm:text-base text-gray-600 flex-1 font-medium">
                       Let's Swap Stories, Recipes & Smiles
                     </span>
+
                     <div className="flex items-center space-x-2 sm:space-x-3">
                       <button
                         onClick={handleCreatePost}
@@ -358,17 +393,32 @@ const handleFollow = (idx) => {
                       >
                         {/* Post Header - Made clickable */}
                         <div className="p-4 sm:p-6 flex items-center">
-                          <div 
+                          <div
                             className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors"
                             onClick={() => handlePostAuthorClick(post.author)}
                           >
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md">
-                              <img
-                                src={post.author?.avatar || "/Images/user.jpg"}
-                                alt={post.author?.name || "User"}
-                                className="w-full h-full object-cover"
-                              />
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md flex items-center justify-center bg-gray-100">
+                              {post.author?.profile_image || post.author?.avatar ? (
+                                <>
+                                  <img
+                                    src={post.author?.profile_image || post.author?.avatar}
+                                    alt={post.author?.name || "User"}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = "none";
+                                      const fallback = e.currentTarget.nextElementSibling;
+                                      if (fallback) fallback.style.display = "flex";
+                                    }}
+                                  />
+                                  <div style={{ display: "none" }} className="items-center justify-center w-full h-full">
+                                    <PersonIcon style={{ fontSize: 24, color: "#9ca3af" }} />
+                                  </div>
+                                </>
+                              ) : (
+                                <PersonIcon style={{ fontSize: 24, color: "#9ca3af" }} />
+                              )}
                             </div>
+
                             <div>
                               <h4 className="text-base sm:text-lg font-bold text-gray-800 hover:text-red-500 transition-colors">
                                 {post.author.name}

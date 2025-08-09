@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import PersonIcon from '@mui/icons-material/Person';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -10,7 +11,6 @@ import axiosInstance from '../config/axiosInstance';
 import { customToast } from './toast.jsx';
 
 <Navbar />
-
 
 const categoriesList = [
   { value: 'recipe', label: 'Recipe' },
@@ -172,19 +172,33 @@ const PostPage = () => {
                 <div className="flex items-center gap-3 mb-4">
                    {currentUser && (
                      <>
-                       <div className="w-12 h-12 rounded-full overflow-hidden">
-                         <img 
-                           src={currentUser.profile_image || '/Images/user.jpg'} 
-                           alt={currentUser.name || 'User'}
-                           className="w-full h-full object-cover"
-                         />
+                       <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                         {currentUser.profile_image ? (
+                           <>
+                             <img
+                               src={currentUser.profile_image}
+                               alt={currentUser.name || 'User'}
+                               className="w-full h-full object-cover"
+                               onError={(e) => {
+                                 e.currentTarget.style.display = 'none';
+                                 const fallback = e.currentTarget.nextElementSibling;
+                                 if (fallback) fallback.style.display = 'flex';
+                               }}
+                             />
+                             <div style={{display:'none'}} className="items-center justify-center w-full h-full">
+                               <PersonIcon style={{ fontSize: 28, color: '#9ca3af' }} />
+                             </div>
+                           </>
+                         ) : (
+                           <PersonIcon style={{ fontSize: 28, color: '#9ca3af' }} />
+                         )}
                        </div>
                        <span className="font-bold text-gray-800">{currentUser.name || 'User'}</span>
                      </>
                    )}
                    {!currentUser && (
-                     <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                       <img src="/Images/user.jpg" alt="User" className="w-full h-full object-cover" />
+                     <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                       <PersonIcon style={{ fontSize: 28, color: '#9ca3af' }} />
                      </div>
                    )}
                 </div>
