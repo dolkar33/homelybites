@@ -60,21 +60,20 @@ const handleFollow = (idx) => {
     )
   );
 };
-  const isReady = !loading && !error && currentUser && categories.length > 0 && posts.length >= 0;
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError("");
       try {
+        // Fetch categories for community
+        const catRes = await axiosInstance.get('/api/community-categories/');
+        setCategories(catRes.data);
+        setActiveCategory(catRes.data[0] || "");
+
         const postsRes = await axiosInstance.get("/api/posts/");
         console.log('Posts response:', postsRes.data);
         setPosts(postsRes.data.results || []);
-        
-        const catRes = await axiosInstance.get("/api/categories/");
-        console.log('Categories response:', catRes.data);
-        setCategories(catRes.data.results || []);
-        setActiveCategory(catRes.data.results?.[0] || "");
 
         try {
           const userRes = await axiosInstance.get("/api/user-profiles/my_profile/");

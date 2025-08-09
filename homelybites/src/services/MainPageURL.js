@@ -16,7 +16,7 @@ export const recipeAPI = {
           params: { 
             category: category,
             page: page, 
-            limit: 12 
+            limit: 14 
           },
         }
       );
