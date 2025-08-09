@@ -118,6 +118,14 @@ const UserProfile = () => {
         if (data.allergies) {
           setSelectedAllergies(Array.isArray(data.allergies) ? data.allergies : [data.allergies]);
         }
+
+        // Set profile image with cache busting
+        if (data.profile_image) {
+          const cacheBustedUrl = `${data.profile_image}${data.profile_image.includes('?') ? '&' : '?'}t=${Date.now()}`;
+          setProfileImage(cacheBustedUrl);
+        } else {
+          setProfileImage("/Images/user.jpg");
+        }
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -269,6 +277,7 @@ const UserProfile = () => {
       // Create preview URL
       const reader = new FileReader();
       reader.onload = (e) => {
+        // No cache busting needed for preview (local blob)
         setProfileImage(e.target.result);
         setSelectedFile(processedFile);
       };
@@ -284,7 +293,7 @@ const UserProfile = () => {
 
   // Reset profile image to original
   const handleResetImage = () => {
-    setProfileImage(originalProfileImage);
+    setProfileImage("/Images/user.jpg");
     setSelectedFile(null);
     setUploadError('');
     if (fileInputRef.current) {
@@ -395,7 +404,9 @@ const UserProfile = () => {
         }
       );
       if (response.data.profile_image) {
-        setProfileImage(response.data.profile_image);
+        // Add cache-busting param to force reload
+        const cacheBustedUrl = response.data.profile_image ? `${response.data.profile_image}${response.data.profile_image.includes('?') ? '&' : '?'}t=${Date.now()}` : "/Images/user.jpg";
+        setProfileImage(cacheBustedUrl);
         setSelectedFile(null);
         setSuccessMessage('Profile image updated successfully!');
         return response.data.profile_image;
@@ -620,6 +631,10 @@ const UserProfile = () => {
                       src={profileImage?.startsWith('http') ? profileImage : baseURL + profileImage}
                       alt="Profile" 
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        setProfileImage("/Images/user.jpg");
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-200 flex items-center justify-center">
