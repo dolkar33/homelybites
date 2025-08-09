@@ -353,7 +353,7 @@ const handleFollow = (idx) => {
                     {posts.map((post) => (
                       <div
                         key={post.id}
-                        className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 overflow-hidden"
+                        className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 overflow-hidden mb-4"
                       >
                         {/* Post Header - Made clickable */}
                         <div className="p-4 sm:p-6 flex items-center">

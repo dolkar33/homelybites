@@ -25,7 +25,6 @@ const PostPage = () => {
   const [newPost, setNewPost] = useState({
     description: '',
     images: [],
-    title: '',
     category: ''
   });
   const [isDragOver, setIsDragOver] = useState(false);
@@ -155,8 +154,7 @@ const PostPage = () => {
 
     try {
       const formData = new FormData();
-      formData.append('description', newPost.description);
-      formData.append('title', newPost.title);
+      formData.append('title', newPost.description);
       formData.append('category', newPost.category || selectedCategory);
       newPost.images.forEach((img, idx) => {
         formData.append('files', img.file); // backend should accept 'files' as a list
@@ -218,9 +216,7 @@ const PostPage = () => {
             <div className="p-6 border-b border-gray-100">
               <h2 className="text-3xl font-bold text-gray-800 text-center">Create Post</h2>
               {/* Show post title live preview if present */}
-              {newPost.title && (
-                <h3 className="text-2xl font-semibold text-red-500 text-center mt-2">{newPost.title}</h3>
-              )}
+              
             </div>
 
             {/* Content */}
@@ -238,17 +234,7 @@ const PostPage = () => {
                   <span className="font-bold text-gray-800">{currentUser.name}</span>
                 </div>
                 
-                {/* Post Title Input */}
-<div className="mb-4">
-  <input
-    type="text"
-    placeholder="Title of your post"
-    value={newPost.title}
-    onChange={e => setNewPost(prev => ({ ...prev, title: e.target.value }))}
-    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none text-lg font-semibold mb-2"
-    maxLength={100}
-  />
-</div>
+                
 <div className="flex bg-white rounded-xl p-3 gap-3 relative items-center">
                   <input
                     type="text"
