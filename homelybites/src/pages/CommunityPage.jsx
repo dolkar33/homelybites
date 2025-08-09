@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import PersonIcon from "@mui/icons-material/Person";
 import axiosInstance from "../config/axiosInstance";
 import {
   Heart,
@@ -8,8 +9,10 @@ import {
   Image,
 } from "lucide-react";
 import Footer from "../components/Footer";
+import Toast from "../components/Toast";
 import Navbar from "../components/Navbar";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import PostFeed from "../components/PostFeed";
 
 const mockSuggestedUsers = [
   {
@@ -50,45 +53,77 @@ const CommunityPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [posts, setPosts] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-const [suggestedUsers, setSuggestedUsers] = useState(mockSuggestedUsers);
+  const [suggestedUsers, setSuggestedUsers] = useState(mockSuggestedUsers);
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const currentView = (params.get("view") || "feed").toLowerCase(); 
+  const urlCategory = params.get("category") || "";
 
-const handleFollow = (idx) => {
-  setSuggestedUsers((prev) =>
-    prev.map((user, i) =>
-      i === idx ? { ...user, isFollowing: !user.isFollowing } : user
-    )
-  );
-};
+  
+  useEffect(() => {
+    const allowed = new Set(["feed", "mypost", "saved"]);
+    if (!allowed.has(currentView)) {
+      navigate("/community?view=feed", { replace: true });
+    }
+  }, [currentView, navigate]);
+
+  
+  useEffect(() => {
+    setActiveCategory(urlCategory);
+  }, [urlCategory]);
+
+  const handleFollow = (idx) => {
+    setSuggestedUsers((prev) =>
+      prev.map((user, i) =>
+        i === idx ? { ...user, isFollowing: !user.isFollowing } : user
+      )
+    );
+  };
+
+  const isReady = !loading && !error && currentUser && categories.length > 0 && posts.length >= 0;
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError("");
       try {
-        // Fetch categories for community
-        const catRes = await axiosInstance.get('/api/community-categories/');
-        setCategories(catRes.data);
-        setActiveCategory(catRes.data[0] || "");
+       
+        const paramsArr = [];
+        if (activeCategory) paramsArr.push(`category=${encodeURIComponent(activeCategory)}`);
+        const qs = paramsArr.length ? `?${paramsArr.join("&")}` : "";
 
-        const postsRes = await axiosInstance.get("/api/posts/");
-        console.log('Posts response:', postsRes.data);
-        setPosts(postsRes.data.results || []);
+        // Fetch mid content by view
+        if (currentView === "saved") {
+          const savedRes = await axiosInstance.get(`/api/saved-posts/${qs}`);
+          setPosts(savedRes.data?.results || savedRes.data || []);
+        } else if (currentView === "mypost") {
+          // Use dedicated endpoint for current user's posts
+          const mineRes = await axiosInstance.get(`/api/posts/my-posts/${qs}`);
+          setPosts(mineRes.data?.results || mineRes.data || []);
+        } else {
+          const postsRes = await axiosInstance.get(`/api/posts/${qs}`);
+          setPosts(postsRes.data?.results || postsRes.data || []);
+        }
+
+        
+        try {
+          const catRes = await axiosInstance.get("/api/categories/");
+          setCategories(catRes.data.results || []);
+        } catch {}
 
         try {
           const userRes = await axiosInstance.get("/api/user-profiles/my_profile/");
-          console.log('User profile response:', userRes.data);
           setCurrentUser({
             name: userRes.data.user.first_name + " " + userRes.data.user.last_name,
-            avatar: userRes.data.avatar || "/Images/CommunityPage/jennie.jpg",
+            profile_image: userRes.data.profile_image,
             posts: userRes.data.posts || 0,
             following: userRes.data.following || 0,
             followers: userRes.data.followers || 0,
           });
         } catch (e) {
-          console.log('User profile failed, setting guest user:', e);
           setCurrentUser({
             name: "Guest User",
+            profile_image: "",
             avatar: "/Images/CommunityPage/jennie.jpg",
             posts: 0,
             following: 0,
@@ -96,65 +131,52 @@ const handleFollow = (idx) => {
           });
         }
       } catch (err) {
-        console.log('Data fetch error:', err);
         setError("Failed to load community data");
       }
       setLoading(false);
     };
     fetchData();
-  }, []);
+  }, [currentView, activeCategory]);
 
   const handleLike = async (postId) => {
     try {
       await axiosInstance.post(`/api/posts/${postId}/like/`);
-      setPosts(posts => posts.map(post =>
-        post.id === postId
-          ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
-          : post
-      ));
+      setPosts((posts) =>
+        posts.map((post) =>
+          post.id === postId
+            ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
+            : post
+        )
+      );
     } catch (e) {
-      setError('Failed to like/unlike post');
+      setError("Failed to like/unlike post");
     }
   };
 
   const handleSave = async (postId) => {
     try {
-      await axiosInstance.post(`/api/posts/${postId}/save/`);
-      setPosts(posts => posts.map(post =>
-        post.id === postId ? { ...post, isSaved: !post.isSaved } : post
-      ));
+      const res = await axiosInstance.post(`/api/posts/${postId}/save/`);
+      const nextSaved = typeof res?.data?.saved === "boolean" ? res.data.saved : undefined;
+      setPosts((posts) =>
+        posts.map((post) =>
+          post.id === postId
+            ? { ...post, isSaved: nextSaved !== undefined ? nextSaved : !post.isSaved }
+            : post
+        )
+      );
     } catch (e) {
-      setError('Failed to save/unsave post');
+      setError("Failed to save/unsave post");
     }
   };
 
-  const handleSearch = async (term) => {
-    setSearchTerm(term);
-    if (!term) {
-      try {
-        const postsRes = await axiosInstance.get("/api/posts/");
-        setPosts(postsRes.data);
-      } catch (e) {
-        setError('Failed to reload posts');
-      }
-      return;
-    }
-    try {
-      const res = await axiosInstance.get(`/api/search/?q=${encodeURIComponent(term)}`);
-      setPosts(res.data.posts || []);
-    } catch (e) {
-      setError('Search failed');
-    }
-  };
+ 
 
-  const handleCategoryChange = async (category) => {
-    setActiveCategory(category);
-    try {
-      const res = await axiosInstance.get(`/api/posts/?category=${encodeURIComponent(category)}`);
-      setPosts(res.data);
-    } catch (e) {
-      setError('Failed to filter by category');
-    }
+  const handleCategoryChange = (category) => {
+    // Toggle behavior: clicking the same category clears the filter
+    const nextCategory = activeCategory === category ? "" : category;
+    setActiveCategory(nextCategory);
+    const categoryQS = nextCategory ? `&category=${encodeURIComponent(nextCategory)}` : "";
+    navigate(`/community?view=${currentView}${categoryQS}`);
   };
 
   const handleCreatePost = () => {
@@ -167,23 +189,22 @@ const handleFollow = (idx) => {
 
   const handlePostAuthorClick = (author) => {
     const userProfile = {
-      id: author.name.replace(/\s+/g, '').toLowerCase(), 
+      id: author.name.replace(/\s+/g, "").toLowerCase(),
       name: author.name,
-      username: `@${author.name.replace(/\s+/g, '').toLowerCase()}`,
+      username: `@${author.name.replace(/\s+/g, "").toLowerCase()}`,
       avatar: author.avatar,
       posts: author.posts,
       following: author.following,
-      followers: author.followers
+      followers: author.followers,
     };
     handleUserProfileClick(userProfile);
   };
 
-  console.log('Render state:', { loading, error, currentUser, categoriesLength: categories.length, postsLength: posts.length });
-  
+  console.log("Render state:", { loading, error, currentUser, categoriesLength: categories.length, postsLength: posts.length });
+
   if (loading) return <div className="flex items-center justify-center h-screen text-xl">Loading...</div>;
-  if (error) return <div className="flex items-center justify-center h-screen text-xl text-red-500">{error}</div>;
   if (!currentUser) {
-    console.log('No current user, showing fallback');
+    console.log("No current user, showing fallback");
     return <div className="flex items-center justify-center h-screen text-xl text-gray-500">Loading user profile...</div>;
   }
 
@@ -191,6 +212,15 @@ const handleFollow = (idx) => {
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Navigation Bar */}
       <Navbar />
+
+      <Toast
+        show={Boolean(error)}
+        message={error}
+        variant="error"
+        onClose={() => setError("")}
+        autoHideDuration={3000}
+        position="top-right"
+      />
 
       <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto">
@@ -201,15 +231,29 @@ const handleFollow = (idx) => {
                 {/* Profile Section */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                   <div className="text-center mb-4 sm:mb-6">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md">
-                      <img
-                        src={currentUser.avatar}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md relative flex items-center justify-center bg-gray-100">
+                      {currentUser?.profile_image ? (
+                        <>
+                          <img
+                            src={currentUser.profile_image}
+                            alt={currentUser?.name || "User"}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                              const fallback = e.currentTarget.nextElementSibling;
+                              if (fallback) fallback.style.display = "flex";
+                            }}
+                          />
+                          <div style={{ display: "none" }} className="items-center justify-center w-full h-full">
+                            <PersonIcon style={{ fontSize: 40, color: "#9ca3af" }} />
+                          </div>
+                        </>
+                      ) : (
+                        <PersonIcon style={{ fontSize: 40, color: "#9ca3af" }} />
+                      )}
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
-                      {currentUser.name}
+                      {currentUser?.name}
                     </h3>
                   </div>
 
@@ -249,18 +293,22 @@ const handleFollow = (idx) => {
                   <nav className="space-y-3 sm:space-y-4">
                     <button
                       type="button"
-                      onClick={() => navigate('/')}
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left"
+                      onClick={() => navigate(`/community?view=feed${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
+                      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
+                        currentView === "feed" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+                      }`}
                     >
                       <span className="text-lg sm:text-xl">🏠</span>
                       <span className="text-sm sm:text-base font-medium">
-                        Home Page
+                        Main Feed
                       </span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate('/MyPost')}
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left"
+                      onClick={() => navigate(`/community?view=mypost${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
+                      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
+                        currentView === "mypost" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+                      }`}
                     >
                       <span className="text-lg sm:text-xl">⚡</span>
                       <span className="text-sm sm:text-base font-medium">
@@ -269,8 +317,10 @@ const handleFollow = (idx) => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate('/saved-posts')}
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50 w-full text-left"
+                      onClick={() => navigate(`/community?view=saved${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
+                      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
+                        currentView === "saved" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+                      }`}
                     >
                       <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
                       <span className="text-sm sm:text-base font-medium">
@@ -300,7 +350,7 @@ const handleFollow = (idx) => {
                           key={category.id || catName || idx}
                           onClick={() => handleCategoryChange(catName)}
                           className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
-                            (activeCategory === catName)
+                            activeCategory === catName
                               ? "text-red-500 bg-red-50"
                               : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
                           }`}
@@ -317,134 +367,64 @@ const handleFollow = (idx) => {
             {/* Main Content - Natural height without fixed height constraint */}
             <div className="col-span-6">
               <div className="space-y-4 sm:space-y-6">
-                {/* Story Section */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <div className="flex items-center bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md">
-                      <img
-                        src={currentUser.avatar}
-                        alt="User"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <span className="text-sm sm:text-base text-gray-600 flex-1 font-medium">
-                      Let's Swap Stories, Recipes & Smiles
-                    </span>
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <button
-                        onClick={handleCreatePost}
-                        className="p-1.5 sm:p-2 rounded-full hover:bg-gray-200 transition-colors"
-                        title="Create Post"
-                      >
-                        <Image className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                      </button>
-                    </div>
+                {/* Header Section (varies by view) */}
+                {currentView === "mypost" ? (
+                  <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">My Post</h2>
                   </div>
-                </div>
-
-                {/* Posts Feed */}
-                {posts.length === 0 ? (
-                  <div className="flex items-center justify-center h-40 text-lg text-gray-400">
-                    No posts yet!
+                ) : currentView === "saved" ? (
+                  <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Saved Posts</h2>
                   </div>
                 ) : (
-                  <div>
-                    {posts.map((post) => (
-                      <div
-                        key={post.id}
-                        className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 overflow-hidden"
-                      >
-                        {/* Post Header - Made clickable */}
-                        <div className="p-4 sm:p-6 flex items-center">
-                          <div 
-                            className="flex items-center cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors"
-                            onClick={() => handlePostAuthorClick(post.author)}
-                          >
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md">
-                              <img
-                                src={post.author.avatar}
-                                alt={post.author.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div>
-                              <h4 className="text-base sm:text-lg font-bold text-gray-800 hover:text-red-500 transition-colors">
-                                {post.author.name}
-                              </h4>
-                              <p className="text-sm sm:text-base text-gray-600 font-medium">
-                                {post.title}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Post Image */}
-                        <div className="px-6 pb-6">
-                          <div className="relative rounded-2xl overflow-hidden shadow-lg">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+                    <div className="flex items-center bg-gray-50 rounded-xl sm:rounded-2xl p-3 sm:p-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md flex items-center justify-center bg-gray-100">
+                        {currentUser?.profile_image ? (
+                          <>
                             <img
-                              src={post.image}
-                              alt={post.title}
-                              className="w-full h-80 object-cover"
+                              src={currentUser.profile_image}
+                              alt="User"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const fallback = e.currentTarget.nextElementSibling;
+                                if (fallback) fallback.style.display = "flex";
+                              }}
                             />
-                          </div>
-                        </div>
-
-                        {/* Post Actions */}
-                        <div className="px-6 pb-6">
-                          <div className="flex items-center space-x-4 mb-4">
-                            <button
-                              onClick={() => handleLike(post.id)}
-                              className={`flex items-center space-x-2 transition-all duration-200 ${
-                                post.isLiked ? "text-red-500" : "text-gray-600"
-                              }`}
-                            >
-                              <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                                  post.isLiked
-                                    ? "bg-red-100"
-                                    : "bg-gray-100 hover:bg-gray-200"
-                                }`}
-                              >
-                                <Heart
-                                  className={`w-5 h-5 ${
-                                    post.isLiked ? "fill-current" : ""
-                                  }`}
-                                />
-                              </div>
-                            </button>
-
-                            <button
-                              onClick={() => handleSave(post.id)}
-                              className={`flex items-center space-x-2 transition-all duration-200 ${
-                                post.isSaved ? "text-red-500" : "text-gray-600"
-                              }`}
-                            >
-                              <div
-                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                                  post.isSaved
-                                    ? "bg-red-100"
-                                    : "bg-gray-100 hover:bg-gray-200"
-                                }`}
-                              >
-                                <Bookmark
-                                  className={`w-5 h-5 ${
-                                    post.isSaved ? "fill-current" : ""
-                                  }`}
-                                />
-                              </div>
-                            </button>
-                          </div>
-
-                          {post.likes > 0 && (
-                            <p className="text-gray-600 font-medium">
-                              {post.likes} {post.likes === 1 ? "like" : "likes"}
-                            </p>
-                          )}
-                        </div>
+                            <div style={{ display: "none" }} className="items-center justify-center w-full h-full">
+                              <PersonIcon style={{ fontSize: 32, color: "#9ca3af" }} />
+                            </div>
+                          </>
+                        ) : (
+                          <PersonIcon style={{ fontSize: 32, color: "#9ca3af" }} />
+                        )}
                       </div>
-                    ))}
+                      <span className="text-sm sm:text-base text-gray-600 flex-1 font-medium">
+                        Let's Swap Stories, Recipes & Smiles
+                      </span>
+
+                      <div className="flex items-center space-x-2 sm:space-x-3">
+                        <button
+                          onClick={handleCreatePost}
+                          className="p-1.5 sm:p-2 rounded-full hover:bg-gray-200 transition-colors"
+                          title="Create Post"
+                        >
+                          <Image className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
+
+                {/* Posts Feed */}
+                <PostFeed
+                  posts={posts}
+                  onLike={handleLike}
+                  onSave={handleSave}
+                  onAuthorClick={handlePostAuthorClick}
+                  icons={{ Heart, Bookmark }}
+                />
               </div>
             </div>
 
@@ -467,10 +447,9 @@ const handleFollow = (idx) => {
                   <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
                   <input
                     type="text"
-                    placeholder="Search......"
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-300 rounded-xl sm:rounded-2xl focus:outline-none text-sm sm:text-base bg-transparent"
+                    placeholder="Search disabled"
+                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-300 rounded-xl sm:rounded-2xl focus:outline-none text-sm sm:text-base bg-transparent opacity-60 cursor-not-allowed"
+                    disabled
                   />
                 </div>
                 {/* SUGGESTED_PEOPLE_INSERTION_POINT */}
@@ -508,5 +487,37 @@ const handleFollow = (idx) => {
     </div>
   );
 };
+
+// ExpandableDescription: shows one line, expands/collapses on click
+function ExpandableDescription({ description }) {
+  const [expanded, setExpanded] = React.useState(false);
+  if (!description) return null;
+  const isLong = description.length > 60;
+  return (
+    <div className="text-gray-700 text-base whitespace-pre-line">
+      {!expanded ? (
+        <>
+          <span className="truncate block overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
+            {description}
+          </span>
+          {isLong && (
+            <button className="text-xs text-red-500 ml-1 hover:underline" onClick={() => setExpanded(true)}>
+              ...show more
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <span>{description}</span>
+          {isLong && (
+            <button className="text-xs text-red-500 ml-2 hover:underline" onClick={() => setExpanded(false)}>
+              show less
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 export default CommunityPage;

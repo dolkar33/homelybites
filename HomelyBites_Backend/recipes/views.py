@@ -320,7 +320,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 {"error": "No image file provided"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        serializer = UserProfileSerializer(profile, data={'profile_image': request.FILES['profile_image']}, partial=True)
+        serializer = UserProfileSerializer(profile, data={'profile_image': request.FILES['profile_image']}, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -522,26 +522,10 @@ def recommend_recipes(request):
 def my_profile(request):
     user_profile, created = UserProfile.objects.get_or_create(user=request.user)
     if request.method == 'GET':
-        # Return dietary_preference, allergies, dislikes as lists
-        data = {
-            'id': user_profile.id,
-            'user': {
-                'id': user_profile.user.id,
-                'username': user_profile.user.username,
-                'email': user_profile.user.email,
-                'first_name': user_profile.user.first_name,
-                'last_name': user_profile.user.last_name
-            },
-            'profile_image': user_profile.profile_image.url if user_profile.profile_image else None,
-            'favorite_categories': [cat.name for cat in user_profile.favorite_categories.all()],
-            'dietary_preference': user_profile.dietary_preference.split(',') if user_profile.dietary_preference else [],
-            'allergies': user_profile.allergies.split(',') if user_profile.allergies else [],
-            'dislikes': user_profile.dislikes.split(',') if user_profile.dislikes else [],
-            'has_completed_questions': user_profile.has_completed_questions
-        }
-        return Response(data)
+        serializer = UserProfileSerializer(user_profile, context={'request': request})
+        return Response(serializer.data)
     elif request.method == 'PUT':
-        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
+        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -837,12 +821,6 @@ def update_user_profile(request):
                 profile.allergies = ','.join([a.strip() for a in allergies])
             else:
                 profile.allergies = allergies.strip()
-        if 'dislikes' in request.data:
-            dislikes = request.data['dislikes']
-            if isinstance(dislikes, list):
-                profile.dislikes = ','.join([d.strip() for d in dislikes])
-            else:
-                profile.dislikes = dislikes.strip()
         if 'profile_image' in request.FILES:
             image = request.FILES['profile_image']
             if image.size > 5 * 1024 * 1024:
@@ -865,7 +843,6 @@ def update_user_profile(request):
             'profile': {
                 'dietary_preference': profile.dietary_preference.split(',') if profile.dietary_preference else [],
                 'allergies': profile.allergies.split(',') if profile.allergies else [],
-                'dislikes': profile.dislikes.split(',') if profile.dislikes else [],
                 'profile_image': profile.profile_image.url if profile.profile_image else None
             },
             'message': 'Profile updated successfully'

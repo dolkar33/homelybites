@@ -42,20 +42,63 @@ class UserProfileSerializer(serializers.ModelSerializer):
     favorite_categories = CategorySerializer(many=True, read_only=True)
     profile_image = serializers.ImageField(max_length=None, allow_empty_file=True, required=False)
     has_completed_questions = serializers.BooleanField(read_only=True)
-    
+    dietary_preference = serializers.CharField(required=False)
+    allergies = serializers.CharField(required=False)
+
     class Meta:
         model = UserProfile
-        fields = ['id', 'user', 'profile_image', 'favorite_categories', 'dietary_preference', 'allergies', 'dislikes', 'has_completed_questions']
+        fields = ['id', 'user', 'profile_image', 'favorite_categories', 'dietary_preference', 'allergies', 'has_completed_questions']
         read_only_fields = ['id', 'user', 'has_completed_questions']
 
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        # Ensure absolute URL for image
+        request = self.context.get('request', None)
+        if instance.profile_image and request:
+            rep['profile_image'] = request.build_absolute_uri(instance.profile_image.url)
+        elif not instance.profile_image:
+            rep['profile_image'] = None
+        # Convert CSV strings to lists for response
+        rep['dietary_preference'] = [s.strip() for s in (instance.dietary_preference or '').split(',') if s.strip()]
+        rep['allergies'] = [s.strip() for s in (instance.allergies or '').split(',') if s.strip()]
+        return rep
+
+    def validate(self, attrs):
+        """Normalize incoming list or CSV strings into CSV strings for storage."""
+        def normalize(value, lower=False):
+            if value is None:
+                return None
+            if isinstance(value, list):
+                items = [str(v).strip() for v in value if str(v).strip()]
+                if lower:
+                    items = [v.lower() for v in items]
+                return ','.join(items)
+            if isinstance(value, str):
+                parts = [p.strip() for p in value.split(',') if p.strip()]
+                if lower:
+                    parts = [p.lower() for p in parts]
+                return ','.join(parts)
+            raise serializers.ValidationError('Expected list or comma-separated string for preferences.')
+
+        if 'dietary_preference' in attrs:
+            attrs['dietary_preference'] = normalize(attrs.get('dietary_preference'), lower=True)
+        if 'allergies' in attrs:
+            attrs['allergies'] = normalize(attrs.get('allergies'), lower=False)
+        return attrs
+
     def update(self, instance, validated_data):
+        # Handle image replacement
         if 'profile_image' in validated_data:
             if instance.profile_image:
                 instance.profile_image.delete(save=False)
             instance.profile_image = validated_data['profile_image']
-        instance.dietary_preference = validated_data.get('dietary_preference', instance.dietary_preference)
-        instance.allergies = validated_data.get('allergies', instance.allergies)
-        instance.dislikes = validated_data.get('dislikes', instance.dislikes)
+
+        # Apply normalized CSV strings
+        if 'dietary_preference' in validated_data:
+            instance.dietary_preference = validated_data['dietary_preference']
+        if 'allergies' in validated_data:
+            instance.allergies = validated_data['allergies']
+
         instance.save()
         return instance
 
