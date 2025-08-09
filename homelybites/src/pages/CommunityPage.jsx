@@ -81,7 +81,7 @@ const handleFollow = (idx) => {
           console.log('User profile response:', userRes.data);
           setCurrentUser({
             name: userRes.data.user.first_name + " " + userRes.data.user.last_name,
-            avatar: userRes.data.avatar || "/Images/CommunityPage/jennie.jpg",
+            profile_image: userRes.data.profile_image,
             posts: userRes.data.posts || 0,
             following: userRes.data.following || 0,
             followers: userRes.data.followers || 0,
@@ -90,6 +90,7 @@ const handleFollow = (idx) => {
           console.log('User profile failed, setting guest user:', e);
           setCurrentUser({
             name: "Guest User",
+            profile_image: "",
             avatar: "/Images/CommunityPage/jennie.jpg",
             posts: 0,
             following: 0,
@@ -204,13 +205,13 @@ const handleFollow = (idx) => {
                   <div className="text-center mb-4 sm:mb-6">
                     <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md">
                       <img
-                        src={currentUser.avatar}
-                        alt="Profile"
+                        src={currentUser?.profile_image || "/Images/user.jpg"}
+                        alt={currentUser?.name || "User"}
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
-                      {currentUser.name}
+                      {currentUser?.name}
                     </h3>
                   </div>
 
@@ -363,8 +364,8 @@ const handleFollow = (idx) => {
                           >
                             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden mr-3 sm:mr-4 shadow-md">
                               <img
-                                src={post.author.avatar}
-                                alt={post.author.name}
+                                src={post.author?.avatar || "/Images/user.jpg"}
+                                alt={post.author?.name || "User"}
                                 className="w-full h-full object-cover"
                               />
                             </div>
@@ -383,11 +384,16 @@ const handleFollow = (idx) => {
                         <div className="px-6 pb-6">
                           <div className="relative rounded-2xl overflow-hidden shadow-lg">
                             <img
-                              src={post.image}
+                              src={post.image || "/Images/placeholder.jpg"}
                               alt={post.title}
                               className="w-full h-80 object-cover"
                             />
                           </div>
+                        </div>
+
+                        {/* Post Description with expandable one-line preview */}
+                        <div className="px-6 pb-6">
+                          <ExpandableDescription description={post.description} />
                         </div>
 
                         {/* Post Actions */}
@@ -509,5 +515,37 @@ const handleFollow = (idx) => {
     </div>
   );
 };
+
+// ExpandableDescription: shows one line, expands/collapses on click
+function ExpandableDescription({ description }) {
+  const [expanded, setExpanded] = React.useState(false);
+  if (!description) return null;
+  const isLong = description.length > 60;
+  return (
+    <div className="text-gray-700 text-base whitespace-pre-line">
+      {!expanded ? (
+        <>
+          <span className="truncate block overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
+            {description}
+          </span>
+          {isLong && (
+            <button className="text-xs text-red-500 ml-1 hover:underline" onClick={() => setExpanded(true)}>
+              ...show more
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <span>{description}</span>
+          {isLong && (
+            <button className="text-xs text-red-500 ml-2 hover:underline" onClick={() => setExpanded(false)}>
+              show less
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 export default CommunityPage;

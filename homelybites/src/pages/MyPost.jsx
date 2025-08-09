@@ -42,7 +42,7 @@ const MyPost = () => {
         setCurrentUser({
           id: userRes.data.user.id,
           name: userRes.data.user.first_name + " " + userRes.data.user.last_name,
-          avatar: userRes.data.avatar || "/Images/CommunityPage/jennie.jpg",
+          profile_image: userRes.data.profile_image,
           posts: userRes.data.posts || 0,
           following: userRes.data.following || 0,
           followers: userRes.data.followers || 0,
@@ -199,7 +199,7 @@ const MyPost = () => {
                       {posts.map((post) => (
                         <div key={post.id} className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-2">
                           <div className="flex items-center gap-3 mb-2">
-                            <img src={post.author?.avatar || "/Images/CommunityPage/jennie.jpg"} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
+                            <img src={post.author?.profile_image || "/Images/user.jpg"} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
                             <div>
                               <div className="font-semibold text-gray-900 text-sm">{post.author?.name || post.author_name || "Unknown"}</div>
                               <div className="text-xs text-gray-500">{post.category || "-"}</div>

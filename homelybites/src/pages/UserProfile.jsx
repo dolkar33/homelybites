@@ -119,13 +119,8 @@ const UserProfile = () => {
           setSelectedAllergies(Array.isArray(data.allergies) ? data.allergies : [data.allergies]);
         }
 
-        // Set profile image with cache busting
-        if (data.profile_image) {
-          const cacheBustedUrl = `${data.profile_image}${data.profile_image.includes('?') ? '&' : '?'}t=${Date.now()}`;
-          setProfileImage(cacheBustedUrl);
-        } else {
-          setProfileImage("/Images/user.jpg");
-        }
+        // Set profile image directly from backend
+        setProfileImage(data.profile_image || "/Images/user.jpg");
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);

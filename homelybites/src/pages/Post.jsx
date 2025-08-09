@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import { X, Image, Upload, ArrowLeft } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -19,151 +22,95 @@ const categoriesList = [
 
 import { useNavigate } from 'react-router-dom';
 
+const schema = yup.object().shape({
+  title: yup.string().required('Title is required'),
+  description: yup.string().required('Description is required').max(255, 'Description must be at most 255 characters'),
+  category: yup.string().required('Category is required'),
+  image: yup.mixed().required('Image is required'),
+});
+
 const PostPage = () => {
-  const [uploadError, setUploadError] = useState('');
-  const [videoThumbnails, setVideoThumbnails] = useState({});
-  const [newPost, setNewPost] = useState({
-    description: '',
-    images: [],
-    category: ''
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      title: '',
+      description: '',
+      category: '',
+      image: null,
+    },
+    mode: 'onBlur',
   });
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [newPost, setNewPost] = useState({
+    title: '',
+    description: '',
+    image: null,
+    category: '',
+    tag_names: []
+  });
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Mock current user data
-  const currentUser = {
-    name: 'Jennie Kim',
-    avatar: '/Images/CommunityPage/jennie.jpg'
-  };
+  const [currentUser, setCurrentUser] = useState(null);
+  const [userLoading, setUserLoading] = useState(true);
+  const [userError, setUserError] = useState('');
 
-  // Helper: extract random frame from video file
-  const extractRandomThumbnail = (file) => {
-    return new Promise((resolve) => {
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.src = URL.createObjectURL(file);
-      video.onloadedmetadata = () => {
-        const duration = video.duration;
-        const time = Math.random() * duration;
-        video.currentTime = time;
-      };
-      video.onseeked = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/png');
-        resolve(dataUrl);
-        URL.revokeObjectURL(video.src);
-      };
-      video.onerror = () => resolve(null);
-    });
-  };
+  useEffect(() => {
+    const fetchUser = async () => {
+      setUserLoading(true);
+      setUserError('');
+      try {
+        const userRes = await axiosInstance.get('/api/user-profiles/my_profile/');
+        setCurrentUser({
+          name: userRes.data.user.first_name + ' ' + userRes.data.user.last_name,
+          profile_image: userRes.data.profile_image
+        });
+      } catch (e) {
+        setUserError('Failed to load user info');
+        setCurrentUser({
+          name: 'Guest User',
+          profile_image: ''
+        });
+      }
+      setUserLoading(false);
+    };
+    fetchUser();
+  }, []);
 
   // Main upload handler
   const handleImageUpload = async (event) => {
     setUploadError('');
-    const files = Array.from(event.target.files);
-    let currentCount = newPost.images.length;
-    if (currentCount + files.length > 7) {
-      setUploadError('You can only upload up to 7 files.');
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Only image files are allowed.');
       return;
     }
-    const imagePromises = files.map(async (file) => {
-      const isVideo = file.type.startsWith('video/');
-      const reader = new FileReader();
-      const fileData = await new Promise((resolve) => {
-        reader.onload = (e) => resolve({
-          file,
-          preview: e.target.result,
-          name: file.name,
-          type: file.type,
-          isVideo,
-        });
-        reader.readAsDataURL(file);
-      });
-      if (isVideo) {
-        // Extract random thumbnail
-        const thumb = await extractRandomThumbnail(file);
-        setVideoThumbnails((prev) => ({ ...prev, [file.name]: thumb }));
-        fileData.thumbnail = thumb;
-      }
-      return fileData;
-    });
-    const images = await Promise.all(imagePromises);
-    setNewPost(prev => ({
-      ...prev,
-      images: [...prev.images, ...images]
-    }));
-  };
-
-  // Thumbnail selection for video
-  const handleSelectThumbnail = (fileName) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setVideoThumbnails((prev) => ({ ...prev, [fileName]: ev.target.result }));
-        setNewPost(prev => ({
-          ...prev,
-          images: prev.images.map(img =>
-            img.name === fileName ? { ...img, thumbnail: ev.target.result } : img
-          )
-        }));
-      };
-      reader.readAsDataURL(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setNewPost(prev => ({
+        ...prev,
+        image: { file, preview: e.target.result, name: file.name, type: file.type }
+      }));
     };
-    input.click();
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      const event = { target: { files } };
-      handleImageUpload(event);
-    }
-  };
-
-  const removeImage = (index) => {
-    setNewPost(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
+    reader.readAsDataURL(file);
   };
 
   const handleCreatePost = async () => {
-    if (!newPost.description.trim() && newPost.images.length === 0) return;
+    if (!newPost.title.trim() || !newPost.description.trim() || !newPost.category || !newPost.image) return;
 
     try {
       const formData = new FormData();
-      formData.append('title', newPost.description);
+      formData.append('title', newPost.title);
+      formData.append('description', newPost.description);
       formData.append('category', newPost.category || selectedCategory);
-      newPost.images.forEach((img, idx) => {
-        formData.append('files', img.file); // backend should accept 'files' as a list
-        if (img.isVideo && img.thumbnail) {
-          // If backend supports video thumbnail
-          formData.append(`thumbnails`, img.thumbnail);
-        }
+      if (newPost.image && newPost.image.file) {
+        formData.append('image', newPost.image.file);
+      }
+      newPost.tag_names.forEach((tag) => {
+        formData.append('tag_names', tag);
       });
-
       // Optionally show loading state here
       // setLoading(true);
       const response = await axiosInstance.post('/api/posts/', formData, {
@@ -173,7 +120,7 @@ const PostPage = () => {
       });
       // setLoading(false);
       if (response.status === 201 || response.status === 200) {
-        setNewPost({ description: '', images: [], title: '', category: '' });
+        setNewPost({ title: '', description: '', image: null, category: '', tag_names: [] });
         customToast.success('Post created successfully!');
       } else {
         alert('Failed to create post.');
@@ -186,7 +133,6 @@ const PostPage = () => {
   };
 
   const handleGoBack = () => {
-  
     window.history.back();
   };
 
@@ -224,82 +170,124 @@ const PostPage = () => {
               {/* User Post Input Section */}
               <div className="bg-gray-100 rounded-2xl p-4 mb-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full overflow-hidden">
-                    <img 
-                      src={currentUser.avatar} 
-                      alt={currentUser.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <span className="font-bold text-gray-800">{currentUser.name}</span>
+                   {currentUser && (
+                     <>
+                       <div className="w-12 h-12 rounded-full overflow-hidden">
+                         <img 
+                           src={currentUser.profile_image || '/Images/user.jpg'} 
+                           alt={currentUser.name || 'User'}
+                           className="w-full h-full object-cover"
+                         />
+                       </div>
+                       <span className="font-bold text-gray-800">{currentUser.name || 'User'}</span>
+                     </>
+                   )}
+                   {!currentUser && (
+                     <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                       <img src="/Images/user.jpg" alt="User" className="w-full h-full object-cover" />
+                     </div>
+                   )}
                 </div>
                 
                 
-<div className="flex bg-white rounded-xl p-3 gap-3 relative items-center">
+<div className="flex flex-col gap-1 bg-white rounded-xl p-3 relative items-center">
+                  <input
+                        type="text"
+                        {...register('title')}
+                        value={newPost.title}
+                        onChange={e => {
+                          setNewPost(prev => ({ ...prev, title: e.target.value }));
+                          setValue('title', e.target.value);
+                        }}
+                        placeholder="Title"
+                        className="text-xl font-normal text-gray-800 w-full outline-none bg-transparent"
+                        maxLength={100}
+                      />
+                      {errors.title && <div className="text-red-500 text-xs mt-1">{errors.title.message}</div>}
+                  <div className="w-full border-b border-dashed border-gray-400"></div>
                   <input
                     type="text"
-                    placeholder="What is in your mind?"
+                    {...register('description')}
                     value={newPost.description}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, description: e.target.value }))}
-                    className="flex-1 outline-none text-gray-600"
+                    onChange={e => {
+                      setNewPost(prev => ({ ...prev, description: e.target.value }));
+                      setValue('description', e.target.value, { shouldValidate: true });
+                    }}
+                    placeholder="What is in your mind?"
+                    className="outline-none text-lg text-gray-600 w-full"
+                    maxLength={255}
                   />
-                  {/* Category Dropdown */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      className={`flex items-center px-3 py-2 rounded-lg bg-accent text-white font-semibold focus:outline-none focus:ring-2 focus:ring-accent transition-colors hover:bg-accent/80 ${dropdownOpen ? 'ring-2 ring-accent' : ''}`}
-                      onClick={() => setDropdownOpen((open) => !open)}
-                    >
-                      {categoriesList.find(cat => cat.value === selectedCategory)?.label || 'Categories'}
-                      <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    {dropdownOpen && (
-                      <div className="absolute right-0 mt-2 w-44 rounded-lg shadow bg-white z-10 border border-gray-100">
-                        {categoriesList.map((cat) => (
-                          <button
-                            key={cat.value}
-                            className={`block w-full text-left px-4 py-2 text-gray-800 hover:bg-red-100 hover:text-red-500 transition-colors ${selectedCategory === cat.value ? 'bg-red-50 text-red-500' : ''}`}
-                            onClick={() => { setSelectedCategory(cat.value); setDropdownOpen(false); setNewPost(prev => ({ ...prev, category: cat.value })); }}
-                          >
-                            {cat.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                  <div className="flex justify-between w-full">
+                    {errors.description && <div className="text-red-500 text-xs mt-1">{errors.description.message}</div>}
+                    <div className="text-xs text-gray-400 ml-auto">{newPost.description.length}/255</div>
                   </div>
+                  
                 </div>
+                <div className="w-full flex justify-end mt-4">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        className={`flex items-center px-3 py-2 rounded-lg bg-accent text-white font-semibold focus:outline-none focus:ring-2 focus:ring-accent transition-colors hover:bg-accent/80 ${dropdownOpen ? 'ring-2 ring-accent' : ''}`}
+                        onClick={() => setDropdownOpen((open) => !open)}
+                      >
+                        {categoriesList.find(cat => cat.value === selectedCategory)?.label || 'Choose category'}
+                        <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                      </button>
+                      {dropdownOpen && (
+                        <div className="absolute left-0 mt-2 w-44 rounded-lg shadow bg-white z-10 border border-gray-100">
+                          {categoriesList.map((cat) => (
+                            <button
+                              key={cat.value}
+                              className={`block w-full text-left px-4 py-2 text-gray-800 hover:bg-red-100 hover:text-red-500 transition-colors ${selectedCategory === cat.value ? 'bg-red-50 text-red-500' : ''}`}
+                              onClick={() => { setSelectedCategory(cat.value); setDropdownOpen(false); setNewPost(prev => ({ ...prev, category: cat.value })); }}
+                            >
+                              {cat.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
               </div>
 
               {/* Image Upload Area */}
               <div className="border-2 border-gray-200 rounded-2xl p-8">
                 <div 
                   onClick={triggerFileInput}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all duration-200 ${
-                    isDragOver 
-                      ? 'border-red-400 bg-red-50' 
-                      : 'border-gray-300 hover:border-red-400 hover:bg-red-50'
-                  }`}
+                  className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all duration-200 border-gray-300 hover:border-red-400 hover:bg-red-50 relative`}
                 >
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                      <Image className="w-8 h-8 text-red-400" />
+                  {newPost.image ? (
+                    <div className="relative w-full h-60 md:h-80 rounded-xl overflow-hidden mb-2 flex items-end justify-start cursor-pointer" style={{minHeight:'240px'}} onClick={triggerFileInput}>
+                      <img
+                        src={URL.createObjectURL(newPost.image.file)}
+                        alt="Preview"
+                        className="absolute inset-0 w-full h-full object-contain"
+                      />
+                      <div className="z-10 bg-white/80 px-2 py-1 rounded-lg flex items-center ml-2 mb-2">
+                        <svg className="w-4 h-4 mr-1 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16V4H4zm4 8h8m-4-4v8" /></svg>
+                        <span className="text-xs text-red-500 font-semibold">Replace image</span>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-xl font-bold text-gray-800 mb-2">Add photos/videos</p>
-                  <p className="text-gray-500">or drag and drop</p>
-                </div>
-                
-                <input
-                  id="post-file-input"
-                  type="file"
-                  multiple
-                  accept="image/*,video/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-center mb-4">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                          <Image className="w-8 h-8 text-red-400" />
+                        </div>
+                      </div>
+                      <p className="text-gray-500 font-semibold">Add Photos/Video</p>
+                      <p className="text-xs text-gray-400 mt-2">Only 1 image allowed</p>
+                    </>
+                  )}
+                  <input
+                    id="post-file-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>  
               </div>
 
               {/* Upload Error */}
@@ -307,65 +295,18 @@ const PostPage = () => {
                 <div className="text-red-500 text-sm mb-2">{uploadError}</div>
               )}
 
-              {/* Image & Video Preview */}
-              {newPost.images.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="font-medium text-gray-700 mb-3">Selected Files:</h4>
-                  <div className="flex gap-4 flex-wrap">
-                    {newPost.images.map((media, index) => (
-                      <div key={index} className="relative group w-24 h-24 flex flex-col items-center">
-                        {/* Image Preview */}
-                        {!media.isVideo ? (
-                          <img
-                            src={media.preview}
-                            alt={`Preview ${index + 1}`}
-                            className="w-24 h-24 object-cover rounded-xl border"
-                          />
-                        ) : (
-                          <div className="relative w-24 h-24">
-                            <img
-                              src={media.thumbnail || videoThumbnails[media.name] || ''}
-                              alt="Video Thumbnail"
-                              className="w-24 h-24 object-cover rounded-xl border bg-black"
-                            />
-                            {/* Play Icon Overlay */}
-                            <svg className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-white opacity-80 pointer-events-none" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                          </div>
-                        )}
-                        {/* Remove Button */}
-                        <button
-                          onClick={() => removeImage(index)}
-                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition-opacity"
-                          style={{width: '20px', height: '20px'}}>
-                          <X className="w-3 h-3" />
-                        </button>
-                        {/* Select Thumbnail for Video */}
-                        {media.isVideo && (
-                          <button
-                            type="button"
-                            onClick={() => handleSelectThumbnail(media.name)}
-                            className="mt-1 px-2 py-1 text-xs bg-gray-100 rounded hover:bg-red-100 text-gray-700 border border-gray-200"
-                          >
-                            Select Thumbnail
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Footer */}
-            <div className="p-6 border-t border-gray-100 flex justify-center">
+            {/* Category Dropdown and Footer in one line */}
+            <div className="p-6 border-t border-gray-100 flex justify-end items-center">
               <button
                 onClick={handleCreatePost}
-                disabled={!newPost.description.trim() && newPost.images.length === 0}
-                className="px-12 py-3 bg-red-400 text-white rounded-xl hover:bg-red-500 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed font-bold text-lg"
+                disabled={!newPost.title.trim() || !newPost.description.trim() || !newPost.category || !newPost.image}
+                className="px-6 py-2 bg-red-400 text-white rounded-xl hover:bg-red-500 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed font-bold text-lg"
               >
                 Create Post
               </button>
-              </div>
+            </div>
             </div>
           </div>
         </div>

@@ -42,11 +42,20 @@ class UserProfileSerializer(serializers.ModelSerializer):
     favorite_categories = CategorySerializer(many=True, read_only=True)
     profile_image = serializers.ImageField(max_length=None, allow_empty_file=True, required=False)
     has_completed_questions = serializers.BooleanField(read_only=True)
-    
+
     class Meta:
         model = UserProfile
         fields = ['id', 'user', 'profile_image', 'favorite_categories', 'dietary_preference', 'allergies', 'dislikes', 'has_completed_questions']
         read_only_fields = ['id', 'user', 'has_completed_questions']
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        request = self.context.get('request', None)
+        if instance.profile_image and request:
+            rep['profile_image'] = request.build_absolute_uri(instance.profile_image.url)
+        elif not instance.profile_image:
+            rep['profile_image'] = None
+        return rep
 
     def update(self, instance, validated_data):
         if 'profile_image' in validated_data:
