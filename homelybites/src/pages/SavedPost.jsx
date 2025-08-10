@@ -25,13 +25,17 @@ const SavedPost = () => {
         // Saved posts list
         const savedRes = await axiosInstance.get("/api/saved-posts/");
         const saved = savedRes.data?.results || savedRes.data || [];
-        setPosts(Array.isArray(saved) ? saved : []);
+        const normalizedSaved = Array.isArray(saved) ? saved : [];
+        setPosts(normalizedSaved);
 
-        // Categories
-        try {
-          const catRes = await axiosInstance.get("/api/categories/");
-          setCategories(catRes.data.results || []);
-        } catch {}
+        // Always show community categories (exclude 'recipe')
+        const COMMUNITY_CATEGORIES = [
+          { id: "tip", name: "Cooking Tip" },
+          { id: "review", name: "Restaurant Review" },
+          { id: "general", name: "General Discussion" },
+          { id: "question", name: "Question" },
+        ];
+        setCategories(COMMUNITY_CATEGORIES);
 
         // Current user
         try {
@@ -82,9 +86,9 @@ const SavedPost = () => {
     } catch {}
   };
 
-  const handleCategoryChange = async (category) => {
+  const handleCategoryChange = async (categorySlug) => {
     try {
-      const res = await axiosInstance.get(`/api/saved-posts/?category=${encodeURIComponent(category)}`);
+      const res = await axiosInstance.get(`/api/saved-posts/?category=${encodeURIComponent(categorySlug)}`);
       const list = res.data?.results || res.data || [];
       setPosts(Array.isArray(list) ? list : []);
     } catch {}
@@ -162,10 +166,11 @@ const SavedPost = () => {
                   <nav className="space-y-2 sm:space-y-3">
                     {(Array.isArray(categories) && categories.length > 0 ? categories : []).map((category, idx) => {
                       const catName = category.name || category;
+                      const catSlug = category.id || (typeof category === "string" ? category.toLowerCase() : catName.toLowerCase());
                       return (
                         <button
                           key={category.id || catName || idx}
-                          onClick={() => handleCategoryChange(catName)}
+                          onClick={() => handleCategoryChange(catSlug)}
                           className="block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium text-gray-600 hover:text-red-500 hover:bg-gray-50"
                         >
                           • {catName}

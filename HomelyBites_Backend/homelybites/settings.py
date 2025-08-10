@@ -29,6 +29,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
+CSRF_COOKIE_HTTPONLY = False
 
 # Application definition
 
@@ -164,9 +165,9 @@ SIMPLE_JWT = {
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vite default port
-    "http://127.0.0.1:5173",
+    
     "http://localhost:5174",  
-    "http://127.0.0.1:5174",  
+     
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
@@ -189,6 +190,8 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+
+
 # Spoonacular API settings
 SPOONACULAR_API_KEY = 'b4b8be0a733f497789c7bcd463aa556e'
 
@@ -202,4 +205,4 @@ EMAIL_HOST_PASSWORD = 'your_app_password'
 DEFAULT_FROM_EMAIL = 'your_email@gmail.com'
 
 # Frontend URL for password reset
-FRONTEND_URL = 'http://localhost:5174'  # Update to match your frontend URL
+FRONTEND_URL = 'http://localhost:5173'  
