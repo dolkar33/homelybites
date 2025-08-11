@@ -161,7 +161,6 @@ const ContactPage = () => {
       <div className="flex-1 px-4 sm:px-6 md:px-9 py-4 sm:py-9">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-9">
-          
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-black mb-3 sm:mb-4 font-poppins">
             Get In Touch
           </h1>

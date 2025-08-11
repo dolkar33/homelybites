@@ -268,8 +268,7 @@ const RecipeSearchPage = () => {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          // Add any authentication headers if needed
-          // 'Authorization': 'Bearer your-token-here',
+         
         },
       });
 

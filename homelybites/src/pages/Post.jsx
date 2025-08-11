@@ -1,45 +1,44 @@
-import React, { useState } from 'react';
-import { X, Image, Upload, ArrowLeft } from 'lucide-react';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import React, { useState } from "react";
+import { X, Image, Upload, ArrowLeft } from "lucide-react";
+import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
-
-<Navbar />
-
+<Navbar />;
 
 const PostPage = () => {
   const [newPost, setNewPost] = useState({
-    content: '',
+    content: "",
     images: [],
-    title: ''
+    title: "",
   });
   const [isDragOver, setIsDragOver] = useState(false);
 
   // Mock current user data
   const currentUser = {
-    name: 'Jennie Kim',
-    avatar: '/Images/CommunityPage/jennie.jpg'
+    name: "Jennie Kim",
+    avatar: "/Images/CommunityPage/jennie.jpg",
   };
 
   const handleImageUpload = (event) => {
     const files = Array.from(event.target.files);
-    
-    const imagePromises = files.map(file => {
+
+    const imagePromises = files.map((file) => {
       return new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onload = (e) => resolve({
-          file,
-          preview: e.target.result,
-          name: file.name
-        });
+        reader.onload = (e) =>
+          resolve({
+            file,
+            preview: e.target.result,
+            name: file.name,
+          });
         reader.readAsDataURL(file);
       });
     });
 
-    Promise.all(imagePromises).then(images => {
-      setNewPost(prev => ({
+    Promise.all(imagePromises).then((images) => {
+      setNewPost((prev) => ({
         ...prev,
-        images: [...prev.images, ...images]
+        images: [...prev.images, ...images],
       }));
     });
   };
@@ -57,7 +56,7 @@ const PostPage = () => {
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
       const event = { target: { files } };
@@ -66,42 +65,40 @@ const PostPage = () => {
   };
 
   const removeImage = (index) => {
-    setNewPost(prev => ({
+    setNewPost((prev) => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index)
+      images: prev.images.filter((_, i) => i !== index),
     }));
   };
 
   const handleCreatePost = () => {
     if (!newPost.content.trim() && newPost.images.length === 0) return;
-    
+
     // TODO: Add API call to create post
-    console.log('Creating post:', newPost);
-    
+    console.log("Creating post:", newPost);
+
     // Reset form and show success message or navigate back
-    setNewPost({ content: '', images: [], title: '' });
-    alert('Post created successfully!');
-    
+    setNewPost({ content: "", images: [], title: "" });
+    alert("Post created successfully!");
   };
 
   const handleGoBack = () => {
-  
     window.history.back();
   };
 
   const triggerFileInput = () => {
-    document.getElementById('post-file-input').click();
+    document.getElementById("post-file-input").click();
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
-      
+
       <div className="flex-1 px-4 md:px-8 py-6">
         <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <div className="mb-6">
-            <button 
+            <button
               onClick={handleGoBack}
               className="flex items-center gap-2 text-red-500 hover:text-red-600 transition-colors"
             >
@@ -114,7 +111,9 @@ const PostPage = () => {
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="p-6 border-b border-gray-100">
-              <h2 className="text-3xl font-bold text-gray-800 text-center">Create Post</h2>
+              <h2 className="text-3xl font-bold text-gray-800 text-center">
+                Create Post
+              </h2>
             </div>
 
             {/* Content */}
@@ -123,25 +122,32 @@ const PostPage = () => {
               <div className="bg-gray-100 rounded-2xl p-4 mb-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-full overflow-hidden">
-                    <img 
-                      src={currentUser.avatar} 
+                    <img
+                      src={currentUser.avatar}
                       alt={currentUser.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <span className="font-bold text-gray-800">{currentUser.name}</span>
+                  <span className="font-bold text-gray-800">
+                    {currentUser.name}
+                  </span>
                 </div>
-                
+
                 <div className="flex items-center bg-white rounded-xl p-3 gap-3">
                   <input
                     type="text"
                     placeholder="What is in your mind?"
                     value={newPost.content}
-                    onChange={(e) => setNewPost(prev => ({ ...prev, content: e.target.value }))}
+                    onChange={(e) =>
+                      setNewPost((prev) => ({
+                        ...prev,
+                        content: e.target.value,
+                      }))
+                    }
                     className="flex-1 outline-none text-gray-600"
                   />
                   <div className="flex items-center gap-2">
-                    <button 
+                    <button
                       onClick={triggerFileInput}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
@@ -149,7 +155,9 @@ const PostPage = () => {
                     </button>
                     <button
                       onClick={handleCreatePost}
-                      disabled={!newPost.content.trim() && newPost.images.length === 0}
+                      disabled={
+                        !newPost.content.trim() && newPost.images.length === 0
+                      }
                       className="px-4 py-2 bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
                     >
                       Post
@@ -160,15 +168,15 @@ const PostPage = () => {
 
               {/* Image Upload Area */}
               <div className="border-2 border-gray-200 rounded-2xl p-8">
-                <div 
+                <div
                   onClick={triggerFileInput}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all duration-200 ${
-                    isDragOver 
-                      ? 'border-red-400 bg-red-50' 
-                      : 'border-gray-300 hover:border-red-400 hover:bg-red-50'
+                    isDragOver
+                      ? "border-red-400 bg-red-50"
+                      : "border-gray-300 hover:border-red-400 hover:bg-red-50"
                   }`}
                 >
                   <div className="flex items-center justify-center mb-4">
@@ -176,10 +184,12 @@ const PostPage = () => {
                       <Image className="w-8 h-8 text-red-400" />
                     </div>
                   </div>
-                  <p className="text-xl font-bold text-gray-800 mb-2">Add photos/videos</p>
+                  <p className="text-xl font-bold text-gray-800 mb-2">
+                    Add photos/videos
+                  </p>
                   <p className="text-gray-500">or drag and drop</p>
                 </div>
-                
+
                 <input
                   id="post-file-input"
                   type="file"
@@ -193,12 +203,14 @@ const PostPage = () => {
               {/* Image Preview */}
               {newPost.images.length > 0 && (
                 <div className="mt-6">
-                  <h4 className="font-medium text-gray-700 mb-3">Selected Images:</h4>
+                  <h4 className="font-medium text-gray-700 mb-3">
+                    Selected Images:
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     {newPost.images.map((image, index) => (
                       <div key={index} className="relative group">
-                        <img 
-                          src={image.preview} 
+                        <img
+                          src={image.preview}
                           alt={`Preview ${index + 1}`}
                           className="w-full h-32 object-cover rounded-xl"
                         />
@@ -222,7 +234,9 @@ const PostPage = () => {
             <div className="p-6 border-t border-gray-100 flex justify-center">
               <button
                 onClick={handleCreatePost}
-                disabled={!newPost.content.trim() && newPost.images.length === 0}
+                disabled={
+                  !newPost.content.trim() && newPost.images.length === 0
+                }
                 className="px-12 py-3 bg-red-400 text-white rounded-xl hover:bg-red-500 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed font-bold text-lg"
               >
                 Create Post
