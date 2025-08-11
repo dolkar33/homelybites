@@ -1,14 +1,14 @@
-import axios from "axios";
-
+//import axios from "axios";
+import api from './api'; // adjust to your default export
 export const BASE_URL = "http://localhost:8000/api";
 
 export const recipeAPI = {
-  getRecipes: (params) => axios.get(`${BASE_URL}/recipes/`, { params }),
-  getRecipeById: (id) => axios.get(`${BASE_URL}/recipes/${id}`),
+  getRecipes: (params) => api.get(`${BASE_URL}/recipes/`, { params }),
+  getRecipeById: (id) => api.get(`${BASE_URL}/recipes/${id}`),
   // getRecommendations: () => axios.get(`${BASE_URL}/recommendations/hybrid/`),
   // Always normalize paginated/unpaginated responses to an array
   getWhatOthersAreCooking: async () => {
-    const res = await axios.get(`${BASE_URL}/recipes/recommended/`, {
+    const res = await api.get(`${BASE_URL}/recipes/recommended/`, {
       params: { page: 1, page_size: 14 },
     });
     const data = res.data;
@@ -26,7 +26,7 @@ export const recipeAPI = {
 
   getRecipeByCategory: async (category, page = 1) => {
     try {
-      const response = await axios.get(`${BASE_URL}/recipes/recommended/`, {
+      const response = await api.get(`${BASE_URL}/recipes/recommended/`, {
         params: {
           category: category,
           page: page,

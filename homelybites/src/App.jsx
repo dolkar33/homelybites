@@ -13,7 +13,7 @@ import Post from "./pages/Post";
 import MyPost from "./pages/MyPost";
 import RecipeSearchPage from "./pages/SearchPage";
 import RecipePage from "./pages/RecipePage";
-import SavedPost from "./pages/SavedPost";
+import FavPage from "./pages/FavPage";
 
 import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecentRecipes from "./pages/RecentRecipes";
@@ -131,8 +131,8 @@ function App() {
         <Route path="/recipepage" element={<RecipePage />} />
         <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
         <Route path="/recent" element={<RecentRecipes />} />
-        <Route path="/FavPage" element={<SavedPost />} />
-        <Route path="/saved-posts" element={<SavedPost />} />
+        <Route path="/FavPage" element={<FavPage />} />
+        <Route path="/saved-posts" element={<FavPage />} />
         <Route path="/userpage" element={<UserPage />} />
         <Route path="" element={<Navigate to="/" replace />} />
       </Routes>
