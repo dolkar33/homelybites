@@ -1,61 +1,54 @@
 from django.core.management.base import BaseCommand
-from recipes.models import Recipe
 from django.conf import settings
+from recipes.models import Recipe
 import requests
 
 class Command(BaseCommand):
-    help = 'Fetches recipes from Spoonacular API and saves them to the database'
+    help = "Fetch recipes from Spoonacular API and update nutrition info"
 
     def handle(self, *args, **kwargs):
-        API_KEY = settings.SPOONACULAR_API_KEY
-        url = f"https://api.spoonacular.com/recipes/random?number=10&apiKey={API_KEY}"
-        response = requests.get(url)
+        api_key = settings.SPOONACULAR_API_KEY
+        url = f"https://api.spoonacular.com/recipes/complexSearch"
+        params = {
+            "apiKey": api_key,
+            "number": 5,
+        }
 
+        response = requests.get(url, params=params)
+        print("Status code:", response.status_code)
         if response.status_code != 200:
-            self.stdout.write(self.style.ERROR(f"Error: {response.status_code}"))
+            self.stderr.write("Failed to fetch data")
             return
 
         data = response.json()
-        saved_count = 0
+        print("Response:", data)
 
-        for item in data.get('recipes', []):
-            spoonacular_id = item.get('id') 
-            title = item.get('title')
-            image = item.get('image')
-            instructions = item.get('instructions') or ''
-            ingredients_list = [ing['original'] for ing in item.get('extendedIngredients', [])]
-            ingredients = ', '.join(ingredients_list)
-            tags = ', '.join(item.get('dishTypes', []))
+        for item in data.get("results", []):
+            spoonacular_id = item["id"]
+
+            if Recipe.objects.filter(spoonacular_id=spoonacular_id).exists():
+                self.stdout.write(f"Recipe with ID {spoonacular_id} already exists. Skipping.")
+                continue
+
             
-            if not Recipe.objects.filter(spoonacular_id=spoonacular_id).exists():
-                Recipe.objects.create(
-                    spoonacular_id=spoonacular_id,
-                    title=title,
-                    image=image,
-                    instructions=instructions,
-                    ingredients=ingredients,
-                    tags=tags
-                    )
-                saved_count += 1
-                self.stdout.write(self.style.SUCCESS(f"{saved_count} new recipes saved!"))
+            detail_url = f"https://api.spoonacular.com/recipes/{spoonacular_id}/nutritionWidget.json"
+            detail_params = {"apiKey": api_key}
+            detail_response = requests.get(detail_url, params=detail_params)
 
+            if detail_response.status_code != 200:
+                self.stderr.write(f"Failed to fetch details for recipe {spoonacular_id}")
+                continue
 
-    import requests
-from django.conf import settings
+            nutrition = detail_response.json()
 
-def fetch_spoonacular_recipes():
-    url = "https://api.spoonacular.com/recipes/complexSearch"
-    params = {
-        "apiKey": settings.SPOONACULAR_API_KEY,
-        "maxReadyTime": 20,
-        "number": 5,
-        "cuisine": "indian,asian",
-        "addRecipeInformation": "true"
-    }
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return None
-
-        
+            recipe = Recipe(
+                spoonacular_id=spoonacular_id,
+                title=item.get("title"),
+                image=item.get("image"),
+                calories=float(nutrition.get("calories", "0").replace("kcal", "").strip()),
+                fat=float(nutrition.get("fat", "0").replace("g", "").strip()),
+                protein=float(nutrition.get("protein", "0").replace("g", "").strip()),
+                carbs=float(nutrition.get("carbs", "0").replace("g", "").strip()),
+            )
+            recipe.save()
+            self.stdout.write(f"Saved: {recipe.title}")

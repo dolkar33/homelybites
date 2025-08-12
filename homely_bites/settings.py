@@ -140,3 +140,6 @@ REST_FRAMEWORK = {
     )
 }
 
+# Custom user model to match your team's database
+AUTH_USER_MODEL = 'recipes.CustomUser'
+
