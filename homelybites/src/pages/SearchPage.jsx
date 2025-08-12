@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import api, { baseURL } from "../config/axiosInstance";
 
 const RecipeSearchPage = () => {
   const navigate = useNavigate();
@@ -155,7 +156,7 @@ const RecipeSearchPage = () => {
     page = 1,
     filtersToUse = filters
   ) => {
-    const baseUrl = "http://localhost:8000/api/recipes/";
+    const baseUrl = `${baseURL}api/recipes/`;
     const params = new URLSearchParams();
 
     // Add ingredients as search parameter if any
@@ -264,20 +265,8 @@ const RecipeSearchPage = () => {
       const apiUrl = buildApiUrl(ingredients, page, filtersToUse);
       console.log("Fetching from:", apiUrl); // For debugging
 
-      const response = await fetch(apiUrl, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          // Add any authentication headers if needed
-          // 'Authorization': 'Bearer your-token-here',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      // Use axios instance so Authorization header is attached
+      const { data } = await api.get(apiUrl.replace(baseURL, ""));
 
       // Transform API data to match our component's expected format
       const transformedRecipes = data.results.map((recipe) => ({
