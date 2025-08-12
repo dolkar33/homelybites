@@ -46,6 +46,8 @@ const mockSuggestedUsers = [
 ];
 
 const CommunityPage = () => {
+  const [showLeftSidebar, setShowLeftSidebar] = useState(false);
+  const [showRightSidebar, setShowRightSidebar] = useState(false);
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
@@ -222,15 +224,185 @@ const CommunityPage = () => {
         position="top-right"
       />
 
+      {/* Hamburger buttons for mobile */}
+      <div className="flex justify-between items-center md:hidden mb-4">
+        <button
+          onClick={() => setShowLeftSidebar(true)}
+          className="p-2 rounded-lg bg-white shadow border border-gray-200"
+          aria-label="Open Profile Sidebar"
+        >
+          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <button
+          onClick={() => setShowRightSidebar(true)}
+          className="p-2 rounded-lg bg-white shadow border border-gray-200"
+          aria-label="Open Navigation Sidebar"
+        >
+          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+      </div>
       <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-12 gap-4 sm:gap-6">
+  {/* Left Sidebar Drawer (Mobile) */}
+  {showLeftSidebar && (
+    <div className="fixed inset-0 z-40 flex md:hidden">
+      <div className="fixed inset-0 bg-black opacity-40" onClick={() => setShowLeftSidebar(false)}></div>
+      <div className="relative bg-white w-72 max-w-full h-full shadow-xl z-50 animate-slideInLeft">
+        <button
+          className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200"
+          onClick={() => setShowLeftSidebar(false)}
+          aria-label="Close Sidebar"
+        >
+          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div className="p-4 overflow-y-auto h-full">
+          {/* Profile Section */}
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-6">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-6">
+  <div className="text-center mb-0 sm:mb-0">
+    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md relative flex items-center justify-center bg-gray-100">
+      {currentUser?.profile_image ? (
+        <>
+          <img
+            src={currentUser.profile_image}
+            alt={currentUser?.name || "User"}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              const fallback = e.currentTarget.nextElementSibling;
+              if (fallback) fallback.style.display = "flex";
+            }}
+          />
+          <div style={{ display: "none" }} className="items-center justify-center w-full h-full">
+            <PersonIcon style={{ fontSize: 40, color: "#9ca3af" }} />
+          </div>
+        </>
+      ) : (
+        <PersonIcon style={{ fontSize: 40, color: "#9ca3af" }} />
+      )}
+    </div>
+    <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
+      {currentUser?.name}
+    </h3>
+  </div>
+  <div className="grid grid-cols-3 gap-2 text-center">
+    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
+      <div className="text-base sm:text-lg font-bold text-gray-800">
+        {currentUser.posts}
+      </div>
+      <div className="text-xs text-gray-600 leading-tight">Posts</div>
+    </div>
+    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
+      <div className="text-base sm:text-lg font-bold text-gray-800">
+        {currentUser.following}
+      </div>
+      <div className="text-xs text-gray-600 leading-tight">Following</div>
+    </div>
+    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
+      <div className="text-base sm:text-lg font-bold text-gray-800">
+        {currentUser.followers}
+      </div>
+      <div className="text-xs text-gray-600 leading-tight">Followers</div>
+    </div>
+  </div>
+</div>
+          </div>
+          {/* Categories */}
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">Categories</h3>
+  <nav className="space-y-2 sm:space-y-3">
+    {(Array.isArray(categories) && categories.length > 0 ? categories : [
+      "Recipe",
+      "Cooking Tip",
+      "Restaurant Review",
+      "General Discussion",
+      "Question"
+    ]).map((category, idx) => {
+      const catName = category.name || category;
+      return (
+        <button
+          key={category.id || catName || idx}
+          onClick={() => handleCategoryChange(catName)}
+          className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
+            activeCategory === catName
+              ? "text-red-500 bg-red-50"
+              : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+          }`}
+        >
+          • {catName}
+        </button>
+      );
+    })}
+  </nav>
+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+  {/* Right Sidebar Drawer (Mobile) */}
+  {showRightSidebar && (
+    <div className="fixed inset-0 z-40 flex md:hidden justify-end">
+      <div className="fixed inset-0 bg-black opacity-40" onClick={() => setShowRightSidebar(false)}></div>
+      <div className="relative bg-white w-72 max-w-full h-full shadow-xl z-50 animate-slideInRight">
+        <button
+          className="absolute top-4 left-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200"
+          onClick={() => setShowRightSidebar(false)}
+          aria-label="Close Sidebar"
+        >
+          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div className="p-4 overflow-y-auto h-full">
+          {/* Navigation Section */}
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6 mt-0 mb-0">
+  <h3 className="text-base sm:text-lg font-bold text-gray-800 uppercase tracking-wide">Navigation</h3>
+  <nav className="space-y-3 sm:space-y-4">
+    <button
+      type="button"
+      onClick={() => navigate(`/community?view=feed${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
+      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
+        currentView === "feed" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+      }`}
+    >
+      <span className="text-lg sm:text-xl">🏠</span>
+      <span className="text-sm sm:text-base font-medium">Main Feed</span>
+    </button>
+    <button
+      type="button"
+      onClick={() => navigate(`/community?view=mypost${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
+      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
+        currentView === "mypost" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+      }`}
+    >
+      <span className="text-lg sm:text-xl">📝</span>
+      <span className="text-sm sm:text-base font-medium">My Post</span>
+    </button>
+    <button
+      type="button"
+      onClick={() => navigate(`/community?view=saved${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
+      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
+        currentView === "saved" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+      }`}
+    >
+      <span className="text-lg sm:text-xl">🔖</span>
+      <span className="text-sm sm:text-base font-medium">Saved Posts</span>
+    </button>
+  </nav>
+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
             {/* Left Sidebar - Fixed */}
-            <div className="col-span-3 space-y-4 sm:space-y-6">
-              <div className="sticky top-6 space-y-4 sm:space-y-6">
+            <div className="col-span-3 space-y-4 sm:space-y-6 hidden md:block">
+              <div className="sticky top-0 space-y-4 sm:space-y-6">
                 {/* Profile Section */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <div className="text-center mb-4 sm:mb-6">
+                  <div className="text-center mb-0 sm:mb-0">
                     <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md relative flex items-center justify-center bg-gray-100">
                       {currentUser?.profile_image ? (
                         <>
@@ -285,50 +457,6 @@ const CommunityPage = () => {
                   </div>
                 </div>
 
-                {/* Navigation */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
-                    Navigation
-                  </h3>
-                  <nav className="space-y-3 sm:space-y-4">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/community?view=feed${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
-                      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
-                        currentView === "feed" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
-                      }`}
-                    >
-                      <span className="text-lg sm:text-xl">🏠</span>
-                      <span className="text-sm sm:text-base font-medium">
-                        Main Feed
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/community?view=mypost${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
-                      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
-                        currentView === "mypost" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
-                      }`}
-                    >
-                      <span className="text-lg sm:text-xl">⚡</span>
-                      <span className="text-sm sm:text-base font-medium">
-                        My Post
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/community?view=saved${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
-                      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
-                        currentView === "saved" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
-                      }`}
-                    >
-                      <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="text-sm sm:text-base font-medium">
-                        Saved Posts
-                      </span>
-                    </button>
-                  </nav>
-                </div>
 
                 {/* Categories */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
@@ -365,7 +493,7 @@ const CommunityPage = () => {
             </div>
 
             {/* Main Content - Natural height without fixed height constraint */}
-            <div className="col-span-6">
+            <div className="col-span-12 md:col-span-6">
               <div className="space-y-4 sm:space-y-6">
                 {/* Header Section (varies by view) */}
                 {currentView === "mypost" ? (
@@ -429,8 +557,8 @@ const CommunityPage = () => {
             </div>
 
             {/* Right Sidebar - Fixed */}
-            <div className="col-span-3">
-              <div className="sticky top-6 space-y-4 sm:space-y-6 h-screen overflow-y-auto pr-4 -mr-4"
+            <div className="col-span-3 hidden md:block">
+              <div className="sticky top-0 h-screen overflow-y-auto pr-4 -mr-4"
                 style={{
                   scrollbarWidth: 'none', /* Firefox */
                   msOverflowStyle: 'none', /* IE and Edge */
@@ -442,40 +570,51 @@ const CommunityPage = () => {
                   }
                 `}</style>
                 
-                {/* Search Bar */}
-                <div className="relative">
-                  <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search disabled"
-                    className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-300 rounded-xl sm:rounded-2xl focus:outline-none text-sm sm:text-base bg-transparent opacity-60 cursor-not-allowed"
-                    disabled
-                  />
+                {/* Navigation */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6 mt-0 mb-0">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
+                    Navigation
+                  </h3>
+                  <nav className="space-y-3 sm:space-y-4">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/community?view=feed${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
+                      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
+                        currentView === "feed" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+                      }`}
+                    >
+                      <span className="text-lg sm:text-xl">🏠</span>
+                      <span className="text-sm sm:text-base font-medium">
+                        Main Feed
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/community?view=mypost${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
+                      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
+                        currentView === "mypost" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+                      }`}
+                    >
+                      <span className="text-lg sm:text-xl">⚡</span>
+                      <span className="text-sm sm:text-base font-medium">
+                        My Post
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/community?view=saved${activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : ""}`)}
+                      className={`flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left ${
+                        currentView === "saved" ? "text-red-500 bg-red-50" : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+                      }`}
+                    >
+                      <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="text-sm sm:text-base font-medium">
+                        Saved Posts
+                      </span>
+                    </button>
+                  </nav>
                 </div>
-                {/* SUGGESTED_PEOPLE_INSERTION_POINT */}
-                {/* Suggested People */}
-                <div className="bg-white rounded-xl shadow p-4 mt-4">
-                  <h3 className="font-semibold text-gray-800 mb-3 text-lg">Suggested People</h3>
-                  <div className="space-y-3">
-                    {suggestedUsers.map((user, idx) => (
-                      <div key={user.id} className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full object-cover border" />
-                          <div>
-                            <div className="font-medium text-gray-800 text-sm">{user.name}</div>
-                            <div className="text-xs text-gray-500">{user.username}</div>
-                          </div>
-                        </div>
-                        <button
-                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors duration-150 ${user.isFollowing ? 'bg-gray-200 text-gray-500' : 'bg-accent text-white hover:bg-accent/80'}`}
-                          onClick={() => handleFollow(idx)}
-                        >
-                          {user.isFollowing ? 'Following' : 'Follow'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+
               </div>
             </div>
           </div>
