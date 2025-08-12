@@ -21,6 +21,10 @@ urlpatterns = [
     # Specific paths for function-based views
     path('register/', views.register_user, name='register'),
     path('login/', views.login_user, name='login'),
+    path('verify-email/<str:token>/', views.verify_email, name='verify_email'),
+    path('activate/<str:uidb64>/<str:token>/', views.activate_user, name='activate_user'),
+    path('confirm-email-change/<str:token>/', views.confirm_email_change, name='confirm_email_change'),
+    path('resend-verification/', views.resend_verification_email, name='resend_verification_email'),
     path('users/', views.list_users, name='list_users'),
     path('homepage/', views.homepage, name='homepage'),
     path('recommendations/', views.recommend_recipes, name='recommend_recipes'),

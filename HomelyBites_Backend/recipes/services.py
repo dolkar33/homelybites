@@ -3,6 +3,14 @@ import os
 from django.conf import settings
 from .models import Recipe, Category, Cuisine
 from slugify import slugify
+import secrets
+import string
+from django.utils import timezone
+from datetime import timedelta
+from django.core.mail import send_mail
+from django.conf import settings
+from .models import EmailVerification, EmailChangeRequest
+
 
 class SpoonacularService:
     BASE_URL = "https://api.spoonacular.com"
@@ -221,3 +229,297 @@ class SpoonacularService:
         else:
             # Handle API errors
             return {"error": f"API Error: {response.status_code}", "message": response.text}
+
+
+class EmailVerificationService:
+    """Service for handling email verification"""
+    
+    @staticmethod
+    def generate_verification_token():
+        """Generate a secure random verification token"""
+        import secrets
+        import string
+        alphabet = string.ascii_letters + string.digits
+        return ''.join(secrets.choice(alphabet) for _ in range(64))
+    
+    @staticmethod
+    def send_verification_email(user, token):
+        """Send verification email to user with verification link"""
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+        from django.conf import settings
+        
+        subject = 'Verify Your Email - HomelyBites'
+        
+        # Create verification link
+        verification_url = f"http://127.0.0.1:8000/api/verify-email/{token}/"
+        
+        # HTML message
+        html_message = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #FC7D7D; margin: 0;">HomelyBites</h1>
+                    <p style="color: #666; font-size: 18px;">Welcome to the family!</p>
+                </div>
+                
+                <div style="background: #f9f9f9; padding: 30px; border-radius: 10px; margin-bottom: 30px;">
+                    <h2 style="color: #333; text-align: center; margin-bottom: 20px;">Verify Your Email Address</h2>
+                    <p style="text-align: center; margin-bottom: 30px;">
+                        Thank you for signing up! Please click the button below to verify your email address and complete your registration.
+                    </p>
+                    
+                    <div style="text-align: center;">
+                        <a href="{verification_url}" 
+                           style="background: #FC7D7D; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block;">
+                            Verify Email Address
+                        </a>
+                    </div>
+                    
+                    <p style="text-align: center; margin-top: 20px; font-size: 14px; color: #666;">
+                        Or copy and paste this link in your browser:<br>
+                        <a href="{verification_url}" style="color: #FC7D7D; word-break: break-all;">{verification_url}</a>
+                    </p>
+                </div>
+                
+                <div style="text-align: center; color: #666; font-size: 14px;">
+                    <p>This verification link will expire in 10 minutes.</p>
+                    <p>If you didn't create an account, please ignore this email.</p>
+                    <br>
+                    <p>Best regards,<br>The HomelyBites Team</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Plain text message
+        plain_message = f"""
+        Welcome to HomelyBites!
+        
+        Thank you for signing up! Please click the link below to verify your email address:
+        
+        {verification_url}
+        
+        This verification link will expire in 10 minutes.
+        
+        If you didn't create an account, please ignore this email.
+        
+        Best regards,
+        The HomelyBites Team
+        """
+        
+        try:
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                html_message=html_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+            return True
+        except Exception as e:
+            print(f"Error sending email: {e}")
+            return False
+    
+    @staticmethod
+    def create_verification_token(user):
+        """Create a new verification token for a user"""
+        from django.utils import timezone
+        from datetime import timedelta
+        from .models import EmailVerification
+        
+        # Delete any existing unused tokens for this user
+        EmailVerification.objects.filter(user=user, is_used=False).delete()
+        
+        # Generate new token
+        token = EmailVerificationService.generate_verification_token()
+        expires_at = timezone.now() + timedelta(minutes=10)
+        
+        # Create verification record
+        verification = EmailVerification.objects.create(
+            user=user,
+            token=token,
+            expires_at=expires_at
+        )
+        
+        return verification
+    
+    @staticmethod
+    def verify_token(token):
+        """Verify a user's email verification token"""
+        from .models import EmailVerification
+        
+        try:
+            verification = EmailVerification.objects.get(
+                token=token,
+                is_used=False
+            )
+            
+            if verification.is_expired():
+                return False, "Verification link has expired"
+            
+            # Mark as used
+            verification.is_used = True
+            verification.save()
+            
+            # Mark user as verified
+            user = verification.user
+            user.is_email_verified = True
+            user.save()
+            
+            return True, "Email verified successfully", user
+            
+        except EmailVerification.DoesNotExist:
+            return False, "Invalid verification link", None
+
+    @staticmethod
+    def generate_verification_token():
+        """Generate a secure random token for email verification."""
+        return ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(50))
+    
+    @staticmethod
+    def create_verification_token(user):
+        """Create a new email verification token for a user."""
+        # Delete any existing unused tokens for this user
+        EmailVerification.objects.filter(user=user, is_used=False).delete()
+        
+        token = EmailVerificationService.generate_verification_token()
+        expires_at = timezone.now() + timedelta(hours=24)
+        
+        verification = EmailVerification.objects.create(
+            user=user,
+            token=token,
+            expires_at=expires_at
+        )
+        
+        return verification
+    
+    @staticmethod
+    def send_verification_email(user, token):
+        """Send verification email to user."""
+        subject = 'Welcome to HomelyBites! Please verify your email'
+        message = f"""
+Hello {user.first_name}!
+
+Welcome to HomelyBites! To complete your registration and start exploring delicious recipes, please click the link below to verify your email address:
+
+{settings.BACKEND_BASE_URL}/api/activate/{user.pk}/{token}/
+
+After clicking the link, you'll be able to log in to your account and start your culinary journey!
+
+If you didn't create an account with HomelyBites, please ignore this email.
+
+Best regards,
+The HomelyBites Team
+        """
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+            return True
+        except Exception as e:
+            print(f"Failed to send verification email: {e}")
+            return False
+    
+    @staticmethod
+    def verify_token(token):
+        """Verify an email verification token."""
+        try:
+            verification = EmailVerification.objects.get(token=token, is_used=False)
+            
+            if verification.is_expired():
+                return False, "Verification link has expired. Please request a new one.", None
+            
+            # Mark token as used
+            verification.is_used = True
+            verification.save()
+            
+            return True, "Email verified successfully!", verification.user
+            
+        except EmailVerification.DoesNotExist:
+            return False, "Invalid verification link.", None
+    
+    @staticmethod
+    def create_email_change_request(user, new_email):
+        """Create a new email change request."""
+        # Delete any existing unused requests for this user
+        EmailChangeRequest.objects.filter(user=user, is_used=False).delete()
+        
+        token = EmailVerificationService.generate_verification_token()
+        expires_at = timezone.now() + timedelta(hours=24)
+        
+        change_request = EmailChangeRequest.objects.create(
+            user=user,
+            old_email=user.email,
+            new_email=new_email,
+            token=token,
+            expires_at=expires_at
+        )
+        
+        return change_request
+    
+    @staticmethod
+    def send_email_change_verification(user, change_request):
+        """Send email change verification to the old email address."""
+        subject = 'Email Change Request - HomelyBites'
+        message = f"""
+Hello {user.first_name}!
+
+You have requested to change your email address from {user.email} to {change_request.new_email}.
+
+To confirm this change, please click the link below:
+
+{settings.BACKEND_BASE_URL}/api/confirm-email-change/{change_request.token}/
+
+This link will expire in 24 hours.
+
+If you did not request this change, please ignore this email and your current email address will remain unchanged.
+
+Best regards,
+The HomelyBites Team
+        """
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],  # Send to old email
+                fail_silently=False,
+            )
+            return True
+        except Exception as e:
+            print(f"Failed to send email change verification: {e}")
+            return False
+    
+    @staticmethod
+    def verify_email_change_token(token):
+        """Verify an email change token and update the user's email."""
+        try:
+            change_request = EmailChangeRequest.objects.get(token=token, is_used=False)
+            
+            if change_request.is_expired():
+                return False, "Email change link has expired. Please request a new one.", None
+            
+            # Mark token as used
+            change_request.is_used = True
+            change_request.save()
+            
+            # Update user's email
+            user = change_request.user
+            user.email = change_request.new_email
+            user.save()
+            
+            return True, "Email changed successfully!", user
+            
+        except EmailChangeRequest.DoesNotExist:
+            return False, "Invalid email change link.", None

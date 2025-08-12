@@ -638,23 +638,109 @@ def import_from_spoonacular(request):
 @permission_classes([AllowAny])
 def register_user(request):
     """Register a new user."""
+    
     serializer = UserRegistrationSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
-        refresh = RefreshToken.for_user(user)
+        
         return Response({
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name
-            },
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'message': 'User registered successfully'
+            'message': 'Registration successful! Please check your email for verification link.',
+            'user_id': user.id,
+            'email': user.email,
+            'requires_verification': True
         }, status=status.HTTP_201_CREATED)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_email(request, token):
+    """Verify user's email with verification token from URL."""
+    
+    # Verify the token
+    from .services import EmailVerificationService
+    from django.shortcuts import redirect
+    
+    is_valid, message, user = EmailVerificationService.verify_token(token)
+    
+    if is_valid:
+        # Activate the user
+        user.is_active = True
+        user.save()
+        
+        # Redirect to success page
+        return redirect('/activation-success')
+    else:
+        # Redirect to error page
+        return redirect('/activation-error')
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def activate_user(request, uidb64, token):
+    """Activate user account using Django's built-in token generator."""
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from django.contrib.auth import get_user_model
+    from django.shortcuts import redirect
+    
+    User = get_user_model()
+    
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    
+    if user is not None and default_token_generator.check_token(user, token):
+        # Activate the user
+        user.is_active = True
+        user.is_email_verified = True
+        user.save()
+        
+        # Redirect to a simple success page or frontend
+        return redirect('/activation-success')
+    else:
+        # Redirect to error page
+        return redirect('/activation-error')
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def resend_verification_email(request):
+    """Resend verification email to user."""
+    user_id = request.data.get('user_id')
+    
+    if not user_id:
+        return Response({
+            'error': 'User ID is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        return Response({
+            'error': 'User not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    if user.is_email_verified:
+        return Response({
+            'error': 'Email is already verified'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Create new verification token and send email
+    from .services import EmailVerificationService
+    verification = EmailVerificationService.create_verification_token(user)
+    
+    if EmailVerificationService.send_verification_email(user, verification.token):
+        return Response({
+            'message': 'Verification email sent successfully!'
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({
+            'error': 'Failed to send verification email. Please try again.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -688,6 +774,22 @@ def login_user(request):
         print(f"Authentication result: {user}")  # Debug log
         
         if user:
+            # Check if user is active (email verified)
+            if not user.is_active:
+                return Response({
+                    'error': 'Please verify your email before logging in. Check your email for verification link.',
+                    'requires_verification': True,
+                    'user_id': user.id
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
+            # Check if email is verified
+            if not user.is_email_verified:
+                return Response({
+                    'error': 'Please verify your email before logging in. Check your email for verification link.',
+                    'requires_verification': True,
+                    'user_id': user.id
+                }, status=status.HTTP_401_UNAUTHORIZED)
+            
             refresh = RefreshToken.for_user(user)
             profile = user.profile
             return Response({
@@ -1161,14 +1263,49 @@ def update_user_profile(request):
             if not request.data['last_name'].strip():
                 return Response({'error': 'Last name cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
             user.last_name = request.data['last_name'].strip()
+        
+        # Handle email change with verification
         if 'email' in request.data:
-            email = request.data['email'].strip()
-            if not email:
+            new_email = request.data['email'].strip()
+            if not new_email:
                 return Response({'error': 'Email cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
-            if CustomUser.objects.exclude(id=user.id).filter(email=email).exists():
-                return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
-            user.email = email
+            
+            # Check if email is actually changing
+            if new_email.lower() != user.email.lower():
+                # Check if new email already exists
+                if CustomUser.objects.exclude(id=user.id).filter(email=new_email).exists():
+                    return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Validate new email format and deliverability
+                from .serializers import UserRegistrationSerializer
+                try:
+                    # Use the same email validation as registration
+                    email_validator = UserRegistrationSerializer()
+                    validated_email = email_validator.validate_email(new_email)
+                except Exception as e:
+                    return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Create email change request and send verification
+                from .services import EmailVerificationService
+                change_request = EmailVerificationService.create_email_change_request(user, validated_email)
+                
+                if EmailVerificationService.send_email_change_verification(user, change_request):
+                    return Response({
+                        'message': 'Email change request sent! Please check your current email for verification link.',
+                        'email_change_pending': True,
+                        'new_email': validated_email,
+                        'note': 'Your email will be updated after you click the verification link sent to your current email address.'
+                    }, status=status.HTTP_200_OK)
+                else:
+                    return Response({
+                        'error': 'Failed to send email change verification. Please try again.'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # If email is not changing, just update it
+            else:
+                user.email = new_email
+        
         user.save()
+        
         # Update profile information with validation
         if 'dietary_preference' in request.data:
             dietary = request.data['dietary_preference']
@@ -1197,7 +1334,9 @@ def update_user_profile(request):
             profile.profile_image = image
             user.profile_picture = image  # This will save to the CustomUser model
             user.save()
+        
         profile.save()
+        
         return Response({
             'user': {
                 'id': user.id,
@@ -1236,3 +1375,19 @@ def change_password(request):
         
         return Response({'message': 'Password changed successfully'})
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def confirm_email_change(request, token):
+    """Confirm email change using verification token."""
+    from .services import EmailVerificationService
+    from django.shortcuts import redirect
+    
+    is_valid, message, user = EmailVerificationService.verify_email_change_token(token)
+    
+    if is_valid:
+        # Redirect to success page
+        return redirect('/email-change-success')
+    else:
+        # Redirect to error page
+        return redirect('/email-change-error')

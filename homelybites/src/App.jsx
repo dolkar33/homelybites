@@ -18,6 +18,7 @@ import FavPage from "./pages/FavPage";
 import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecentRecipes from "./pages/RecentRecipes";
 import UserPage from "./pages/UserPage";
+import { CustomToaster } from "./pages/toast";
 
 // Custom hook to check authentication status
 const useAuth = () => {
@@ -108,8 +109,6 @@ const SignUpRoute = () => {
   // If user is already logged in, redirect to Home instead of showing SignUp
   return isLoggedIn ? <Navigate to="/Home" replace /> : <SignUp />;
 };
-
-import { CustomToaster } from "./pages/toast";
 
 function App() {
   return (
