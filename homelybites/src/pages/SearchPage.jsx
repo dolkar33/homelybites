@@ -50,6 +50,31 @@ const RecipeSearchPage = () => {
     setRecipes([]);
   }, []);
 
+  // Load favorites from backend on mount (if authenticated)
+  useEffect(() => {
+    const token = localStorage.getItem("access");
+    if (!token) return; // unauthenticated: keep local behavior
+    const fetchFavorites = async () => {
+      try {
+        const res = await api.get("api/recipes/favorites/");
+        const items = Array.isArray(res.data)
+          ? res.data
+          : res.data?.results || [];
+        const ids = new Set(items.map((r) => r.id));
+        setFavorites(ids);
+        // Persist details locally for quick UI access
+        localStorage.setItem(
+          "favoriteRecipeDetails",
+          JSON.stringify(items)
+        );
+      } catch (err) {
+        // Silently ignore; user may not be authenticated or server unavailable
+        // console.error("Failed to load favorites", err);
+      }
+    };
+    fetchFavorites();
+  }, []);
+
   // Function to add ingredient
   const addIngredient = () => {
     if (
@@ -121,31 +146,63 @@ const RecipeSearchPage = () => {
   };
 
   // Function to toggle favorites
-  const toggleFavorite = (recipeId) => {
-    const newFavorites = new Set(favorites);
+  const toggleFavorite = async (recipeId) => {
+    const isAuthed = !!localStorage.getItem("access");
     const recipeToToggle = recipes.find((r) => r.id === recipeId);
-    let updatedFavoriteRecipes = [];
+    const slug = recipeToToggle?.slug;
 
-    // Load existing favorites from localStorage
+    // Always keep a local cache for quick UI updates
+    let updatedFavoriteRecipes = [];
     const savedFavorites = localStorage.getItem("favoriteRecipeDetails");
     if (savedFavorites) {
-      updatedFavoriteRecipes = JSON.parse(savedFavorites);
+      try { updatedFavoriteRecipes = JSON.parse(savedFavorites) || []; } catch {}
     }
 
-    if (newFavorites.has(recipeId)) {
-      newFavorites.delete(recipeId);
-      // Remove from localStorage
-      updatedFavoriteRecipes = updatedFavoriteRecipes.filter(r => r.id !== recipeId);
+    const newFavorites = new Set(favorites);
+
+    // If authenticated, hit backend endpoints
+    if (isAuthed && slug) {
+      try {
+        if (newFavorites.has(recipeId)) {
+          await api.delete(`api/recipes/${slug}/favorite/`);
+          newFavorites.delete(recipeId);
+          updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => r.id !== recipeId);
+        } else {
+          await api.post(`api/recipes/${slug}/favorite/`);
+          newFavorites.add(recipeId);
+          if (recipeToToggle && !updatedFavoriteRecipes.some((r) => r.id === recipeId)) {
+            updatedFavoriteRecipes.push(recipeToToggle);
+          }
+        }
+      } catch (err) {
+        // If network/auth error, fallback to local behavior for this session
+        if (newFavorites.has(recipeId)) {
+          newFavorites.delete(recipeId);
+          updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => r.id !== recipeId);
+        } else {
+          newFavorites.add(recipeId);
+          if (recipeToToggle && !updatedFavoriteRecipes.some((r) => r.id === recipeId)) {
+            updatedFavoriteRecipes.push(recipeToToggle);
+          }
+        }
+      }
     } else {
-      newFavorites.add(recipeId);
-      // Add to localStorage if not already present
-      if (recipeToToggle && !updatedFavoriteRecipes.some(r => r.id === recipeId)) {
-        // Save minimal data or all relevant fields
-        updatedFavoriteRecipes.push(recipeToToggle);
+      // Unauthenticated: local-only behavior
+      if (newFavorites.has(recipeId)) {
+        newFavorites.delete(recipeId);
+        updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => r.id !== recipeId);
+      } else {
+        newFavorites.add(recipeId);
+        if (recipeToToggle && !updatedFavoriteRecipes.some((r) => r.id === recipeId)) {
+          updatedFavoriteRecipes.push(recipeToToggle);
+        }
       }
     }
-    // Save updated favorites to localStorage
-    localStorage.setItem("favoriteRecipeDetails", JSON.stringify(updatedFavoriteRecipes));
+
+    localStorage.setItem(
+      "favoriteRecipeDetails",
+      JSON.stringify(updatedFavoriteRecipes)
+    );
     setFavorites(newFavorites);
   };
 

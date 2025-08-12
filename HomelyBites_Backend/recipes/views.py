@@ -33,7 +33,7 @@ DIETARY_KEYWORDS = {
     # Vegan: exclude all animal products
     'vegan': [
         # meats
-        'chicken','beef','pork','lamb','mutton','turkey','bacon','ham','sausage','meat',
+        'chicken','beef','pork','lamb','mutton','turkey','bacon','ham','sausage','meat','steak',
         # fish/seafood
         'fish','salmon','tuna','mackerel','cod','sardine','anchovy','shrimp','prawn','crab','lobster','shellfish','oyster','clam','mussel',
         # dairy/eggs/honey
@@ -310,6 +310,67 @@ class RecipeViewSet(viewsets.ModelViewSet):
             response["X-Diet-Safe"] = str(dcounts.get('safe', 0))
             response["X-Diet-Filtered"] = str(dcounts.get('filtered_out', 0))
         return response
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticatedOrReadOnly])
+    def favorite(self, request, pk=None):
+        """Favorite a recipe for the authenticated user."""
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Respect viewset lookup_field ('slug') by using get_object()
+        try:
+            recipe = self.get_object()
+        except Exception:
+            return Response({"detail": "Recipe not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        obj, created = UserRecipeInteraction.objects.get_or_create(
+            user=user, recipe=recipe, interaction_type='save'
+        )
+        if created:
+            return Response({"detail": "Recipe favorited."}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"detail": "Already favorited."}, status=status.HTTP_200_OK)
+
+    @favorite.mapping.delete
+    def unfavorite(self, request, pk=None):
+        """Remove favorite for a recipe for the authenticated user."""
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Respect viewset lookup_field ('slug') by using get_object()
+        try:
+            recipe = self.get_object()
+        except Exception:
+            return Response({"detail": "Recipe not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        deleted, _ = UserRecipeInteraction.objects.filter(
+            user=user, recipe=recipe, interaction_type='save'
+        ).delete()
+        if deleted:
+            return Response({"detail": "Recipe unfavorited."}, status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({"detail": "Not favorited."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='favorites', permission_classes=[IsAuthenticatedOrReadOnly])
+    def favorites(self, request):
+        """List the authenticated user's favorited recipes."""
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        recipe_ids = UserRecipeInteraction.objects.filter(
+            user=user, interaction_type='save'
+        ).values_list('recipe_id', flat=True)
+
+        queryset = Recipe.objects.filter(id__in=recipe_ids).prefetch_related('categories', 'cuisines')
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = RecipeListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        serializer = RecipeListSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def recommended(self, request):
