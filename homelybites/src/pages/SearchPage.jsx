@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Heart, Star, ChevronLeft, X, User } from "lucide-react";
+import { Heart, ChevronLeft, X, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Navbar from "../components/Navbar";
@@ -14,22 +14,19 @@ const RecipeSearchPage = () => {
   // State for filters
   const [filters, setFilters] = useState({
     cuisineType: {
-      Italian: false,
+      Chinese: false,
+      Vietnamese: false,
       Indian: false,
+      Korean: false,
+      American: false,
+      European: false,
+      Mexican: false,
       Thai: false,
-      Turkish: false,
-      Caribbean: false,
-      "Central American": false,
     },
     calories: {
       lowCal: false,
       midCal: false,
       highCal: false,
-    },
-    difficulty: {
-      easy: false,
-      medium: false,
-      hard: false,
     },
   });
 
@@ -93,22 +90,19 @@ const RecipeSearchPage = () => {
   const clearFilters = () => {
     const clearedFilters = {
       cuisineType: {
-        Italian: false,
+        Chinese: false,
+        Vietnamese: false,
         Indian: false,
+        Korean: false,
+        American: false,
+        European: false,
+        Mexican: false,
         Thai: false,
-        Turkish: false,
-        Caribbean: false,
-        "Central American": false,
       },
       calories: {
         lowCal: false,
         midCal: false,
         highCal: false,
-      },
-      difficulty: {
-        easy: false,
-        medium: false,
-        hard: false,
       },
     };
     setFilters(clearedFilters);
@@ -134,20 +128,27 @@ const RecipeSearchPage = () => {
     if (newFavorites.has(recipeId)) {
       newFavorites.delete(recipeId);
       // Remove from localStorage
-      updatedFavoriteRecipes = updatedFavoriteRecipes.filter(r => r.id !== recipeId);
+      updatedFavoriteRecipes = updatedFavoriteRecipes.filter(
+        (r) => r.id !== recipeId
+      );
     } else {
       newFavorites.add(recipeId);
       // Add to localStorage if not already present
-      if (recipeToToggle && !updatedFavoriteRecipes.some(r => r.id === recipeId)) {
+      if (
+        recipeToToggle &&
+        !updatedFavoriteRecipes.some((r) => r.id === recipeId)
+      ) {
         // Save minimal data or all relevant fields
         updatedFavoriteRecipes.push(recipeToToggle);
       }
     }
     // Save updated favorites to localStorage
-    localStorage.setItem("favoriteRecipeDetails", JSON.stringify(updatedFavoriteRecipes));
+    localStorage.setItem(
+      "favoriteRecipeDetails",
+      JSON.stringify(updatedFavoriteRecipes)
+    );
     setFavorites(newFavorites);
   };
-
 
   // Function to build API URL with filters
   const buildApiUrl = (
@@ -215,14 +216,6 @@ const RecipeSearchPage = () => {
       }
     }
 
-    // Add difficulty filters
-    const selectedDifficulties = Object.keys(filtersToUse.difficulty).filter(
-      (key) => filtersToUse.difficulty[key]
-    );
-    selectedDifficulties.forEach((difficulty) => {
-      params.append("difficulty", difficulty);
-    });
-
     // Add cuisine filters - check if your API supports this parameter
     const selectedCuisines = Object.keys(filtersToUse.cuisineType).filter(
       (key) => filtersToUse.cuisineType[key]
@@ -249,8 +242,7 @@ const RecipeSearchPage = () => {
     // If no ingredients are selected and no filters are applied, clear the recipes
     const hasFilters =
       Object.values(filtersToUse.cuisineType).some(Boolean) ||
-      Object.values(filtersToUse.calories).some(Boolean) ||
-      Object.values(filtersToUse.difficulty).some(Boolean);
+      Object.values(filtersToUse.calories).some(Boolean);
 
     if (ingredients.length === 0 && !hasFilters) {
       setRecipes([]);
@@ -268,7 +260,6 @@ const RecipeSearchPage = () => {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-         
         },
       });
 
@@ -283,7 +274,6 @@ const RecipeSearchPage = () => {
         id: recipe.id,
         name: recipe.title,
         image: recipe.image_url,
-        rating: 4.0, // Default rating since API doesn't provide it
         difficulty: recipe.difficulty,
         calories: `${recipe.calories} cal`,
         cuisineType:
@@ -345,20 +335,6 @@ const RecipeSearchPage = () => {
     if (pagination.next && !loading) {
       handleSearch(selectedIngredients, pagination.currentPage + 1);
     }
-  };
-
-  const renderStars = (rating) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        size={16}
-        className={`${
-          i < Math.floor(rating)
-            ? "fill-yellow-400 text-yellow-400"
-            : "text-gray-300"
-        }`}
-      />
-    ));
   };
 
   useEffect(() => {
@@ -471,30 +447,6 @@ const RecipeSearchPage = () => {
                   </div>
                 </div>
 
-                {/* Difficulty */}
-                <div className="mb-3 sm:mb-4 lg:mb-6">
-                  <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">
-                    Difficulty
-                  </h3>
-                  <div className="space-y-1.5 sm:space-y-2 lg:space-y-3">
-                    {Object.keys(filters.difficulty).map((level) => (
-                      <label key={level} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.difficulty[level]}
-                          onChange={() =>
-                            handleFilterChange("difficulty", level)
-                          }
-                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
-                        />
-                        <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
-                          {level.charAt(0).toUpperCase() + level.slice(1)}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Clear Filters Button */}
                 <button
                   onClick={clearFilters}
@@ -559,8 +511,7 @@ const RecipeSearchPage = () => {
                 </div>
               ) : selectedIngredients.length === 0 &&
                 !Object.values(filters.cuisineType).some(Boolean) &&
-                !Object.values(filters.calories).some(Boolean) &&
-                !Object.values(filters.difficulty).some(Boolean) ? (
+                !Object.values(filters.calories).some(Boolean) ? (
                 <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
                   <div className="max-w-md mx-auto">
                     <div className="w-12 sm:w-14 lg:w-16 xl:w-20 h-12 sm:h-14 lg:h-16 xl:h-20 mx-auto mb-3 sm:mb-4 bg-gray-100 rounded-full flex items-center justify-center">
@@ -629,16 +580,7 @@ const RecipeSearchPage = () => {
                             </div>
 
                             <div className="flex items-center mb-2 sm:mb-2 lg:mb-3">
-                              <div className="flex mr-2">
-                                {renderStars(recipe.rating)}
-                              </div>
                               <span className="text-xs sm:text-sm lg:text-base text-gray-600 mr-2">
-                                {recipe.rating}
-                              </span>
-                              <span className="text-xs sm:text-sm lg:text-base text-gray-400">
-                                |
-                              </span>
-                              <span className="text-xs sm:text-sm lg:text-base text-gray-600 ml-2">
                                 {recipe.difficulty.charAt(0).toUpperCase() +
                                   recipe.difficulty.slice(1)}
                               </span>
@@ -697,8 +639,7 @@ const RecipeSearchPage = () => {
                 !loading &&
                 (selectedIngredients.length > 0 ||
                   Object.values(filters.cuisineType).some(Boolean) ||
-                  Object.values(filters.calories).some(Boolean) ||
-                  Object.values(filters.difficulty).some(Boolean)) && (
+                  Object.values(filters.calories).some(Boolean)) && (
                   <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
                     <p className="text-sm sm:text-base lg:text-lg text-gray-600">
                       No recipes found matching your criteria.
