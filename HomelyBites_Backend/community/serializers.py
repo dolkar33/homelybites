@@ -74,7 +74,17 @@ class PostSerializer(serializers.ModelSerializer):
     likes = serializers.SerializerMethodField()  # matches frontend 'likes' field
     isLiked = serializers.SerializerMethodField()  # matches frontend 'isLiked' field
     isSaved = serializers.SerializerMethodField()  # matches frontend 'isSaved' field
-    image = serializers.SerializerMethodField()  # return full URL for image
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        request = self.context.get('request')
+        if instance.image and request:
+            rep['image'] = request.build_absolute_uri(instance.image.url)
+        elif not instance.image:
+            rep['image'] = None
+        return rep
+
+    image = serializers.ImageField(required=False, allow_null=True)  # accepts uploads
     
     class Meta:
         model = Post

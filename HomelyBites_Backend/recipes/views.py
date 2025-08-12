@@ -76,10 +76,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Recipe.objects.all()
         
-        # Filter by category if provided
-        category = self.request.query_params.get('category', None)
-        if category:
-            queryset = queryset.filter(categories__slug=category)
+        # Filter by category if provided (accept slug or display name, case-insensitive)
+        category_param = self.request.query_params.get('category', None)
+        if category_param:
+            normalized = category_param.strip().lower().replace(' ', '-')
+            queryset = queryset.filter(
+                Q(categories__slug=normalized) | Q(categories__name__iexact=category_param.strip())
+            )
             
         # Filter by difficulty if provided
         difficulty = self.request.query_params.get('difficulty', None)
@@ -91,10 +94,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if max_prep_time:
             queryset = queryset.filter(prep_time__lte=int(max_prep_time))
         
-        # Filter by cuisine if provided
-        cuisine = self.request.query_params.get('cuisine', None)
-        if cuisine:
-            queryset = queryset.filter(cuisines__slug=cuisine)
+        # Filter by cuisine if provided (accept slug or name)
+        cuisine_param = self.request.query_params.get('cuisine', None)
+        if cuisine_param:
+            cuisine_norm = cuisine_param.strip().lower().replace(' ', '-')
+            queryset = queryset.filter(
+                Q(cuisines__slug=cuisine_norm) | Q(cuisines__name__iexact=cuisine_param.strip())
+            )
 
         # Filter by calories if provided
         min_calories = self.request.query_params.get('min_calories', None)
@@ -109,43 +115,51 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def recommended(self, request):
         """
-        Get personalized recipe recommendations for the authenticated user.
-        For non-authenticated users, return popular recipes.
+        Personalized recommendations. Respects query filters and pagination.
+        - If explicit filters (e.g., category) are provided, use them via get_queryset().
+        - Otherwise, for authenticated users, prioritize favorite categories; fall back to popular.
+        - Uses DRF pagination instead of slicing.
         """
-        if request.user.is_authenticated:
-            # Get user's favorite categories
-            try:
-                user_profile = UserProfile.objects.get(user=request.user)
-                favorite_categories = user_profile.favorite_categories.all()
-                
-                # Get recipes from user's favorite categories
-                recommended_recipes = Recipe.objects.filter(
-                    categories__in=favorite_categories
-                ).distinct()
-                
-                # If we have less than 5 recommendations, add popular recipes
-                if recommended_recipes.count() < 5:
-                    popular_recipes = Recipe.objects.annotate(
+        # Start from filtered queryset to respect incoming filters (category, cuisine, etc.)
+        base_qs = self.get_queryset()
+
+        explicit_filter = any([
+            request.query_params.get('category'),
+            request.query_params.get('difficulty'),
+            request.query_params.get('cuisine'),
+            request.query_params.get('min_calories'),
+            request.query_params.get('max_calories'),
+            request.query_params.get('max_prep_time'),
+        ])
+
+        if explicit_filter:
+            qs = base_qs.order_by('-created_at')
+        else:
+            if request.user.is_authenticated:
+                try:
+                    user_profile = UserProfile.objects.get(user=request.user)
+                    favorite_categories = user_profile.favorite_categories.all()
+                    qs = Recipe.objects.filter(categories__in=favorite_categories).distinct()
+                    if qs.count() < 5:
+                        popular = Recipe.objects.annotate(
+                            interaction_count=Count('user_interactions')
+                        ).order_by('-interaction_count')
+                        qs = (qs | popular).distinct()
+                except UserProfile.DoesNotExist:
+                    qs = Recipe.objects.annotate(
                         interaction_count=Count('user_interactions')
                     ).order_by('-interaction_count')
-                    
-                    # Combine the two querysets without duplicates
-                    recommended_recipes = (recommended_recipes | popular_recipes).distinct()[:10]
-                else:
-                    recommended_recipes = recommended_recipes[:10]
-                    
-            except UserProfile.DoesNotExist:
-                # If user profile doesn't exist, return popular recipes
-                recommended_recipes = Recipe.objects.annotate(
+            else:
+                qs = Recipe.objects.annotate(
                     interaction_count=Count('user_interactions')
-                ).order_by('-interaction_count')[:10]
-        else:
-            # For non-authenticated users, return popular recipes
-            recommended_recipes = Recipe.objects.annotate(
-                interaction_count=Count('user_interactions')
-            ).order_by('-interaction_count')[:10]
-            
-        serializer = RecipeListSerializer(recommended_recipes, many=True)
+                ).order_by('-interaction_count')
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = RecipeListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = RecipeListSerializer(qs, many=True)
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
@@ -306,7 +320,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 {"error": "No image file provided"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        serializer = UserProfileSerializer(profile, data={'profile_image': request.FILES['profile_image']}, partial=True)
+        serializer = UserProfileSerializer(profile, data={'profile_image': request.FILES['profile_image']}, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -508,26 +522,10 @@ def recommend_recipes(request):
 def my_profile(request):
     user_profile, created = UserProfile.objects.get_or_create(user=request.user)
     if request.method == 'GET':
-        # Return dietary_preference, allergies, dislikes as lists
-        data = {
-            'id': user_profile.id,
-            'user': {
-                'id': user_profile.user.id,
-                'username': user_profile.user.username,
-                'email': user_profile.user.email,
-                'first_name': user_profile.user.first_name,
-                'last_name': user_profile.user.last_name
-            },
-            'profile_image': user_profile.profile_image.url if user_profile.profile_image else None,
-            'favorite_categories': [cat.name for cat in user_profile.favorite_categories.all()],
-            'dietary_preference': user_profile.dietary_preference.split(',') if user_profile.dietary_preference else [],
-            'allergies': user_profile.allergies.split(',') if user_profile.allergies else [],
-            'dislikes': user_profile.dislikes.split(',') if user_profile.dislikes else [],
-            'has_completed_questions': user_profile.has_completed_questions
-        }
-        return Response(data)
+        serializer = UserProfileSerializer(user_profile, context={'request': request})
+        return Response(serializer.data)
     elif request.method == 'PUT':
-        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True)
+        serializer = UserProfileSerializer(user_profile, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -823,12 +821,6 @@ def update_user_profile(request):
                 profile.allergies = ','.join([a.strip() for a in allergies])
             else:
                 profile.allergies = allergies.strip()
-        if 'dislikes' in request.data:
-            dislikes = request.data['dislikes']
-            if isinstance(dislikes, list):
-                profile.dislikes = ','.join([d.strip() for d in dislikes])
-            else:
-                profile.dislikes = dislikes.strip()
         if 'profile_image' in request.FILES:
             image = request.FILES['profile_image']
             if image.size > 5 * 1024 * 1024:
@@ -851,7 +843,6 @@ def update_user_profile(request):
             'profile': {
                 'dietary_preference': profile.dietary_preference.split(',') if profile.dietary_preference else [],
                 'allergies': profile.allergies.split(',') if profile.allergies else [],
-                'dislikes': profile.dislikes.split(',') if profile.dislikes else [],
                 'profile_image': profile.profile_image.url if profile.profile_image else None
             },
             'message': 'Profile updated successfully'

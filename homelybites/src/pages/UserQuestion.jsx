@@ -19,7 +19,6 @@ const UserQuestion = () => {
   const [formData, setFormData] = useState({
     dietary: [],
     allergies: [],
-    dislikes: []
   });
   const [errors, setErrors] = useState({});
   const handleCheckboxChange = (category, option) => {

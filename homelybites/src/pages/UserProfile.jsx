@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../config/axiosInstance";
 import Navbar from "../components/Navbar.jsx";
 import Footer from "../components/Footer.jsx";
-import { baseURL } from "../config/axiosInstance";
+import Toast from "../components/Toast.jsx";
+ 
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -22,12 +23,11 @@ const UserProfile = () => {
   // State for profile response.data
   const [profileData, setProfileData] = useState({
     dietary_preference: [],
-    allergies: ""
+    allergies: []
   });
 
-  // State for profile image
-  const [profileImage, setProfileImage] = useState("/Images/user.jpg");
-  const [originalProfileImage] = useState("/Images/user.jpg");
+  // State for profile image (empty => show SVG icon fallback)
+  const [profileImage, setProfileImage] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
 
   // State for loading and errors
@@ -61,7 +61,7 @@ const UserProfile = () => {
     { label: "Non-Vegetarian", value: "non-vegetarian" },
     { label: "Keto", value: "keto" },
     { label: "Gluten Free", value: "gluten-free" },
-    { label: "No Dietary Plan", value: "no-dietary-plan" }
+    { label: "Vegan", value: "vegan" }
   ];
 
   const allergyOptions = [
@@ -104,9 +104,15 @@ const UserProfile = () => {
         });
 
         // Set profile data
+        const allergiesArr = Array.isArray(data.allergies)
+          ? data.allergies
+          : (typeof data.allergies === 'string'
+              ? data.allergies.split(',').map(s => s.trim()).filter(Boolean)
+              : (data.allergies ? [data.allergies] : []));
+
         setProfileData({
           dietary_preference: Array.isArray(data.dietary_preference) ? data.dietary_preference : [data.dietary_preference].filter(Boolean),
-          allergies: Array.isArray(data.allergies) ? data.allergies : (data.allergies ? [data.allergies] : [])
+          allergies: allergiesArr
         });
 
         // Set dietary plan for the checkboxes
@@ -114,10 +120,13 @@ const UserProfile = () => {
           setDietaryPlan(Array.isArray(data.dietary_preference) ? data.dietary_preference : [data.dietary_preference]);
         }
 
-        // Set selected allergies
+        // Set selected allergies (normalize string CSV -> array)
         if (data.allergies) {
-          setSelectedAllergies(Array.isArray(data.allergies) ? data.allergies : [data.allergies]);
+          setSelectedAllergies(allergiesArr);
         }
+
+        // Set profile image directly from backend; empty => show SVG icon
+        setProfileImage(data.profile_image || "");
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -266,13 +275,11 @@ const UserProfile = () => {
         processedFile = await compressImage(file);
       }
 
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfileImage(e.target.result);
-        setSelectedFile(processedFile);
-      };
-      reader.readAsDataURL(processedFile);
+      
+    const fileUrl = URL.createObjectURL(processedFile);
+
+    setProfileImage(fileUrl);
+    setSelectedFile(processedFile);
 
     } catch (error) {
       setUploadError(error.message);
@@ -284,7 +291,7 @@ const UserProfile = () => {
 
   // Reset profile image to original
   const handleResetImage = () => {
-    setProfileImage(originalProfileImage);
+    setProfileImage("");
     setSelectedFile(null);
     setUploadError('');
     if (fileInputRef.current) {
@@ -395,7 +402,9 @@ const UserProfile = () => {
         }
       );
       if (response.data.profile_image) {
-        setProfileImage(response.data.profile_image);
+        // Add cache-busting param to force reload
+        const cacheBustedUrl = response.data.profile_image ? `${response.data.profile_image}${response.data.profile_image.includes('?') ? '&' : '?'}t=${Date.now()}` : "";
+        setProfileImage(cacheBustedUrl);
         setSelectedFile(null);
         setSuccessMessage('Profile image updated successfully!');
         return response.data.profile_image;
@@ -446,26 +455,21 @@ const UserProfile = () => {
         return;
       }
 
-      let response;
-      if (selectedFile) {
-        // (No longer send image here)
-      } else {
-        // If no image, send JSON as before
-        const updateData = {
-          dietary_preference: dietaryPlan,
-          allergies: selectedAllergies,
-          username: userInfo.username,
-          email: userInfo.email,
-          first_name: userInfo.first_name,
-          last_name: userInfo.last_name,
-          // Do NOT include current_password or new_password here
-        };
 
-        response = await axiosInstance.put(
-          'api/user-profiles/update/',
-          updateData
-        );
-      }
+      const updateData = {
+        dietary_preference: dietaryPlan,
+        allergies: selectedAllergies,
+        username: userInfo.username,
+        email: userInfo.email,
+        first_name: userInfo.first_name,
+        last_name: userInfo.last_name,
+     
+      };
+
+      const response = await axiosInstance.put(
+        'api/user-profiles/update/',
+        updateData
+      );
 
       if (response.status === 200) {
         setSuccessMessage('Profile updated successfully!');
@@ -486,14 +490,20 @@ const UserProfile = () => {
           last_name: response.data.user.last_name || ""
         });
 
-        // Set profile response.data
+
+        const updatedAllergies = Array.isArray(response.data.allergies)
+          ? response.data.allergies
+          : (typeof response.data.allergies === 'string'
+              ? response.data.allergies.split(',').map(s => s.trim()).filter(Boolean)
+              : (response.data.allergies ? [response.data.allergies] : []));
+
         setProfileData({
           dietary_preference: response.data.dietary_preference || [],
-          allergies: response.data.allergies || []
+          allergies: updatedAllergies
         });
         localStorage.setItem('currentUser', JSON.stringify(updatedUser));
 
-        // Auto hide success message after 3 seconds
+        
         setTimeout(() => {
           setSuccessMessage('');
         }, 3000);
@@ -547,55 +557,23 @@ const UserProfile = () => {
         <Navbar />
       </div>
       
-      {/* Success Message */}
-      {successMessage && (
-        <div className="fixed top-4 right-4 bg-green-100 border-l-4 border-green-500 p-4 rounded shadow-md z-50 animate-fade-in-down">
-          <div className="flex items-center">
-            <div className="mr-2">
-              <svg className="h-6 w-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-bold text-green-800">Success!</p>
-              <p className="text-green-700">{successMessage}</p>
-            </div>
-            <button 
-              onClick={() => setSuccessMessage('')}
-              className="ml-4 text-green-500 hover:opacity-80"
-            >
-              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+      <Toast
+        show={Boolean(successMessage)}
+        message={successMessage}
+        variant="success"
+        onClose={() => setSuccessMessage("")}
+        autoHideDuration={3000}
+        position="top-right"
+      />
 
-      {/* Error Message */}
-      {apiError && (
-        <div className="fixed top-4 right-4 bg-red-100 border-l-4 border-red-500 p-4 rounded shadow-md z-50">
-          <div className="flex items-center">
-            <div className="mr-2">
-              <svg className="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-bold text-red-800">Error!</p>
-              <p className="text-red-700">{apiError}</p>
-            </div>
-            <button 
-              onClick={() => setApiError('')}
-              className="ml-4 text-red-500 hover:opacity-80"
-            >
-              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+      <Toast
+        show={Boolean(apiError)}
+        message={apiError}
+        variant="error"
+        onClose={() => setApiError("")}
+        autoHideDuration={3000}
+        position="top-right"
+      />
       
       {/* Main Content Area */}
       <div className="flex-1 px-4 md:px-8 py-6 pb-12">
@@ -617,9 +595,14 @@ const UserProfile = () => {
                 <div className="w-32 h-32 mx-auto rounded-2xl overflow-hidden mb-3 shadow-lg relative">
                   {profileImage ? (
                     <img 
-                      src={profileImage?.startsWith('http') ? profileImage : baseURL + profileImage}
+                      src={profileImage}
                       alt="Profile" 
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        // Clear to trigger SVG icon fallback
+                        setProfileImage("");
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -652,24 +635,6 @@ const UserProfile = () => {
                   >
                     {isUploading ? "Uploading..." : "Change Profile"}
                   </button>
-                  
-                  {/* Show additional options if image is selected */}
-                  {selectedFile && (
-                    <div className="flex gap-2 justify-center">
-                      <button 
-                        onClick={handleResetImage}
-                        className="bg-gray-500 w-20 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-600 transition-all duration-200"
-                      >
-                        Reset
-                      </button>
-                      <button 
-                        onClick={handleRemoveImage}
-                        className="bg-red-400 w-20 text-white px-4 py-2 rounded-md text-sm hover:bg-red-500 transition-all duration-200"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  )}
                 </div>
                 
                 {/* Hidden file input */}
@@ -744,7 +709,7 @@ const UserProfile = () => {
                     
                     {/* Dropdown Options */}
                     {isAllergyDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 mt-1 max-h-48 overflow-y-auto">
+                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-10 mt-1">
                         <div className="p-2 border-b border-gray-200">
                           <button
                             type="button"
@@ -757,33 +722,35 @@ const UserProfile = () => {
                             Clear all
                           </button>
                         </div>
-                        {allergyOptions.map((allergy) => (
-                          <label
-                            key={allergy}
-                            className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 transition-colors"
-                          >
-                            <div className="relative flex-shrink-0">
-                              <input
-                                type="checkbox"
-                                checked={selectedAllergies.includes(allergy)}
-                                onChange={() => handleAllergySelect(allergy)}
-                                className="sr-only"
-                              />
-                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                                selectedAllergies.includes(allergy)
-                                  ? 'bg-[#ff6b6b] border-[#ff6b6b]' 
-                                  : 'bg-white border-gray-300'
-                              }`}>
-                                {selectedAllergies.includes(allergy) && (
-                                  <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                )}
+                        <div className="max-h-48 overflow-y-auto">
+                          {allergyOptions.map((allergy) => (
+                            <label
+                              key={allergy}
+                              className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                            >
+                              <div className="relative flex-shrink-0">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedAllergies.includes(allergy)}
+                                  onChange={() => handleAllergySelect(allergy)}
+                                  className="sr-only"
+                                />
+                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                  selectedAllergies.includes(allergy)
+                                    ? 'bg-[#ff6b6b] border-[#ff6b6b]' 
+                                    : 'bg-white border-gray-300'
+                                }`}>
+                                  {selectedAllergies.includes(allergy) && (
+                                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            <span className="text-sm">{allergy}</span>
-                          </label>
-                        ))}
+                              <span className="text-sm">{allergy}</span>
+                            </label>
+                          ))}
+                        </div>
                         <div className="p-2 border-t border-gray-200">
                           <button
                             type="button"
@@ -793,10 +760,12 @@ const UserProfile = () => {
                             Done
                           </button>
                         </div>
+                        
                       </div>
+                      
                     )}
                   </div>
-                  {/* Selected allergies display */}
+                    {/* Selected allergies display */}
                   {selectedAllergies.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {selectedAllergies.map((allergy) => (

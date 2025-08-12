@@ -54,20 +54,50 @@ class Recipe(models.Model):
     def __str__(self):
         return self.title
 
+def validate_image_size(image):
+    max_size = 5 * 1024 * 1024  # 5MB
+    if image.size > max_size:
+        from django.core.exceptions import ValidationError
+        raise ValidationError("Image size cannot exceed 5MB")
+
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
     password_reset_token = models.CharField(max_length=100, null=True, blank=True)
-    profile_picture = models.ImageField(upload_to='profile_images/', null=True, blank=True)
+    profile_picture = models.ImageField(
+        upload_to='profile_images/',
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif']), validate_image_size]
+    )
     bio = models.TextField(blank=True)
     posts_count = models.IntegerField(default=0)
     following_count = models.IntegerField(default=0)
     followers_count = models.IntegerField(default=0)
     is_verified = models.BooleanField(default=False)
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.profile_picture:
+            try:
+                from PIL import Image
+                img = Image.open(self.profile_picture.path)
+                if img.height > 400 or img.width > 400:
+                    output_size = (400, 400)
+                    img.thumbnail(output_size, Image.Resampling.LANCZOS)
+                    img.save(self.profile_picture.path, quality=85, optimize=True)
+            except Exception:
+                pass
+
     class Meta:
         app_label = 'recipes'
         verbose_name = _('user')
         verbose_name_plural = _('users')
+
+def validate_image_size(image):
+    max_size = 5 * 1024 * 1024  # 5MB
+    if image.size > max_size:
+        from django.core.exceptions import ValidationError
+        raise ValidationError("Image size cannot exceed 5MB")
 
 class UserProfile(models.Model):
     DIETARY_CHOICES = [
@@ -86,7 +116,7 @@ class UserProfile(models.Model):
         upload_to='profile_images/',
         null=True,
         blank=True,
-        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif'])],
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif']), validate_image_size],
         help_text='Upload a profile image (jpg, jpeg, png, or gif)'
     )
     favorite_categories = models.ManyToManyField(Category, blank=True, related_name='user_favorites')
@@ -133,6 +163,17 @@ class UserProfile(models.Model):
                 pass
                 
         super().save(*args, **kwargs)
+        # Auto-resize profile image
+        if self.profile_image:
+            try:
+                from PIL import Image
+                img = Image.open(self.profile_image.path)
+                if img.height > 400 or img.width > 400:
+                    output_size = (400, 400)
+                    img.thumbnail(output_size, Image.Resampling.LANCZOS)
+                    img.save(self.profile_image.path, quality=85, optimize=True)
+            except Exception:
+                pass
 
     class Meta:
         verbose_name = 'User Profile'

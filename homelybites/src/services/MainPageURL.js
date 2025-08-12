@@ -6,17 +6,43 @@ export const recipeAPI = {
   getRecipes: (params) => axios.get(`${BASE_URL}/recipes/`, { params }),
   getRecipeById: (id) => axios.get(`${BASE_URL}/recipes/${id}`),
   // getRecommendations: () => axios.get(`${BASE_URL}/recommendations/hybrid/`),
-  getWhatOthersAreCooking: () => axios.get(`${BASE_URL}/recipes/recommended/`),
-  getCategories: () => axios.get(`${BASE_URL}/categories/`),
+  // Always normalize paginated/unpaginated responses to an array
+  getWhatOthersAreCooking: async () => {
+    const res = await axios.get(`${BASE_URL}/recipes/recommended/`, {
+      params: { page: 1, page_size: 14 },
+    });
+    const data = res.data;
+    // Return a consistent shape: { items, count, next, previous }
+    if (Array.isArray(data)) {
+      return { items: data, count: data.length, next: null, previous: null };
+    }
+    return {
+      items: data.results || [],
+      count: data.count ?? (data.results ? data.results.length : 0),
+      next: data.next || null,
+      previous: data.previous || null,
+    };
+  },
 
   getRecipeByCategory: async (category, page = 1) => {
     try {
-      const response = await axios.get(`${BASE_URL}/recipes/by_category/`, {
+      const response = await axios.get(`${BASE_URL}/recipes/recommended/`, {
         params: {
-          slug: category, // Use slug parameter for by_category action
+          category: category,
+          page: page,
+          page_size: 14, // DRF PageNumberPagination common param
         },
       });
-      return response;
+      const data = response.data;
+      if (Array.isArray(data)) {
+        return { items: data, count: data.length, next: null, previous: null };
+      }
+      return {
+        items: data.results || [],
+        count: data.count ?? (data.results ? data.results.length : 0),
+        next: data.next || null,
+        previous: data.previous || null,
+      };
     } catch (error) {
       console.log(`Error Fetching ${category} recipes:`, error);
       throw error;
