@@ -14,37 +14,6 @@ import Navbar from "../components/Navbar";
 import { useNavigate, useLocation } from "react-router-dom";
 import PostFeed from "../components/PostFeed";
 
-const mockSuggestedUsers = [
-  {
-    id: 1,
-    name: "Lisa Manoban",
-    username: "@lisam",
-    avatar: "/Images/CommunityPage/lisa.jpg",
-    isFollowing: false,
-  },
-  {
-    id: 2,
-    name: "Kim Jisoo",
-    username: "@jisoo",
-    avatar: "/Images/CommunityPage/jisoo.jpg",
-    isFollowing: false,
-  },
-  {
-    id: 3,
-    name: "Park Chaeyoung",
-    username: "@roses",
-    avatar: "/Images/CommunityPage/rose.jpg",
-    isFollowing: false,
-  },
-  {
-    id: 4,
-    name: "Choi Soobin",
-    username: "@soobin",
-    avatar: "/Images/CommunityPage/soobin.jpg",
-    isFollowing: false,
-  },
-];
-
 const CommunityPage = () => {
   const [showLeftSidebar, setShowLeftSidebar] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
@@ -55,7 +24,7 @@ const CommunityPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [posts, setPosts] = useState([]);
-  const [suggestedUsers, setSuggestedUsers] = useState(mockSuggestedUsers);
+  
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const currentView = (params.get("view") || "feed").toLowerCase(); 
@@ -73,14 +42,6 @@ const CommunityPage = () => {
   useEffect(() => {
     setActiveCategory(urlCategory);
   }, [urlCategory]);
-
-  const handleFollow = (idx) => {
-    setSuggestedUsers((prev) =>
-      prev.map((user, i) =>
-        i === idx ? { ...user, isFollowing: !user.isFollowing } : user
-      )
-    );
-  };
 
   const isReady = !loading && !error && currentUser && categories.length > 0 && posts.length >= 0;
 
@@ -119,8 +80,6 @@ const CommunityPage = () => {
             name: userRes.data.user.first_name + " " + userRes.data.user.last_name,
             profile_image: userRes.data.profile_image,
             posts: userRes.data.posts || 0,
-            following: userRes.data.following || 0,
-            followers: userRes.data.followers || 0,
           });
         } catch (e) {
           setCurrentUser({
@@ -128,8 +87,6 @@ const CommunityPage = () => {
             profile_image: "",
             avatar: "/Images/CommunityPage/jennie.jpg",
             posts: 0,
-            following: 0,
-            followers: 0,
           });
         }
       } catch (err) {
@@ -196,8 +153,7 @@ const CommunityPage = () => {
       username: `@${author.name.replace(/\s+/g, "").toLowerCase()}`,
       avatar: author.avatar,
       posts: author.posts,
-      following: author.following,
-      followers: author.followers,
+      
     };
     handleUserProfileClick(userProfile);
   };
@@ -286,24 +242,12 @@ const CommunityPage = () => {
       {currentUser?.name}
     </h3>
   </div>
-  <div className="grid grid-cols-3 gap-2 text-center">
+  <div className="grid grid-cols-1 gap-2 text-center">
     <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
       <div className="text-base sm:text-lg font-bold text-gray-800">
         {currentUser.posts}
       </div>
       <div className="text-xs text-gray-600 leading-tight">Posts</div>
-    </div>
-    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-      <div className="text-base sm:text-lg font-bold text-gray-800">
-        {currentUser.following}
-      </div>
-      <div className="text-xs text-gray-600 leading-tight">Following</div>
-    </div>
-    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-      <div className="text-base sm:text-lg font-bold text-gray-800">
-        {currentUser.followers}
-      </div>
-      <div className="text-xs text-gray-600 leading-tight">Followers</div>
     </div>
   </div>
 </div>
@@ -427,37 +371,9 @@ const CommunityPage = () => {
                     <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
                       {currentUser?.name}
                     </h3>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                      <div className="text-base sm:text-lg font-bold text-gray-800">
-                        {currentUser.posts}
-                      </div>
-                      <div className="text-xs text-gray-600 leading-tight">
-                        Posts
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                      <div className="text-base sm:text-lg font-bold text-gray-800">
-                        {currentUser.following}
-                      </div>
-                      <div className="text-xs text-gray-600 leading-tight">
-                        Following
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                      <div className="text-base sm:text-lg font-bold text-gray-800">
-                        {currentUser.followers}
-                      </div>
-                      <div className="text-xs text-gray-600 leading-tight">
-                        Followers
-                      </div>
-                    </div>
+                    <div className="text-center mt-2 text-base sm:text-lg font-normal text-gray-800">Posts: {currentUser.posts}</div>
                   </div>
                 </div>
-
-
                 {/* Categories */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                   <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
