@@ -137,8 +137,11 @@ def _get_user_diet_slugs(user):
     # Normalize common variants
     norm = []
     for d in raw:
+        # Map common synonyms/misspellings
         if d in ('vegan','vegetarian','pescatarian','gluten-free','dairy-free','keto','paleo'):
             norm.append(d)
+        elif d in ('veg', 'veggie', 'vegeterian', 'pure veg'):
+            norm.append('vegetarian')
         elif d == 'gluten free':
             norm.append('gluten-free')
         elif d == 'dairy free':
@@ -829,39 +832,55 @@ def search_recipes(request):
     
     # Add user preferences to search parameters if available
     mapped_allergy_slugs = []
+    # Prefer canonical allergy slugs from profile using shared helper
+    if request.user and request.user.is_authenticated:
+        try:
+            mapped_allergy_slugs = list(_get_user_allergy_slugs(request.user))
+        except Exception:
+            mapped_allergy_slugs = []
     if user_preferences:
         if user_preferences['dietary_preference']:
-            params["diet"] = user_preferences['dietary_preference']
-        allergies_list = user_preferences.get('allergies', [])
-        if allergies_list:
-            seen = set()
-            for a in allergies_list:
-                slug = _map_allergy_to_slug(a)
-                if slug and slug not in seen:
-                    seen.add(slug)
-                    mapped_allergy_slugs.append(slug)
-            if mapped_allergy_slugs:
-                params["intolerances"] = ",".join(mapped_allergy_slugs)
-                print("Applied intolerances:", params["intolerances"])  # debug
+            # Normalize dietary preferences to supported Spoonacular diet param
+            diet_str = str(user_preferences['dietary_preference']).strip().lower()
+            # Map common synonyms to Spoonacular-supported diets
+            if diet_str in ('veg', 'veggie', 'vegeterian', 'pure veg'):
+                diet_str = 'vegetarian'
+            params["diet"] = diet_str
+        if mapped_allergy_slugs:
+            params["intolerances"] = ",".join(mapped_allergy_slugs)
+            print("Applied intolerances:", params["intolerances"])  # debug
         if user_preferences['favorite_categories']:
             params["cuisine"] = ",".join(user_preferences['favorite_categories'])
 
     # Respect allergy filter toggle (default true)
     allergy_filter_toggle = request.query_params.get('allergy_filter', 'true').lower() not in ('false', '0', 'no')
 
-    # Add intolerances if user has allergies and filtering is enabled
-    if allergy_filter_toggle:
-        allergies_list = user_preferences.get('allergies', [])
-        if allergies_list and not mapped_allergy_slugs:
-            seen = set()
-            for a in allergies_list:
-                slug = _map_allergy_to_slug(a)
-                if slug and slug not in seen:
-                    seen.add(slug)
-                    mapped_allergy_slugs.append(slug)
-        if mapped_allergy_slugs:
-            params["intolerances"] = ",".join(mapped_allergy_slugs)
-            print("Applied intolerances (toggle):", params["intolerances"])  # debug
+    # Add intolerances if filtering is enabled and we have slugs
+    if allergy_filter_toggle and mapped_allergy_slugs:
+        params["intolerances"] = ",".join(mapped_allergy_slugs)
+        print("Applied intolerances (toggle):", params["intolerances"])  # debug
+
+    # Diet filter toggle (default true)
+    diet_filter_toggle = request.query_params.get('diet_filter', 'true').lower() not in ('false','0','no')
+
+    # Build diet keywords from user's dietary preferences
+    diet_keywords = []
+    # 1) Authenticated user profile slugs
+    if diet_filter_toggle and request.user and request.user.is_authenticated:
+        try:
+            diet_slugs = _get_user_diet_slugs(request.user)
+            for d in diet_slugs:
+                diet_keywords.extend(DIETARY_KEYWORDS.get(d, []))
+        except Exception:
+            pass
+    # 2) Optional explicit diet= query param (works even if unauthenticated)
+    if diet_filter_toggle:
+        qp_diet = (request.query_params.get('diet') or '').strip().lower()
+        if qp_diet:
+            if qp_diet in ('veg','veggie','vegeterian','pure veg'):
+                qp_diet = 'vegetarian'
+            params["diet"] = qp_diet
+            diet_keywords.extend(DIETARY_KEYWORDS.get(qp_diet, []))
 
     # Call Spoonacular API
     response = requests.get(endpoint, params=params)
@@ -870,63 +889,61 @@ def search_recipes(request):
     def process_results(data):
         filtered_results = []
         calories_list = []
-        # Build simple keyword lists for strict filtering for common allergens
+        # counts
+        original_total = len(data.get('results', []) or [])
+        allergy_filtered_count = 0
+        diet_filtered_count = 0
+        # Build keyword lists for allergens using shared mapping for consistency
         allergen_keywords = {}
         if allergy_filter_toggle and mapped_allergy_slugs:
             for slug in mapped_allergy_slugs:
-                if slug == 'peanut':
-                    allergen_keywords[slug] = ['peanut', 'peanuts', 'peanut butter', 'groundnut', 'ground nuts', 'groundnut', 'ground nuts']
-                elif slug == 'egg':
-                    allergen_keywords[slug] = ['egg', 'eggs', 'albumen', 'mayonnaise', 'mayonaise']
-                elif slug == 'gluten':
-                    allergen_keywords[slug] = ['gluten', 'gluten-free', 'gluten free', 'glutenfree', 'gluten free']
-                elif slug == 'grain':
-                    allergen_keywords[slug] = ['grain', 'grains', 'grainy', 'grainy', 'grainy', 'grainy']
-                elif slug == 'peanut':
-                    allergen_keywords[slug] = ['peanut', 'peanuts', 'peanut butter', 'groundnut', 'ground nuts', 'groundnut', 'ground nuts']
-                elif slug == 'seafood':
-                    allergen_keywords[slug] = ['seafood']
-                elif slug == 'sesame':
-                    allergen_keywords[slug] = ['sesame']
-                elif slug == 'shellfish':
-                    allergen_keywords[slug] = ['shellfish']
-                elif slug == 'soy':
-                    allergen_keywords[slug] = ['soy']
-                elif slug == 'sulfite':
-                    allergen_keywords[slug] = ['sulfite']
-                elif slug == 'tree nut':
-                    allergen_keywords[slug] = ['tree nut']
-                elif slug == 'wheat':
-                    allergen_keywords[slug] = ['wheat']
-                elif slug == 'dairy':
-                    allergen_keywords[slug] = ['dairy', 'milk', 'cheese', 'yogurt', 'butter', 'butter']
-                # add more mappings as needed for other slugs
+                kws = ALLERGEN_KEYWORDS.get(slug, [])
+                if kws:
+                    allergen_keywords[slug] = kws
         for recipe in data.get('results', []):
-            # Strictly filter by dietary preference if set
-            if user_preferences.get('dietary_preference') and not dietary_fallback:
-                if user_preferences['dietary_preference'].lower() not in [d.lower() for d in recipe.get('diets', [])]:
-                    continue
-            # Strict allergy exclusion by ingredients (defense-in-depth)
+            # Build common text fields
+            title_text = str(recipe.get('title', '')).lower()
+            ing_text = ''
+            if 'extendedIngredients' in recipe:
+                names = []
+                for ing in recipe.get('extendedIngredients', []) or []:
+                    try:
+                        names.append(str(ing.get('name', '')))
+                        names.append(str(ing.get('original', '')))
+                    except Exception:
+                        pass
+                ing_text = " ".join(names).lower()
+            instructions_text = ''
+            try:
+                if 'analyzedInstructions' in recipe and recipe['analyzedInstructions']:
+                    steps = recipe['analyzedInstructions'][0].get('steps', [])
+                    instructions_text = " ".join(str(s.get('step','')) for s in steps).lower()
+            except Exception:
+                pass
+
+            # Independent violation checks for counts
+            diet_violates = False
+            if diet_filter_toggle and diet_keywords:
+                haystack_diet = f"{title_text} {ing_text} {instructions_text}"
+                diet_violates = any(kw in haystack_diet for kw in set(k.strip().lower() for k in diet_keywords if k))
+
+            allergy_violates = False
             if allergy_filter_toggle and allergen_keywords:
-                ing_text = ''
-                if 'extendedIngredients' in recipe:
-                    names = []
-                    for ing in recipe.get('extendedIngredients', []) or []:
-                        try:
-                            names.append(str(ing.get('name', '')))
-                            names.append(str(ing.get('original', '')))
-                        except Exception:
-                            pass
-                    ing_text = " ".join(names).lower()
-                title_text = str(recipe.get('title', '')).lower()
                 haystack = f"{title_text} {ing_text}"
-                violates = False
                 for slug, kws in allergen_keywords.items():
                     if any(kw in haystack for kw in kws):
-                        violates = True
+                        allergy_violates = True
                         break
-                if violates:
-                    continue
+
+            # Update counts
+            if diet_violates:
+                diet_filtered_count += 1
+            if allergy_violates:
+                allergy_filtered_count += 1
+
+            # Exclude if any violation
+            if diet_violates or allergy_violates:
+                continue
             # Format recipe timing information
             recipe['timing'] = {
                 'prep_time': f"{recipe.get('preparationMinutes', 0)} Minutes",
@@ -988,11 +1005,22 @@ def search_recipes(request):
             filtered_results.append(recipe)
         min_calories = min(calories_list) if calories_list else None
         max_calories = max(calories_list) if calories_list else None
-        return filtered_results, min_calories, max_calories
+        # Prepare counts similar to queryset approach (independent per filter)
+        allergy_counts = {
+            'original': original_total,
+            'safe': original_total - allergy_filtered_count if allergy_filter_toggle else original_total,
+            'filtered_out': allergy_filtered_count if allergy_filter_toggle else 0,
+        }
+        diet_counts = {
+            'original': original_total,
+            'safe': original_total - diet_filtered_count if diet_filter_toggle else original_total,
+            'filtered_out': diet_filtered_count if diet_filter_toggle else 0,
+        }
+        return filtered_results, min_calories, max_calories, allergy_counts, diet_counts
 
     if response.status_code == 200:
         data = response.json()
-        filtered_results, min_calories, max_calories = process_results(data)
+        filtered_results, min_calories, max_calories, allergy_counts, diet_counts = process_results(data)
         # If no results and dietary preference was set, try fallback
         if not filtered_results and user_preferences.get('dietary_preference'):
             dietary_fallback = True
@@ -1000,20 +1028,34 @@ def search_recipes(request):
             response2 = requests.get(endpoint, params=params)
             if response2.status_code == 200:
                 data2 = response2.json()
-                filtered_results, min_calories, max_calories = process_results(data2)
-                return Response({
+                filtered_results, min_calories, max_calories, allergy_counts, diet_counts = process_results(data2)
+                resp = Response({
                     'results': filtered_results,
                     'min_calories': min_calories,
                     'max_calories': max_calories,
                     'dietary_fallback': True,
                     'message': 'No recipes found matching your dietary preference. Showing all results instead.'
                 })
-        return Response({
+                resp["X-Allergy-Original"] = str(allergy_counts.get('original', 0))
+                resp["X-Allergy-Safe"] = str(allergy_counts.get('safe', 0))
+                resp["X-Allergy-Filtered"] = str(allergy_counts.get('filtered_out', 0))
+                resp["X-Diet-Original"] = str(diet_counts.get('original', 0))
+                resp["X-Diet-Safe"] = str(diet_counts.get('safe', 0))
+                resp["X-Diet-Filtered"] = str(diet_counts.get('filtered_out', 0))
+                return resp
+        resp = Response({
             'results': filtered_results,
             'min_calories': min_calories,
             'max_calories': max_calories,
             'dietary_fallback': False
         })
+        resp["X-Allergy-Original"] = str(allergy_counts.get('original', 0))
+        resp["X-Allergy-Safe"] = str(allergy_counts.get('safe', 0))
+        resp["X-Allergy-Filtered"] = str(allergy_counts.get('filtered_out', 0))
+        resp["X-Diet-Original"] = str(diet_counts.get('original', 0))
+        resp["X-Diet-Safe"] = str(diet_counts.get('safe', 0))
+        resp["X-Diet-Filtered"] = str(diet_counts.get('filtered_out', 0))
+        return resp
     else:
         return Response({"error": "Failed to fetch recipes from Spoonacular"}, status=500)
 
