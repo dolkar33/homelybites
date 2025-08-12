@@ -14,10 +14,11 @@ import MyPost from "./pages/MyPost";
 import RecipeSearchPage from "./pages/SearchPage";
 import RecipePage from "./pages/RecipePage";
 import SavedPost from "./pages/SavedPost";
-
 import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecentRecipes from "./pages/RecentRecipes";
 import UserPage from "./pages/UserPage";
+import { CustomToaster } from "./pages/toast";
+import FavPage from "./pages/FavPage";
 
 // Custom hook to check authentication status
 const useAuth = () => {
@@ -109,8 +110,6 @@ const SignUpRoute = () => {
   return isLoggedIn ? <Navigate to="/Home" replace /> : <SignUp />;
 };
 
-import { CustomToaster } from "./pages/toast";
-
 function App() {
   return (
     <>
@@ -131,8 +130,8 @@ function App() {
         <Route path="/recipepage" element={<RecipePage />} />
         <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
         <Route path="/recent" element={<RecentRecipes />} />
-        <Route path="/FavPage" element={<SavedPost />} />
-        <Route path="/saved-posts" element={<SavedPost />} />
+        <Route path="/FavPage" element={<FavPage />} />
+
         <Route path="/userpage" element={<UserPage />} />
         <Route path="" element={<Navigate to="/" replace />} />
       </Routes>
