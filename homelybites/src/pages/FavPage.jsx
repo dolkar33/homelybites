@@ -9,36 +9,6 @@ const FavPage = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Mock favorites data (fallback)
-  const mockFavorites = [
-    {
-      id: 1,
-      title: "Chicken Tikka Masala",
-      name: "Chicken Tikka Masala",  // Added name property to match API structure
-      image: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=400&h=300&fit=crop",
-      alt: "Chicken Tikka Masala",
-      rating: 4.0,
-      difficulty: "Easy",
-      calories: "High Cal",
-      cuisineType: "Indian",
-      description: "Best Recipe for Chicken Tikka Masala with minimum things",
-      slug: "chicken-tikka-masala", // Added slug property
-    },
-    {
-      id: 2,
-      title: "Thai Style Noodles",
-      name: "Thai Style Noodles",  // Added name property to match API structure
-      image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=300&fit=crop",
-      alt: "Thai Style Noodles",
-      rating: 4.0,
-      difficulty: "Easy",
-      calories: "Med Cal",
-      cuisineType: "Thai",
-      description: "Best Recipe for Thai Style Noodles with minimum things",
-      slug: "thai-style-noodles", // Added slug property
-    },
-  ];
-
   // Load favorites from localStorage on component mount
   useEffect(() => {
     const loadFavorites = () => {
@@ -46,13 +16,13 @@ const FavPage = () => {
         const savedFavorites = localStorage.getItem("favoriteRecipeDetails");
         if (savedFavorites) {
           const parsedFavorites = JSON.parse(savedFavorites);
-          setFavorites(parsedFavorites.length ? parsedFavorites : mockFavorites);
+          setFavorites(parsedFavorites);
         } else {
-          setFavorites(mockFavorites);
+          setFavorites([]);
         }
       } catch (error) {
         console.error("Error loading favorites:", error);
-        setFavorites(mockFavorites);
+        setFavorites([]);
       } finally {
         setLoading(false);
       }
@@ -75,17 +45,22 @@ const FavPage = () => {
   const removeFromFavorites = (recipeId) => {
     try {
       // Update state
-      const updatedFavorites = favorites.filter((recipe) => recipe.id !== recipeId);
+      const updatedFavorites = favorites.filter(
+        (recipe) => recipe.id !== recipeId
+      );
       setFavorites(updatedFavorites);
 
       // Update localStorage
-      localStorage.setItem("favoriteRecipeDetails", JSON.stringify(updatedFavorites));
+      localStorage.setItem(
+        "favoriteRecipeDetails",
+        JSON.stringify(updatedFavorites)
+      );
 
       // Also update the favorites IDs list used by RecipeSearchPage
       const savedFavoriteIds = localStorage.getItem("favoriteRecipes");
       if (savedFavoriteIds) {
         const favoriteIds = JSON.parse(savedFavoriteIds);
-        const updatedIds = favoriteIds.filter(id => id !== recipeId);
+        const updatedIds = favoriteIds.filter((id) => id !== recipeId);
         localStorage.setItem("favoriteRecipes", JSON.stringify(updatedIds));
       }
 
@@ -129,7 +104,7 @@ const FavPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
-      
+
       <div className="flex-1 w-full px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-6 sm:mb-8 lg:mb-10 text-center">
@@ -140,7 +115,10 @@ const FavPage = () => {
             <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
               <div className="max-w-md mx-auto">
                 <div className="w-16 sm:w-20 lg:w-24 h-16 sm:h-20 lg:h-24 mx-auto mb-4 sm:mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-                  <Heart size={32} className="sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-gray-400" />
+                  <Heart
+                    size={32}
+                    className="sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-gray-400"
+                  />
                 </div>
                 <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 mb-3 sm:mb-4">
                   No Favorites Yet
@@ -148,8 +126,8 @@ const FavPage = () => {
                 <p className="text-sm sm:text-base lg:text-lg text-gray-600 mb-4 sm:mb-6">
                   Start adding recipes to your favorites to see them here!
                 </p>
-                <button 
-                  onClick={() => window.history.back()}
+                <button
+                  onClick={() => navigate("/recipe")}
                   className="px-6 sm:px-8 py-2 sm:py-3 bg-red-400 text-white rounded-lg hover:bg-red-500 transition-colors font-medium"
                 >
                   Browse Recipes
@@ -170,7 +148,8 @@ const FavPage = () => {
                         alt={recipe.alt || recipe.name || recipe.title}
                         className="w-20 sm:w-24 lg:w-32 h-20 sm:h-24 lg:h-32 object-cover rounded-lg"
                         onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/150x150?text=Recipe";
+                          e.target.src =
+                            "https://via.placeholder.com/150x150?text=Recipe";
                         }}
                       />
                     </div>
@@ -200,17 +179,23 @@ const FavPage = () => {
                           <span className="text-sm sm:text-base text-gray-600 mr-2">
                             {recipe.rating}
                           </span>
-                          <span className="text-sm sm:text-base text-gray-400">|</span>
+                          <span className="text-sm sm:text-base text-gray-400">
+                            |
+                          </span>
                           <span className="text-sm sm:text-base text-gray-600 ml-2">
                             {recipe.difficulty}
                           </span>
-                          <span className="text-sm sm:text-base text-gray-400 mx-2">|</span>
+                          <span className="text-sm sm:text-base text-gray-400 mx-2">
+                            |
+                          </span>
                           <span className="text-sm sm:text-base text-gray-600">
                             {recipe.calories}
                           </span>
                           {recipe.cuisineType && (
                             <>
-                              <span className="text-sm sm:text-base text-gray-400 mx-2">|</span>
+                              <span className="text-sm sm:text-base text-gray-400 mx-2">
+                                |
+                              </span>
                               <span className="text-sm sm:text-base text-gray-600">
                                 {recipe.cuisineType}
                               </span>
@@ -224,13 +209,13 @@ const FavPage = () => {
                       </div>
 
                       <div className="flex gap-2 sm:gap-3">
-                        <button 
+                        <button
                           onClick={() => goToRecipe(recipe.slug)}
                           className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 text-sm sm:text-base bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors"
                         >
                           Go to Recipe
                         </button>
-                        <button 
+                        <button
                           onClick={() => removeFromFavorites(recipe.id)}
                           className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
                         >
@@ -245,7 +230,7 @@ const FavPage = () => {
           )}
         </div>
       </div>
-      
+
       <Footer />
     </div>
   );

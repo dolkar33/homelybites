@@ -7,12 +7,24 @@ import { customToast } from "./toast.jsx";
 import { Toaster } from "react-hot-toast";
 
 const dietaryOptions = ["Vegetarian", "Keto", "Gluten-free", "Vegan"];
-const allergyOptions = [
-  "Lactose Intolerance",
-  "Nut Allergy",
-  "Gluten Intolerance",
-  "Shellfish Allergy",
+
+// Canonical Spoonacular-compatible allergy options (labels for UI, slugs for value)
+const ALLERGY_OPTIONS = [
+  { label: "Dairy", slug: "dairy" },
+  { label: "Egg", slug: "egg" },
+  { label: "Gluten", slug: "gluten" },
+  { label: "Grain", slug: "grain" },
+  { label: "Peanut", slug: "peanut" },
+  { label: "Seafood", slug: "seafood" },
+  { label: "Sesame", slug: "sesame" },
+  { label: "Shellfish", slug: "shellfish" },
+  { label: "Soy", slug: "soy" },
+  { label: "Sulfite", slug: "sulfite" },
+  { label: "Tree Nut", slug: "tree nut" },
+  { label: "Wheat", slug: "wheat" },
 ];
+
+const allergyLabel = (slug) => ALLERGY_OPTIONS.find(o => o.slug === slug)?.label || slug;
 
 const UserQuestion = () => {
   const navigate = useNavigate();
@@ -21,6 +33,7 @@ const UserQuestion = () => {
     allergies: [],
   });
   const [errors, setErrors] = useState({});
+
   const handleCheckboxChange = (category, option) => {
     setFormData(prev => ({
       ...prev,
@@ -38,15 +51,24 @@ const UserQuestion = () => {
     }
   };
 
+  // Specialized handler for allergy slugs and None clearing
+  const handleAllergyToggle = (slug) => {
+    setFormData(prev => {
+      const next = prev.allergies.includes(slug)
+        ? prev.allergies.filter(a => a !== slug)
+        : [...prev.allergies, slug];
+      return { ...prev, allergies: next };
+    });
+    if (errors.allergies) setErrors(prev => ({ ...prev, allergies: false }));
+  };
+
   const validateForm = () => {
     const newErrors = {};
     
     if (formData.dietary.length === 0) {
       newErrors.dietary = "Please select at least one dietary preference";
     }
-    if (formData.allergies.length === 0) {
-      newErrors.allergies = "Please select your food allergies/intolerances or check 'None'";
-    }
+    // Allergies can be empty when user selects 'None'; no validation error needed
    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -129,26 +151,29 @@ const UserQuestion = () => {
                     2. Do you have any food allergies or intolerances? *
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-                    {allergyOptions.map((option) => (
+                    {ALLERGY_OPTIONS.map((opt) => (
                       <label
-                        key={option}
+                        key={opt.slug}
                         className="flex items-center gap-3 text-lg cursor-pointer"
                       >
                         <input 
                           type="checkbox" 
                           className="accent-accent w-5 h-5"
-                          checked={formData.allergies.includes(option)}
-                          onChange={() => handleCheckboxChange('allergies', option)}
+                          checked={formData.allergies.includes(opt.slug)}
+                          onChange={() => handleAllergyToggle(opt.slug)}
                         />
-                        <span>{option}</span>
+                        <span>{opt.label}</span>
                       </label>
                     ))}
                     <label className="flex items-center gap-3 text-lg cursor-pointer">
                       <input 
                         type="checkbox" 
                         className="accent-accent w-5 h-5"
-                        checked={formData.allergies.includes('None')}
-                        onChange={() => handleCheckboxChange('allergies', 'None')}
+                        checked={formData.allergies.length === 0}
+                        onChange={() => {
+                          setFormData(prev => ({ ...prev, allergies: [] }));
+                          setErrors(prev => ({ ...prev, allergies: false }));
+                        }}
                       />
                       <span>None</span>
                     </label>

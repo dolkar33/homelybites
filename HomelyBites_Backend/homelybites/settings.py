@@ -138,8 +138,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom User Model
 AUTH_USER_MODEL = 'recipes.CustomUser'
 
-# Custom user model
-AUTH_USER_MODEL = 'recipes.CustomUser'
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    'recipes.backends.CustomUserModelBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # REST Framework settings
 REST_FRAMEWORK = {
@@ -196,13 +199,20 @@ CORS_ALLOW_HEADERS = [
 SPOONACULAR_API_KEY = 'b4b8be0a733f497789c7bcd463aa556e'
 
 # Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'your_email@gmail.com'
-EMAIL_HOST_PASSWORD = 'your_app_password'
-DEFAULT_FROM_EMAIL = 'your_email@gmail.com'
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = 'homelybites05@gmail.com'
+EMAIL_HOST_PASSWORD = 'uoxoyvirbirkdggu'
+DEFAULT_FROM_EMAIL = 'homelybites05@gmail.com'
 
 # Frontend URL for password reset
 FRONTEND_URL = 'http://localhost:5173'  
+
+# Abstract API for email validation
+ABSTRACT_API_KEY = '67130812a6784e04b35619f7d32a7b25'  # Get from https://www.abstractapi.com/email-verification-validation-api
+
+# Backend base URL for email verification
+BACKEND_BASE_URL = 'http://127.0.0.1:8000'  
