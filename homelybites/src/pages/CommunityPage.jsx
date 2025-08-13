@@ -27,7 +27,13 @@ const CommunityPage = () => {
   const [showRightSidebar, setShowRightSidebar] = useState(false);
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("");
-  const [currentUser, setCurrentUser] = useState(null);
+  const guestUser = {
+    name: "Guest User",
+    profile_image: "",
+    avatar: "/Images/CommunityPage/jennie.jpg",
+    posts: 0,
+  };
+  const [currentUser, setCurrentUser] = useState(guestUser);
   const [categories, setCategories] = useState(CATEGORY_CHOICES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -88,15 +94,12 @@ const CommunityPage = () => {
             posts: userRes.data.posts || 0,
           });
         } catch (e) {
-          setCurrentUser({
-            name: "Guest User",
-            profile_image: "",
-            avatar: "/Images/CommunityPage/jennie.jpg",
-            posts: 0,
-          });
+          setCurrentUser(guestUser);
         }
       } catch (err) {
         setError("Failed to load community data");
+        // Ensure we still have a usable user object so UI can render
+        setCurrentUser(guestUser);
       }
       setLoading(false);
     };
@@ -167,10 +170,6 @@ const CommunityPage = () => {
   console.log("Render state:", { loading, error, currentUser, categoriesLength: categories.length, postsLength: posts.length });
 
   if (loading) return <div className="flex items-center justify-center h-screen text-xl">Loading...</div>;
-  if (!currentUser) {
-    console.log("No current user, showing fallback");
-    return <div className="flex items-center justify-center h-screen text-xl text-gray-500">Loading user profile...</div>;
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">

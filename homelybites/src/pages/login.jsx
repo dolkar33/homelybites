@@ -28,6 +28,11 @@ const validationSchema = yup.object({
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [generalError, setGeneralError] = useState("");
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [pendingUser, setPendingUser] = useState(null); // { user_id, email }
+  const [resendUsername, setResendUsername] = useState("");
+  const [resendEmail, setResendEmail] = useState("");
   const navigate = useNavigate();
 
   const {
@@ -46,8 +51,39 @@ const Login = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("registered") === "true") {
-      customToast.success("Registration successful! You can now log in.");
+    const registered = params.get("registered") === "true";
+    const verified = params.get("verified"); // "true" | "false" | null
+    const message = params.get("message");
+    const pending = params.get("pendingVerification") === "true";
+
+    if (registered) {
+      customToast.success("Registration successful! Check your email to verify your account.");
+    }
+
+    if (verified === "true") {
+      customToast.success(message || "Email verified successfully! You can now log in.");
+      // On next successful login, take the user to questions
+      localStorage.setItem("postVerifiedRedirect", "userquestion");
+      // Clear any pending verification cache
+      localStorage.removeItem("pendingVerification");
+    } else if (verified === "false") {
+      customToast.error(message || "Email verification failed. Please try again.");
+    }
+
+    if (pending) {
+      // Load pending verification info from localStorage if present
+      try {
+        const stored = localStorage.getItem("pendingVerification");
+        if (stored) {
+          const obj = JSON.parse(stored);
+          setPendingUser(obj);
+          setNeedsVerification(true);
+        }
+      } catch {}
+    }
+
+    // Clean URL params
+    if (registered || verified || message || pending) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -86,6 +122,15 @@ const Login = () => {
         localStorage.setItem("refreshToken", response.data.refresh);
 
         reset();
+        const postVerify = localStorage.getItem("postVerifiedRedirect");
+        if (postVerify === "userquestion") {
+          localStorage.removeItem("postVerifiedRedirect");
+          customToast.success("Login successful! Redirecting to your questions...");
+          setTimeout(() => {
+            navigate("/userquestion");
+          }, 1000);
+          return;
+        }
         if (userData.has_completed_questions) {
           customToast.success("Welcome back! Redirecting to Home...");
           setTimeout(() => {
@@ -108,13 +153,23 @@ const Login = () => {
           localStorage.removeItem("authToken");
           localStorage.removeItem("currentUser");
         }
-
         const errorMessage =
           error.response?.data?.message ||
           error.response?.data?.error ||
           error.response?.data?.detail ||
           "Invalid username or password";
-        customToast.error(errorMessage);
+
+        // If backend indicates email not verified, surface resend UI
+        if (/verify your email/i.test(errorMessage) || /no active account/i.test(errorMessage) || /inactive/i.test(errorMessage)) {
+          setNeedsVerification(true);
+          try {
+            const stored = localStorage.getItem("pendingVerification");
+            if (stored) setPendingUser(JSON.parse(stored));
+          } catch {}
+          customToast.error("Please verify your email. You can resend the verification email below.");
+        } else {
+          customToast.error(errorMessage);
+        }
       } else if (error.request) {
         customToast.error(
           "Network error. Please check your connection and try again."
@@ -124,6 +179,43 @@ const Login = () => {
           "An unexpected error occurred. Please try again later."
         );
       }
+    }
+  };
+
+  const handleResendVerification = async () => {
+    // Require pending user_id from registration
+    let info = pendingUser;
+    if (!info) {
+      try {
+        const stored = localStorage.getItem("pendingVerification");
+        if (stored) info = JSON.parse(stored);
+      } catch {}
+    }
+    // Build payload: prefer user_id; fallback to username or email if provided
+    const payload = {};
+    if (info?.user_id) {
+      payload.user_id = info.user_id;
+    } else if (resendUsername.trim()) {
+      payload.username = resendUsername.trim();
+    } else if (resendEmail.trim()) {
+      payload.email = resendEmail.trim();
+    } else {
+      customToast.error("Enter your username or email to resend the verification email.");
+      return;
+    }
+    try {
+      setResendLoading(true);
+      const res = await axiosInstance.post("/api/resend-verification/", payload);
+      if (res.status === 200) {
+        customToast.success("Verification email sent. Please check your inbox.");
+      } else {
+        customToast.error("Failed to send verification email. Please try again later.");
+      }
+    } catch (e) {
+      const msg = e.response?.data?.message || e.response?.data?.error || "Failed to send verification email.";
+      customToast.error(msg);
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -247,6 +339,43 @@ const Login = () => {
                 Forgot Password?
               </button>
             </div>
+
+            {needsVerification && (
+              <div className="mb-6 p-4 border border-yellow-300 bg-yellow-50 rounded-lg text-sm">
+                <p className="text-yellow-800 mb-2">
+                  Your account email is not verified. Please check your inbox for the verification link.
+                </p>
+                {pendingUser?.email && (
+                  <p className="text-yellow-700 mb-3">Email: <span className="font-medium">{pendingUser.email}</span></p>
+                )}
+                {!pendingUser?.user_id && (
+                  <div className="mb-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={resendUsername}
+                      onChange={(e) => setResendUsername(e.target.value)}
+                      placeholder="Enter username"
+                      className="w-full px-3 py-2 border border-yellow-300 rounded-md bg-white placeholder-yellow-700/70"
+                    />
+                    <input
+                      type="email"
+                      value={resendEmail}
+                      onChange={(e) => setResendEmail(e.target.value)}
+                      placeholder="or enter email"
+                      className="w-full px-3 py-2 border border-yellow-300 rounded-md bg-white placeholder-yellow-700/70"
+                    />
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={resendLoading}
+                  className="px-4 py-2 rounded-md bg-accent text-white hover:opacity-90 disabled:opacity-60"
+                >
+                  {resendLoading ? "Sending..." : "Resend verification email"}
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"

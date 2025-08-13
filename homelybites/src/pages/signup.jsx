@@ -5,7 +5,6 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import toast, { Toaster } from "react-hot-toast";
 import axiosInstance from "../config/axiosInstance";
-import axios from "axios";
 // Yup validation schema
 const validationSchema = yup.object({
   first_name: yup
@@ -36,32 +35,7 @@ const validationSchema = yup.object({
   email: yup
     .string()
     .required("Email is required")
-    .email("Please enter a valid email format")
-    .test(
-      "valid-domain",
-      "Please use a valid email provider (e.g., gmail.com, yahoo.com, outlook.com)",
-      function (value) {
-        if (!value) return false;
-        const validDomains = [
-          "gmail.com",
-          "yahoo.com",
-          "hotmail.com",
-          "outlook.com",
-          "icloud.com",
-          "aol.com",
-          "protonmail.com",
-          "yandex.com",
-          "mail.com",
-          "zoho.com",
-          "live.com",
-          "msn.com",
-          "yahoo.co.uk",
-          "googlemail.com",
-        ];
-        const domain = value.split("@")[1]?.toLowerCase();
-        return validDomains.includes(domain);
-      }
-    ),
+    .email("Please enter a valid email format"),
 
   password: yup
     .string()
@@ -153,7 +127,7 @@ const SignUp = () => {
     setGeneralError("");
 
     try {
-      const response = await axios.post("http://localhost:8000/api/register/", {
+      const response = await axiosInstance.post("api/register/", {
         first_name: data.first_name,
         last_name: data.last_name,
         username: data.username,
@@ -180,12 +154,25 @@ const SignUp = () => {
           },
         });
 
+        // Cache pending verification info if backend requires it
+        try {
+          const { user_id, email, requires_verification } = response.data || {};
+          if (requires_verification && user_id) {
+            localStorage.setItem(
+              "pendingVerification",
+              JSON.stringify({ user_id, email })
+            );
+          }
+        } catch {}
+
         // Reset form
         reset();
 
         // Navigate to login with success parameter
         setTimeout(() => {
-          navigate("/login?registered=true");
+          // If verification is required, hint login to show resend UI
+          const q = (response.data && response.data.requires_verification) ? "&pendingVerification=true" : "";
+          navigate(`/login?registered=true${q}`);
         }, 2000);
       }
     } catch (error) {
