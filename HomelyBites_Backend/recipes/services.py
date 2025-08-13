@@ -614,25 +614,25 @@ The HomelyBites Team
     
     @staticmethod
     def send_password_reset_email(user, reset_request):
-        """Send password change verification email to user."""
+        """Send password reset email to user."""
         try:
-            subject = "Password Changed - Please Verify - HomelyBites"
+            subject = "Password Reset Request - HomelyBites"
             
-            # Create the verification link - this should go to the frontend verification page
+            # Create the reset link - this should go to the frontend reset password page
             frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
-            verification_url = f"{frontend_url}/verify-email/{reset_request.token}"
+            reset_url = f"{frontend_url}/reset-password/{reset_request.token}"
             
             message = f"""
 Hello {user.username},
 
-Your password has been changed successfully!
+You have requested to reset your password for your HomelyBites account.
 
-To complete the process, please click the verification link below:
-{verification_url}
+To reset your password, please click the link below:
+{reset_url}
 
 This link will expire in 10 minutes for security reasons.
 
-If you did not request this password change, please contact support immediately.
+If you did not request this password reset, please ignore this email.
 
 Best regards,
 The HomelyBites Team
@@ -650,7 +650,7 @@ The HomelyBites Team
             return True
             
         except Exception as e:
-            print(f"Error sending password change verification email: {e}")
+            print(f"Error sending password reset email: {e}")
             return False
     
     @staticmethod
