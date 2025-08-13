@@ -309,5 +309,20 @@ class EmailChangeRequest(models.Model):
         return timezone.now() > self.expires_at
     
     def __str__(self):
-        return f"Email change request for {self.user.username}: {self.old_email} -> {self.new_email}"        
+        return f"Email change request for {self.user.username}: {self.old_email} -> {self.new_email}"
+
+
+class PasswordResetRequest(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    token = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+    
+    def __str__(self):
+        return f"Password reset request for {self.user.username}"        
         

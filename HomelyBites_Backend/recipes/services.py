@@ -10,6 +10,7 @@ from datetime import timedelta
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import EmailVerification, EmailChangeRequest
+from .models import PasswordResetRequest
 
 
 class SpoonacularService:
@@ -589,3 +590,82 @@ The HomelyBites Team
             
         except EmailChangeRequest.DoesNotExist:
             return False, "Invalid email change link.", None
+
+    @staticmethod
+    def create_password_reset_request(user):
+        """Create a new password reset request."""
+        # Delete any existing unused requests for this user
+        PasswordResetRequest.objects.filter(user=user, is_used=False).delete()
+        
+        token = EmailVerificationService.generate_verification_token()
+        expires_at = timezone.now() + timedelta(hours=24)
+        
+        reset_request = PasswordResetRequest.objects.create(
+            user=user,
+            token=token,
+            expires_at=expires_at
+        )
+        
+        return reset_request
+
+    @staticmethod
+    def send_password_reset_email(user, reset_request):
+        """Send password reset email to user."""
+        subject = 'Password Reset Request - HomelyBites'
+        message = f"""
+Hello {user.first_name}!
+
+You have requested to reset your password for your HomelyBites account.
+
+To reset your password, please click the link below:
+
+{settings.BACKEND_BASE_URL}/api/verify-password-reset/{reset_request.token}/
+
+This link will expire in 24 hours.
+
+If you did not request this password reset, please ignore this email and your current password will remain unchanged.
+
+Best regards,
+The HomelyBites Team
+        """
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+            return True
+        except Exception as e:
+            print(f"Failed to send password reset email: {e}")
+            return False
+
+    @staticmethod
+    def verify_password_reset_token(token, new_password=None):
+        """Verify a password reset token and optionally reset the password."""
+        try:
+            reset_request = PasswordResetRequest.objects.get(token=token, is_used=False)
+            
+            if reset_request.is_expired():
+                return False, "Password reset link has expired. Please request a new one.", None
+            
+            # If new_password is provided, reset the password
+            if new_password:
+                # Mark token as used
+                reset_request.is_used = True
+                reset_request.save()
+                
+                # Update user's password
+                user = reset_request.user
+                user.set_password(new_password)
+                user.save()
+                
+                return True, "Password reset successfully!", user
+            else:
+                # Just verify the token is valid
+                return True, "Token is valid", reset_request.user
+                
+        except PasswordResetRequest.DoesNotExist:
+            return False, "Invalid password reset link.", None

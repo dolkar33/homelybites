@@ -93,12 +93,11 @@ class EmailVerificationAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related('user')
 
 
+@admin.register(EmailChangeRequest)
 class EmailChangeRequestAdmin(admin.ModelAdmin):
     list_display = ['user', 'old_email', 'new_email', 'created_at', 'expires_at', 'is_used']
     list_filter = ['is_used', 'created_at']
-    search_fields = ['user__username', 'old_email', 'new_email']
+    search_fields = ['user__username', 'user__email', 'old_email', 'new_email']
     readonly_fields = ['created_at']
-
-
-admin.site.register(EmailChangeRequest, EmailChangeRequestAdmin)
+    ordering = ['-created_at']
 

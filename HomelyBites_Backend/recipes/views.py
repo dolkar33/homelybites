@@ -669,6 +669,7 @@ def register_user(request):
 @permission_classes([AllowAny])
 def verify_email(request, token):
     """Verify user's email with verification token from URL - BULLETPROOF VERSION"""
+    from django.shortcuts import redirect
     
     print(f"=== VERIFY EMAIL VIEW DEBUG START ===")
     print(f"Verifying token: {token[:10]}...")
@@ -676,7 +677,6 @@ def verify_email(request, token):
     try:
         # Verify the token using the bulletproof service
         from .services import EmailVerificationService
-        from django.shortcuts import redirect
         
         is_valid, message, user = EmailVerificationService.verify_token(token)
         
@@ -1469,9 +1469,9 @@ def change_password(request):
 @permission_classes([AllowAny])
 def confirm_email_change(request, token):
     """Confirm email change using verification token."""
-    from .services import EmailVerificationService
     from django.shortcuts import redirect
     
+    from .services import EmailVerificationService
     is_valid, message, user = EmailVerificationService.verify_email_change_token(token)
     
     if is_valid:
