@@ -15,12 +15,20 @@ import { useNavigate, useLocation } from "react-router-dom";
 import PostFeed from "../components/PostFeed";
 
 const CommunityPage = () => {
+  // Backend categories map (labels shown in UI, values sent to API)
+  const CATEGORY_CHOICES = [
+    { label: "Recipe", value: "recipe" },
+    { label: "Cooking Tip", value: "tip" },
+    { label: "Restaurant Review", value: "review" },
+    { label: "General Discussion", value: "general" },
+    { label: "Question", value: "question" },
+  ];
   const [showLeftSidebar, setShowLeftSidebar] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(CATEGORY_CHOICES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [posts, setPosts] = useState([]);
@@ -69,10 +77,8 @@ const CommunityPage = () => {
         }
 
         
-        try {
-          const catRes = await axiosInstance.get("/api/categories/");
-          setCategories(catRes.data.results || []);
-        } catch {}
+        // Force categories to backend post categories (not recipe categories)
+        setCategories(CATEGORY_CHOICES);
 
         try {
           const userRes = await axiosInstance.get("/api/user-profiles/my_profile/");
@@ -130,9 +136,9 @@ const CommunityPage = () => {
 
  
 
-  const handleCategoryChange = (category) => {
+  const handleCategoryChange = (categoryValue) => {
     // Toggle behavior: clicking the same category clears the filter
-    const nextCategory = activeCategory === category ? "" : category;
+    const nextCategory = activeCategory === categoryValue ? "" : categoryValue;
     setActiveCategory(nextCategory);
     const categoryQS = nextCategory ? `&category=${encodeURIComponent(nextCategory)}` : "";
     navigate(`/community?view=${currentView}${categoryQS}`);
@@ -257,25 +263,20 @@ const CommunityPage = () => {
             <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
   <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">Categories</h3>
   <nav className="space-y-2 sm:space-y-3">
-    {(Array.isArray(categories) && categories.length > 0 ? categories : [
-      "Recipe",
-      "Cooking Tip",
-      "Restaurant Review",
-      "General Discussion",
-      "Question"
-    ]).map((category, idx) => {
-      const catName = category.name || category;
+    {(Array.isArray(categories) && categories.length > 0 ? categories : CATEGORY_CHOICES).map((category, idx) => {
+      const catLabel = category.label || category.name || category;
+      const catValue = category.value || (category.name ? category.name.toLowerCase() : String(category).toLowerCase());
       return (
         <button
-          key={category.id || catName || idx}
-          onClick={() => handleCategoryChange(catName)}
+          key={category.id || catValue || idx}
+          onClick={() => handleCategoryChange(catValue)}
           className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
-            activeCategory === catName
+            activeCategory === catValue
               ? "text-red-500 bg-red-50"
               : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
           }`}
         >
-          • {catName}
+          • {catLabel}
         </button>
       );
     })}
@@ -380,26 +381,20 @@ const CommunityPage = () => {
                     Categories
                   </h3>
                   <nav className="space-y-2 sm:space-y-3">
-                    {(Array.isArray(categories) && categories.length > 0 ? categories : [
-                      "Recipe",
-                      "Cooking Tip",
-                      "Restaurant Review",
-                      "General Discussion",
-                      "Question"
-                    ]).map((category, idx) => {
-                      // Support both backend and static category objects/strings
-                      const catName = category.name || category;
+                    {(Array.isArray(categories) && categories.length > 0 ? categories : CATEGORY_CHOICES).map((category, idx) => {
+                      const catLabel = category.label || category.name || category;
+                      const catValue = category.value || (category.name ? category.name.toLowerCase() : String(category).toLowerCase());
                       return (
                         <button
-                          key={category.id || catName || idx}
-                          onClick={() => handleCategoryChange(catName)}
+                          key={category.id || catValue || idx}
+                          onClick={() => handleCategoryChange(catValue)}
                           className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
-                            activeCategory === catName
+                            activeCategory === catValue
                               ? "text-red-500 bg-red-50"
                               : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
                           }`}
                         >
-                          • {catName}
+                          • {catLabel}
                         </button>
                       );
                     })}

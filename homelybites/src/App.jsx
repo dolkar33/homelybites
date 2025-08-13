@@ -4,6 +4,7 @@ import SignUp from "./pages/signup";
 import LandingPage from "./pages/LandingPage";
 import UserQuestion from "./pages/UserQuestion";
 import Login from "./pages/login";
+import ForgotPassword from "./pages/ForgotPassword";
 import MainPage from "./pages/MainPage";
 import UserProfile from "./pages/UserProfile";
 import ContactUs from "./pages/ContactUs";
@@ -118,6 +119,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/userquestion" element={<UserQuestion />} />
         <Route path="/Home" element={<MainPage />} />
         <Route path="/" element={<RootRoute />} />

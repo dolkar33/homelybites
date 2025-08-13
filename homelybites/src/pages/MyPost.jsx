@@ -5,12 +5,12 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useNavigate } from "react-router-dom";
 
-const CATEGORIES = [
-  "Recipe",
-  "Cooking Tip",
-  "Restaurant Review",
-  "General Discussion",
-  "Question",
+const CATEGORY_CHOICES = [
+  { label: "Recipe", value: "recipe" },
+  { label: "Cooking Tip", value: "tip" },
+  { label: "Restaurant Review", value: "review" },
+  { label: "General Discussion", value: "general" },
+  { label: "Question", value: "question" },
 ];
 
 function shuffleArray(array) {
@@ -25,7 +25,7 @@ function shuffleArray(array) {
 
 const MyPost = () => {
   const [posts, setPosts] = useState([]);
-  const [categories, setCategories] = useState(CATEGORIES);
+  const [categories, setCategories] = useState(CATEGORY_CHOICES);
   const [activeCategory, setActiveCategory] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -55,10 +55,23 @@ const MyPost = () => {
         
         try {
           const catRes = await axiosInstance.get("/api/categories/");
-          if (catRes.data && catRes.data.results && catRes.data.results.length > 0) {
-            setCategories(catRes.data.results);
+          const apiCats = catRes?.data?.results;
+          if (Array.isArray(apiCats) && apiCats.length > 0) {
+            const normalized = apiCats.map((c, idx) => ({
+              label: c.label || c.name || String(c),
+              value:
+                c.value ||
+                (typeof c === "string"
+                  ? c.toLowerCase().replace(/\s+/g, "-")
+                  : (c.name || String(idx)).toLowerCase().replace(/\s+/g, "-")),
+            }));
+            setCategories(normalized);
+          } else {
+            setCategories(CATEGORY_CHOICES);
           }
-        } catch {}
+        } catch {
+          setCategories(CATEGORY_CHOICES);
+        }
       } catch (err) {
         setError("Failed to load user profile");
       }
@@ -97,8 +110,8 @@ const MyPost = () => {
     setLoading(false);
   };
 
-  const handleCategoryChange = (category) => {
-    setActiveCategory(category);
+  const handleCategoryChange = (categoryValue) => {
+    setActiveCategory(categoryValue);
   };
 
   return (
@@ -173,23 +186,23 @@ const MyPost = () => {
                   <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                     <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">Categories</h3>
                     <nav className="space-y-2 sm:space-y-3">
-                      {Array.isArray(categories) && categories.length > 0 ? (
-                        categories.map((category, idx) => (
+                      {(Array.isArray(categories) && categories.length > 0 ? categories : CATEGORY_CHOICES).map((category, idx) => {
+                        const catLabel = category.label || category.name || category;
+                        const catValue = category.value || (category.name ? category.name.toLowerCase() : String(category).toLowerCase());
+                        return (
                           <button
-                            key={category.id || category.name || category || idx}
-                            onClick={() => handleCategoryChange(category.name || category)}
+                            key={category.id || catValue || idx}
+                            onClick={() => handleCategoryChange(catValue)}
                             className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
-                              (activeCategory === (category.name || category))
+                              activeCategory === catValue
                                 ? "text-red-500 bg-red-50"
                                 : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
                             }`}
                           >
-                            • {category.name || category}
+                            • {catLabel}
                           </button>
-                        ))
-                      ) : (
-                        <div className="text-gray-400 text-sm">No categories found.</div>
-                      )}
+                        );
+                      })}
                     </nav>
                   </div>
                 </div>

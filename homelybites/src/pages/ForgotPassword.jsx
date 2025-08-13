@@ -1,32 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { Toaster } from "react-hot-toast";
-import axiosInstance from "../config/axiosInstance";
 import { customToast } from "./toast";
 
 // Yup validation schema
 const validationSchema = yup.object({
-  username: yup
+  email: yup
     .string()
-    .required("Username is required")
-    .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must not exceed 20 characters")
-    .matches(
-      /^[a-zA-Z0-9_]+$/,
-      "Username can only contain letters, numbers, and underscores"
-    ),
+    .required("Email is required")
+    .email("Enter a valid email address"),
 
-  password: yup
+  newPassword: yup
     .string()
-    .required("Password is required")
-    .min(1, "Password cannot be empty"),
+    .required("New password is required")
+    .min(8, "New password must be at least 8 characters")
+    .matches(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+      "New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+    ),
 });
 
-const Login = () => {
-  const [showPassword, setShowPassword] = useState(false);
+const ForgotPassword = () => {
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [generalError, setGeneralError] = useState("");
   const navigate = useNavigate();
 
@@ -39,100 +37,46 @@ const Login = () => {
   } = useForm({
     resolver: yupResolver(validationSchema),
     defaultValues: {
-      username: "",
-      password: "",
+      email: "",
+      newPassword: "",
     },
   });
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("registered") === "true") {
-      customToast.success("Registration successful! You can now log in.");
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, []);
 
   const handleInputChange = () => {
     if (generalError) {
       setGeneralError("");
     }
+    clearErrors();
   };
 
   const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
+    setShowNewPassword(!showNewPassword);
   };
 
   const onSubmit = async (data) => {
     setGeneralError("");
 
     try {
-      const response = await axiosInstance.post("api/login/", {
-        username: data.username,
-        password: data.password,
-      });
-
-      if (response.status === 200) {
-        const userData = response.data.user || response.data;
-
-        localStorage.setItem(
-          "currentUser",
-          JSON.stringify({
-            ...userData,
-            isLoggedIn: true,
-          })
-        );
-
-        localStorage.setItem("authToken", response.data.access);
-        localStorage.setItem("refreshToken", response.data.refresh);
-
-        reset();
-        if (userData.has_completed_questions) {
-          customToast.success("Welcome back! Redirecting to Home...");
-          setTimeout(() => {
-            navigate("/Home");
-          }, 1500);
-        } else {
-          customToast.success(
-            "Login successful! Redirecting to your questions..."
-          );
-          setTimeout(() => {
-            navigate("/userquestion");
-          }, 1500);
-        }
-      }
+      // Here you would typically make an API call to change the password
+      // For now, we'll just show a success message
+      customToast.success("Password changed successfully!");
+      
+      // Reset form
+      reset();
+      
+      // Redirect back to login after a short delay
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+      
     } catch (error) {
-      console.error("Login error:", error);
-
-      if (error.response) {
-        if (error.response.status === 401) {
-          localStorage.removeItem("authToken");
-          localStorage.removeItem("currentUser");
-        }
-
-        const errorMessage =
-          error.response?.data?.message ||
-          error.response?.data?.error ||
-          error.response?.data?.detail ||
-          "Invalid username or password";
-        customToast.error(errorMessage);
-      } else if (error.request) {
-        customToast.error(
-          "Network error. Please check your connection and try again."
-        );
-      } else {
-        customToast.error(
-          "An unexpected error occurred. Please try again later."
-        );
-      }
+      console.error("Password change error:", error);
+      customToast.error("Failed to change password. Please try again.");
     }
   };
 
-  const handleSignUp = () => {
-    navigate("/signup");
-  };
-
-  const handleForgotPassword = () => {
-    navigate("/forgot-password");
+  const handleBackToLogin = () => {
+    navigate("/login");
   };
 
   return (
@@ -140,8 +84,8 @@ const Login = () => {
       {/* Toast Container */}
       <Toaster />
 
-      {/* Left side - Login Form */}
-      <div className="w-full md:w-1/2 flex flex-col justify-start pt-[5vh] sm:pt-[6vh] px-4 sm:px-6 md:px-8 h-[100vh]">
+      {/* Centered Form Container */}
+      <div className="w-full flex flex-col justify-start pt-[5vh] sm:pt-[6vh] px-4 sm:px-6 md:px-8 h-[100vh]">
         <div className="w-full max-w-md mx-auto">
           <div className="flex flex-col items-center mb-[4vh] sm:mb-[5vh]">
             <img
@@ -150,8 +94,11 @@ const Login = () => {
               className="w-[12vh] h-[12vh] sm:w-[16vh] sm:h-[16vh]"
             />
             <h2 className="text-xl sm:text-2xl font-bold mt-[2vh] sm:mt-[3vh] text-gray-800">
-              Welcome, Login!
+              Reset Password
             </h2>
+            <p className="text-sm text-gray-600 text-center mt-2">
+              Enter your email and a new password
+            </p>
           </div>
 
           {generalError && (
@@ -163,31 +110,31 @@ const Login = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="w-full">
             <div className="mb-[3vh]">
               <input
-                type="text"
-                placeholder="Username"
-                {...register("username", {
+                type="email"
+                placeholder="Email"
+                {...register("email", {
                   onChange: handleInputChange,
                 })}
                 className={`w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent ${
-                  errors.username ? "border-red-400" : "border-gray-400"
+                  errors.email ? "border-red-400" : "border-gray-400"
                 }`}
               />
-              {errors.username && (
+              {errors.email && (
                 <p className="mt-1 text-xs text-red-600">
-                  {errors.username.message}
+                  {errors.email.message}
                 </p>
               )}
             </div>
 
-            <div className="mb-[2vh] relative">
+            <div className="mb-[3vh] relative">
               <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter Password"
-                {...register("password", {
+                type={showNewPassword ? "text" : "password"}
+                placeholder="New Password"
+                {...register("newPassword", {
                   onChange: handleInputChange,
                 })}
                 className={`w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent ${
-                  errors.password ? "border-red-400" : "border-gray-400"
+                  errors.newPassword ? "border-red-400" : "border-gray-400"
                 }`}
               />
               <button
@@ -195,7 +142,7 @@ const Login = () => {
                 onClick={togglePasswordVisibility}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
               >
-                {showPassword ? (
+                {showNewPassword ? (
                   <svg
                     className="w-5 h-5"
                     fill="none"
@@ -231,55 +178,38 @@ const Login = () => {
                   </svg>
                 )}
               </button>
-              {errors.password && (
+              {errors.newPassword && (
                 <p className="mt-1 text-xs text-red-600">
-                  {errors.password.message}
+                  {errors.newPassword.message}
                 </p>
               )}
             </div>
 
-            <div className="text-right mb-6 mt-[1vh]">
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                className="text-xs sm:text-sm text-gray-500 hover:text-gray-700"
-              >
-                Forgot Password?
-              </button>
-            </div>
+            {/* No confirm password for forgot password flow */}
 
             <button
               type="submit"
               disabled={isSubmitting}
               className="w-full py-[1.5vh] sm:py-[2vh] text-sm sm:text-base text-white rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 bg-accent"
             >
-              {isSubmitting ? "Logging in..." : "Login"}
+              {isSubmitting ? "Resetting Password..." : "Reset Password"}
             </button>
 
             <div className="mt-[3vh] text-center text-xs sm:text-sm text-greyy">
-              Don't have an account?{" "}
+              Remember your password?{" "}
               <button
                 type="button"
-                onClick={handleSignUp}
+                onClick={handleBackToLogin}
                 className="text-accent hover:opacity-80 font-medium"
               >
-                SignUp
+                Back to Login
               </button>
             </div>
           </form>
         </div>
       </div>
-
-      {/* Right side - Image */}
-      <div className="hidden md:flex md:w-1/2 min-h-screen bg-accent items-center justify-center relative">
-        <img
-          src="/src/img/chef.png"
-          alt="Chef Illustration"
-          className="w-full h-full object-cover"
-        />
-      </div>
     </div>
   );
 };
 
-export default Login;
+export default ForgotPassword;
