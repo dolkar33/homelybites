@@ -122,24 +122,20 @@ const Login = () => {
         localStorage.setItem("refreshToken", response.data.refresh);
 
         reset();
+        const hasCompleted = Boolean(userData.has_completed_questions);
         const postVerify = localStorage.getItem("postVerifiedRedirect");
-        if (postVerify === "userquestion") {
-          localStorage.removeItem("postVerifiedRedirect");
-          customToast.success("Login successful! Redirecting to your questions...");
-          setTimeout(() => {
-            navigate("/userquestion");
-          }, 1000);
-          return;
-        }
-        if (userData.has_completed_questions) {
+        // Clear the flag regardless; we only use it for the very next login
+        if (postVerify) localStorage.removeItem("postVerifiedRedirect");
+
+        if (hasCompleted) {
           customToast.success("Welcome back! Redirecting to Home...");
           setTimeout(() => {
             navigate("/Home");
           }, 1500);
         } else {
-          customToast.success(
-            "Login successful! Redirecting to your questions..."
-          );
+          // First-time users (questions not completed) go to user questions.
+          // If coming right after email verification, this remains the same.
+          customToast.success("Login successful! Redirecting to your questions...");
           setTimeout(() => {
             navigate("/userquestion");
           }, 1500);
