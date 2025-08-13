@@ -27,7 +27,6 @@ const MainPage = () => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [recentRecipes, setRecentRecipes] = useState([]);
   const [recommendedRecipes, setRecommendedRecipes] = useState([]);
 
   useEffect(() => {
@@ -119,25 +118,6 @@ const MainPage = () => {
     fetchRecipesByCategory();
   }, [activeCategory, page]);
 
-  // WhatOthersAreCooking Fetching PART ( NEw logic )
-  useEffect(() => {
-    const fetchWhatOthersAreCooking = async () => {
-      try {
-        const { items } = await recipeAPI.getWhatOthersAreCooking();
-        const recipes = (items || []).slice(0, 12);
-        setRecentRecipes(recipes);
-
-        if (recipes.length > 0) {
-        }
-      } catch (err) {
-        console.error("Error fetching 'What others are cooking' recipes:", err);
-
-      }
-    };
-
-    fetchWhatOthersAreCooking();
-  }, []);
-
   const loadMore = () => {
     if (!loading && hasMore) {
       setPage((prev) => prev + 1);
@@ -148,7 +128,6 @@ const MainPage = () => {
     setActiveCategory(category);
     setPage(1);
     setHasMore(true);
-
   };
 
   const renderRecipeCards = (recipeList, isLoading = false) => {
@@ -174,7 +153,6 @@ const MainPage = () => {
             onClick={() => {
               setPage(1);
               setError(null);
-
             }}
             className="ml-2 text-blue-500 hover:text-blue-700"
           >
@@ -212,7 +190,6 @@ const MainPage = () => {
               difficulty={recipe.difficulty}
               prepTime={recipe.prep_time}
               cookTime={recipe.cook_time}
-
             />
           ))}
         </div>
@@ -235,8 +212,6 @@ const MainPage = () => {
     <>
       <div className="min-h-screen flex flex-col bg-white">
         <Navbar />
-
-
 
         {/* Hero Section */}
         <div className="max-w-5xl mx-auto w-full px-4 mt-[4.5vh]">
@@ -335,14 +310,6 @@ const MainPage = () => {
                 Loading AI-based recommendations...
               </div>
             )}
-          </div>
-
-          {/* What others are cooking */}
-          <div className="mt-[6vh] mb-[6vh]">
-            <h2 className="text-2xl md:text-3xl font-bold mb-[2vh] text-center md:text-left">
-              What others are cooking
-            </h2>
-            {renderRecipeCards(recentRecipes)}
           </div>
         </div>
         <Footer />
