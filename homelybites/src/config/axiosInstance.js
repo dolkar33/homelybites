@@ -10,7 +10,9 @@ const instance = axios.create({
 });
 
 instance.interceptors.request.use(async (config) => {
-  const token = localStorage.getItem('authToken');
+  // Prefer SimpleJWT 'access' token; fallback to legacy 'authToken'
+  const token = localStorage.getItem('access') || localStorage.getItem('authToken');
+  
 
   // List of public (unauthenticated) API paths
   const publicRoutes = ['api/register/', 'api/login/'];

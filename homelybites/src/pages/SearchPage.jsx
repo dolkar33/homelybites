@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Heart, Star, ChevronLeft, X, User } from "lucide-react";
+import { Heart, ChevronLeft, X, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Navbar from "../components/Navbar";
@@ -15,12 +15,14 @@ const RecipeSearchPage = () => {
   // State for filters
   const [filters, setFilters] = useState({
     cuisineType: {
-      Italian: false,
+      Chinese: false,
+      Vietnamese: false,
       Indian: false,
+      Korean: false,
+      American: false,
+      European: false,
+      Mexican: false,
       Thai: false,
-      Turkish: false,
-      Caribbean: false,
-      "Central American": false,
     },
     calories: {
       lowCal: false,
@@ -48,6 +50,49 @@ const RecipeSearchPage = () => {
   // Initialize recipes - Start with empty array
   useEffect(() => {
     setRecipes([]);
+  }, []);
+
+  // Prefill favorites from localStorage immediately to avoid UI flicker on refresh
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("favoriteRecipeDetails");
+      if (saved) {
+        const items = JSON.parse(saved) || [];
+        const ids = new Set(items.map((r) => String(r.id)));
+        if (ids.size > 0) setFavorites(ids);
+      }
+    } catch {}
+  }, []);
+
+  // Load ALL favorites from backend on mount (if authenticated), across pages
+  useEffect(() => {
+    const token = localStorage.getItem("access") || localStorage.getItem("authToken");
+    if (!token) return; // unauthenticated: keep local behavior
+    const fetchAllFavorites = async () => {
+      try {
+        let nextUrl = "api/recipes/favorites/?page_size=200";
+        const allItems = [];
+        while (nextUrl) {
+          const res = await api.get(nextUrl);
+          const data = res?.data;
+          const items = Array.isArray(data) ? data : data?.results || [];
+          allItems.push(...items);
+          nextUrl = Array.isArray(data) ? null : data?.next || null;
+        }
+        // Normalize to string IDs to avoid type mismatch ("1" vs 1)
+        const ids = new Set(allItems.map((r) => String(r.id)));
+        setFavorites(ids);
+        // Persist details locally for quick UI access
+        localStorage.setItem(
+          "favoriteRecipeDetails",
+          JSON.stringify(allItems)
+        );
+      } catch (err) {
+        // Silently ignore; user may not be authenticated or server unavailable
+        // console.error("Failed to load favorites", err);
+      }
+    };
+    fetchAllFavorites();
   }, []);
 
   // Function to add ingredient
@@ -121,31 +166,74 @@ const RecipeSearchPage = () => {
   };
 
   // Function to toggle favorites
-  const toggleFavorite = (recipeId) => {
-    const newFavorites = new Set(favorites);
+  const toggleFavorite = async (recipeId) => {
+    const isAuthed = !!(localStorage.getItem("access") || localStorage.getItem("authToken"));
     const recipeToToggle = recipes.find((r) => r.id === recipeId);
-    let updatedFavoriteRecipes = [];
+    const slug = recipeToToggle?.slug;
 
-    // Load existing favorites from localStorage
+    // Always keep a local cache for quick UI updates
+    let updatedFavoriteRecipes = [];
     const savedFavorites = localStorage.getItem("favoriteRecipeDetails");
     if (savedFavorites) {
-      updatedFavoriteRecipes = JSON.parse(savedFavorites);
+      try { updatedFavoriteRecipes = JSON.parse(savedFavorites) || []; } catch {}
     }
 
-    if (newFavorites.has(recipeId)) {
-      newFavorites.delete(recipeId);
-      // Remove from localStorage
-      updatedFavoriteRecipes = updatedFavoriteRecipes.filter(r => r.id !== recipeId);
+    const idStr = String(recipeId);
+    const newFavorites = new Set(favorites);
+
+    // If we have a slug, hit backend endpoints (will return 401 if not authed)
+    if (slug) {
+      try {
+        if (newFavorites.has(idStr)) {
+          console.debug('Unfavoriting via API', { slug });
+          await api.delete(`api/recipes/${slug}/favorite/`);
+          newFavorites.delete(idStr);
+          updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => String(r.id) !== idStr);
+          // Notify other pages (e.g., FavPage) to refresh
+          window.dispatchEvent(new CustomEvent('favorites:updated'));
+        } else {
+          console.debug('Favoriting via API', { slug });
+          await api.post(`api/recipes/${slug}/favorite/`);
+          newFavorites.add(idStr);
+          if (recipeToToggle && !updatedFavoriteRecipes.some((r) => String(r.id) === idStr)) {
+            updatedFavoriteRecipes.push(recipeToToggle);
+          }
+          // Notify other pages (e.g., FavPage) to refresh
+          window.dispatchEvent(new CustomEvent('favorites:updated'));
+        }
+      } catch (error) {
+        console.error('Failed to toggle favorite via API', error);
+        // Fallback to local behavior if API fails
+        if (newFavorites.has(idStr)) {
+          newFavorites.delete(idStr);
+          updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => String(r.id) !== idStr);
+        } else {
+          newFavorites.add(idStr);
+          if (recipeToToggle && !updatedFavoriteRecipes.some((r) => String(r.id) === idStr)) {
+            updatedFavoriteRecipes.push(recipeToToggle);
+          }
+        }
+      }
     } else {
-      newFavorites.add(recipeId);
-      // Add to localStorage if not already present
-      if (recipeToToggle && !updatedFavoriteRecipes.some(r => r.id === recipeId)) {
-        // Save minimal data or all relevant fields
-        updatedFavoriteRecipes.push(recipeToToggle);
+      // Unauthenticated: local-only behavior
+      if (!slug) {
+        console.warn('Missing slug for recipe, cannot call favorite API');
+      }
+      if (newFavorites.has(idStr)) {
+        newFavorites.delete(idStr);
+        updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => String(r.id) !== idStr);
+      } else {
+        newFavorites.add(idStr);
+        if (recipeToToggle && !updatedFavoriteRecipes.some((r) => String(r.id) === idStr)) {
+          updatedFavoriteRecipes.push(recipeToToggle);
+        }
       }
     }
-    // Save updated favorites to localStorage
-    localStorage.setItem("favoriteRecipeDetails", JSON.stringify(updatedFavoriteRecipes));
+
+    localStorage.setItem(
+      "favoriteRecipeDetails",
+      JSON.stringify(updatedFavoriteRecipes)
+    );
     setFavorites(newFavorites);
   };
 
@@ -337,20 +425,6 @@ const RecipeSearchPage = () => {
     }
   };
 
-  const renderStars = (rating) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        size={16}
-        className={`${
-          i < Math.floor(rating)
-            ? "fill-yellow-400 text-yellow-400"
-            : "text-gray-300"
-        }`}
-      />
-    ));
-  };
-
   useEffect(() => {
     const alertShown = sessionStorage.getItem("alertShown");
     if (!alertShown) {
@@ -461,29 +535,7 @@ const RecipeSearchPage = () => {
                   </div>
                 </div>
 
-                {/* Difficulty */}
-                <div className="mb-3 sm:mb-4 lg:mb-6">
-                  <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">
-                    Difficulty
-                  </h3>
-                  <div className="space-y-1.5 sm:space-y-2 lg:space-y-3">
-                    {Object.keys(filters.difficulty).map((level) => (
-                      <label key={level} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.difficulty[level]}
-                          onChange={() =>
-                            handleFilterChange("difficulty", level)
-                          }
-                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
-                        />
-                        <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
-                          {level.charAt(0).toUpperCase() + level.slice(1)}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                {/* Difficulty filter removed per request */}
 
                 {/* Clear Filters Button */}
                 <button
@@ -549,8 +601,7 @@ const RecipeSearchPage = () => {
                 </div>
               ) : selectedIngredients.length === 0 &&
                 !Object.values(filters.cuisineType).some(Boolean) &&
-                !Object.values(filters.calories).some(Boolean) &&
-                !Object.values(filters.difficulty).some(Boolean) ? (
+                !Object.values(filters.calories).some(Boolean) ? (
                 <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
                   <div className="max-w-md mx-auto">
                     <div className="w-12 sm:w-14 lg:w-16 xl:w-20 h-12 sm:h-14 lg:h-16 xl:h-20 mx-auto mb-3 sm:mb-4 bg-gray-100 rounded-full flex items-center justify-center">
@@ -610,7 +661,7 @@ const RecipeSearchPage = () => {
                                 <Heart
                                   size={20}
                                   className={`sm:w-6 sm:h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 ${
-                                    favorites.has(recipe.id)
+                                    favorites.has(String(recipe.id))
                                       ? "fill-red-500 text-red-500"
                                       : "text-gray-400"
                                   }`}
@@ -619,15 +670,6 @@ const RecipeSearchPage = () => {
                             </div>
 
                             <div className="flex items-center mb-2 sm:mb-2 lg:mb-3">
-                              <div className="flex mr-2">
-                                {renderStars(recipe.rating)}
-                              </div>
-                              <span className="text-xs sm:text-sm lg:text-base text-gray-600 mr-2">
-                                {recipe.rating}
-                              </span>
-                              <span className="text-xs sm:text-sm lg:text-base text-gray-400">
-                                |
-                              </span>
                               <span className="text-xs sm:text-sm lg:text-base text-gray-600 ml-2">
                                 {recipe.difficulty.charAt(0).toUpperCase() +
                                   recipe.difficulty.slice(1)}
@@ -687,8 +729,7 @@ const RecipeSearchPage = () => {
                 !loading &&
                 (selectedIngredients.length > 0 ||
                   Object.values(filters.cuisineType).some(Boolean) ||
-                  Object.values(filters.calories).some(Boolean) ||
-                  Object.values(filters.difficulty).some(Boolean)) && (
+                  Object.values(filters.calories).some(Boolean)) && (
                   <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
                     <p className="text-sm sm:text-base lg:text-lg text-gray-600">
                       No recipes found matching your criteria.

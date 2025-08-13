@@ -33,7 +33,7 @@ DIETARY_KEYWORDS = {
     # Vegan: exclude all animal products
     'vegan': [
         # meats
-        'chicken','beef','pork','lamb','mutton','turkey','bacon','ham','sausage','meat',
+        'chicken','beef','pork','lamb','mutton','turkey','bacon','ham','sausage','meat','steak',
         # fish/seafood
         'fish','salmon','tuna','mackerel','cod','sardine','anchovy','shrimp','prawn','crab','lobster','shellfish','oyster','clam','mussel',
         # dairy/eggs/honey
@@ -311,6 +311,67 @@ class RecipeViewSet(viewsets.ModelViewSet):
             response["X-Diet-Filtered"] = str(dcounts.get('filtered_out', 0))
         return response
     
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticatedOrReadOnly])
+    def favorite(self, request, slug=None, *args, **kwargs):
+        """Favorite a recipe for the authenticated user."""
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Respect viewset lookup_field ('slug') by using get_object()
+        try:
+            recipe = self.get_object()
+        except Exception:
+            return Response({"detail": "Recipe not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        obj, created = UserRecipeInteraction.objects.get_or_create(
+            user=user, recipe=recipe, interaction_type='save'
+        )
+        if created:
+            return Response({"detail": "Recipe favorited."}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"detail": "Already favorited."}, status=status.HTTP_200_OK)
+
+    @favorite.mapping.delete
+    def unfavorite(self, request, slug=None, *args, **kwargs):
+        """Remove favorite for a recipe for the authenticated user."""
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Respect viewset lookup_field ('slug') by using get_object()
+        try:
+            recipe = self.get_object()
+        except Exception:
+            return Response({"detail": "Recipe not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        deleted, _ = UserRecipeInteraction.objects.filter(
+            user=user, recipe=recipe, interaction_type='save'
+        ).delete()
+        if deleted:
+            return Response({"detail": "Recipe unfavorited."}, status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({"detail": "Not favorited."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='favorites', permission_classes=[IsAuthenticatedOrReadOnly])
+    def favorites(self, request):
+        """List the authenticated user's favorited recipes."""
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        recipe_ids = UserRecipeInteraction.objects.filter(
+            user=user, interaction_type='save'
+        ).values_list('recipe_id', flat=True)
+
+        queryset = Recipe.objects.filter(id__in=recipe_ids).prefetch_related('categories', 'cuisines')
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = RecipeListSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        serializer = RecipeListSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+    
     @action(detail=False, methods=['get'])
     def recommended(self, request):
         """
@@ -430,76 +491,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         resp["X-Diet-Filtered"] = str(d_counts.get('filtered_out', 0))
         return resp
     
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def interact(self, request, slug=None):
-        """Record a user interaction with a recipe (view, save, rate)."""
-        recipe = self.get_object()
-        interaction_type = request.data.get('interaction_type')
-        rating = request.data.get('rating', None)
-        
-        if interaction_type not in [choice[0] for choice in UserRecipeInteraction.INTERACTION_TYPES]:
-            return Response(
-                {"error": "Invalid interaction type"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        # If rating is provided, validate it
-        if rating is not None:
-            try:
-                rating = int(rating)
-                if rating < 1 or rating > 5:
-                    return Response(
-                        {"error": "Rating must be between 1 and 5"}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-            except ValueError:
-                return Response(
-                    {"error": "Rating must be an integer"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Create or update the interaction
-        interaction, created = UserRecipeInteraction.objects.update_or_create(
-            user=request.user,
-            recipe=recipe,
-            interaction_type=interaction_type,
-            defaults={'rating': rating}
-        )
-        
-        serializer = UserRecipeInteractionSerializer(interaction)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['get'])
-    def recent(self, request):
-        """
-        Get recently viewed recipes for the authenticated user.
-        For non-authenticated users, return recently added recipes.
-        """
-        if request.user.is_authenticated:
-            # Get user's recently viewed recipes
-            try:
-                user_profile = UserProfile.objects.get(user=request.user)
-                recent_recipes = Recipe.objects.filter(
-                    user_interactions__user=request.user
-                ).order_by('-user_interactions__viewed_at')[:8]
-                
-                # If we have less than 8 recent recipes, add recently added recipes
-                if recent_recipes.count() < 8:
-                    recent_added = Recipe.objects.order_by('-created_at')[:8]
-                    # Combine the two querysets without duplicates
-                    recent_recipes = (recent_recipes | recent_added).distinct()[:8]
-            except UserProfile.DoesNotExist:
-                # If user profile doesn't exist, return recently added recipes
-                recent_recipes = Recipe.objects.order_by('-created_at')[:8]
-        else:
-            # For non-authenticated users, return recently added recipes
-            recent_recipes = Recipe.objects.order_by('-created_at')[:8]
-            
-        serializer = RecipeListSerializer(recent_recipes, many=True)
-        return Response(serializer.data)
-
     @action(detail=True, methods=['post'])
-    def track_view(self, request, pk=None):
+    def track_view(self, request, slug=None, *args, **kwargs):
         """
         Track when a user views a recipe.
         """
