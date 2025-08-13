@@ -14,12 +14,10 @@ import MyPost from "./pages/MyPost";
 import RecipeSearchPage from "./pages/SearchPage";
 import RecipePage from "./pages/RecipePage";
 import FavPage from "./pages/FavPage";
-import EmailVerification from "./pages/EmailVerification";
 
 import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecentRecipes from "./pages/RecentRecipes";
 import UserPage from "./pages/UserPage";
-import { CustomToaster } from "./pages/toast";
 
 // Custom hook to check authentication status
 const useAuth = () => {
@@ -111,6 +109,8 @@ const SignUpRoute = () => {
   return isLoggedIn ? <Navigate to="/Home" replace /> : <SignUp />;
 };
 
+import { CustomToaster } from "./pages/toast";
+
 function App() {
   return (
     <>
@@ -118,7 +118,6 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/verify-email" element={<EmailVerification />} />
         <Route path="/userquestion" element={<UserQuestion />} />
         <Route path="/Home" element={<MainPage />} />
         <Route path="/" element={<RootRoute />} />

@@ -50,18 +50,6 @@ const Login = () => {
       customToast.success("Registration successful! You can now log in.");
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-    if (params.get("verified") === "true") {
-      const message = params.get("message") || "Email verified successfully! You can now log in.";
-      customToast.success(message);
-      setGeneralError(""); // Clear any previous errors
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-    if (params.get("verified") === "false") {
-      const message = params.get("message") || "Email verification failed. Please try again.";
-      customToast.error(message);
-      setGeneralError(message);
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
   }, []);
 
   const handleInputChange = () => {
@@ -121,20 +109,12 @@ const Login = () => {
           localStorage.removeItem("currentUser");
         }
 
-        // Check for email verification error
-        if (error.response.status === 403 && error.response.data?.detail?.includes("email verification")) {
-          const errorMessage = "Please verify your email address before logging in. Check your inbox for a verification link.";
-          setGeneralError(errorMessage);
-          customToast.error(errorMessage);
-        } else {
-          const errorMessage =
-            error.response?.data?.message ||
-            error.response?.data?.error ||
-            error.response?.data?.detail ||
-            "Invalid username or password";
-          setGeneralError(errorMessage);
-          customToast.error(errorMessage);
-        }
+        const errorMessage =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.response?.data?.detail ||
+          "Invalid username or password";
+        customToast.error(errorMessage);
       } else if (error.request) {
         customToast.error(
           "Network error. Please check your connection and try again."
@@ -177,16 +157,6 @@ const Login = () => {
           {generalError && (
             <div className="mb-[2vh] p-3 bg-red-100 text-red-700 rounded-lg">
               {generalError}
-              {generalError.includes("verify your email") && (
-                <div className="mt-2">
-                  <button
-                    onClick={() => navigate("/signup")}
-                    className="text-sm text-blue-600 hover:text-blue-800 underline"
-                  >
-                    Didn't receive the email? Create a new account
-                  </button>
-                </div>
-              )}
             </div>
           )}
 

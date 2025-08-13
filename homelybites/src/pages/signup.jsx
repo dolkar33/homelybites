@@ -1,18 +1,93 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import toast, { Toaster } from "react-hot-toast";
 import axiosInstance from "../config/axiosInstance";
 import axios from "axios";
+// Yup validation schema
+const validationSchema = yup.object({
+  first_name: yup
+    .string()
+    .required("First name is required")
+    .min(2, "First name must be at least 2 characters")
+    .max(50, "First name must not exceed 50 characters")
+    .matches(/^[a-zA-Z\s]+$/, "First name can only contain letters and spaces"),
+
+  last_name: yup
+    .string()
+    .required("Last name is required")
+    .min(2, "Last name must be at least 2 characters")
+    .max(50, "Last name must not exceed 50 characters")
+    .matches(/^[a-zA-Z\s]+$/, "Last name can only contain letters and spaces"),
+
+  username: yup
+    .string()
+    .required("Username is required")
+    .min(3, "Username must be at least 3 characters")
+    .max(20, "Username must not exceed 20 characters")
+    .matches(
+      /^[a-zA-Z0-9_]+$/,
+      "Username can only contain letters, numbers, and underscores"
+    )
+    .matches(/^[a-zA-Z]/, "Username must start with a letter"),
+
+  email: yup
+    .string()
+    .required("Email is required")
+    .email("Please enter a valid email format")
+    .test(
+      "valid-domain",
+      "Please use a valid email provider (e.g., gmail.com, yahoo.com, outlook.com)",
+      function (value) {
+        if (!value) return false;
+        const validDomains = [
+          "gmail.com",
+          "yahoo.com",
+          "hotmail.com",
+          "outlook.com",
+          "icloud.com",
+          "aol.com",
+          "protonmail.com",
+          "yandex.com",
+          "mail.com",
+          "zoho.com",
+          "live.com",
+          "msn.com",
+          "yahoo.co.uk",
+          "googlemail.com",
+        ];
+        const domain = value.split("@")[1]?.toLowerCase();
+        return validDomains.includes(domain);
+      }
+    ),
+
+  password: yup
+    .string()
+    .required("Password is required")
+    .min(8, "Password must be at least 8 characters")
+    .matches(/[a-z]/, "Password must contain at least one lowercase letter")
+    .matches(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .matches(/\d/, "Password must contain at least one number")
+    .matches(
+      /[!@#$%^&*(),.?":{}|<>]/,
+      "Password must contain at least one special character"
+    ),
+
+  password2: yup
+    .string()
+    .required("Please confirm your password")
+    .oneOf([yup.ref("password")], "Passwords do not match"),
+});
 
 const SignUp = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [generalError, setGeneralError] = useState("");
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
-  // React Hook Form setup without Yup validation
+  // React Hook Form setup
   const {
     register,
     handleSubmit,
@@ -20,6 +95,7 @@ const SignUp = () => {
     watch,
     reset,
   } = useForm({
+    resolver: yupResolver(validationSchema),
     defaultValues: {
       first_name: "",
       last_name: "",
@@ -75,56 +151,6 @@ const SignUp = () => {
 
   const onSubmit = async (data) => {
     setGeneralError("");
-    setRegistrationSuccess(false);
-
-    // Basic client-side validation
-    if (!data.first_name || !data.last_name || !data.username || !data.email || !data.password || !data.password2) {
-      setGeneralError("All fields are required.");
-      toast.error("All fields are required.", {
-        duration: 4000,
-        position: "top-right",
-        style: {
-          background: "#fff",
-          color: "#333",
-          border: "1px solid #ef4444",
-          borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-        },
-      });
-      return;
-    }
-
-    if (data.password !== data.password2) {
-      setGeneralError("Passwords do not match.");
-      toast.error("Passwords do not match.", {
-        duration: 4000,
-        position: "top-right",
-        style: {
-          background: "#fff",
-          color: "#333",
-          border: "1px solid #ef4444",
-          borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-        },
-      });
-      return;
-    }
-
-    if (data.password.length < 8) {
-      setGeneralError("Password must be at least 8 characters long.");
-      toast.error("Password must be at least 8 characters long.", {
-        duration: 4000,
-        position: "top-right",
-        style: {
-          background: "#fff",
-          color: "#333",
-          border: "1px solid #ef4444",
-          borderRadius: "8px",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-        },
-      });
-      return;
-    }
 
     try {
       const response = await axios.post("http://localhost:8000/api/register/", {
@@ -137,9 +163,9 @@ const SignUp = () => {
       });
 
       if (response.status === 200 || response.status === 201) {
-        // Show success toast with email verification message
-        toast.success("Account created successfully! Please check your email for verification.", {
-          duration: 5000,
+        // Show success toast
+        toast.success("Account created successfully! Redirecting to login...", {
+          duration: 3000,
           position: "top-right",
           style: {
             background: "#fff",
@@ -154,10 +180,13 @@ const SignUp = () => {
           },
         });
 
-        // Reset form and show verification message
+        // Reset form
         reset();
-        setRegistrationSuccess(true);
-        setGeneralError(""); // Clear any previous errors
+
+        // Navigate to login with success parameter
+        setTimeout(() => {
+          navigate("/login?registered=true");
+        }, 2000);
       }
     } catch (error) {
       console.error("Registration error:", error);
@@ -165,29 +194,11 @@ const SignUp = () => {
       // Handle different error scenarios
       if (error.response) {
         // Server responded with error status
-        let errorMessage = "";
-        
-        if (error.response.data && typeof error.response.data === 'object') {
-          // Handle field-specific errors
-          const errors = error.response.data;
-          if (errors.email) {
-            errorMessage = `Email Error: ${errors.email}`;
-          } else if (errors.username) {
-            errorMessage = `Username Error: ${errors.username}`;
-          } else if (errors.password) {
-            errorMessage = `Password Error: ${errors.password}`;
-          } else if (errors.first_name) {
-            errorMessage = `First Name Error: ${errors.first_name}`;
-          } else if (errors.last_name) {
-            errorMessage = `Last Name Error: ${errors.last_name}`;
-          } else {
-            // Handle general errors
-            errorMessage = errors.message || errors.error || errors.detail || "Registration failed. Please try again";
-          }
-        } else {
-          errorMessage = error.response.data || "Registration failed. Please try again";
-        }
-        
+        const errorMessage =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.response?.data?.detail ||
+          "Registration failed. Please try again";
         setGeneralError(errorMessage);
         toast.error(errorMessage, {
           duration: 4000,
@@ -260,35 +271,6 @@ const SignUp = () => {
             </div>
           )}
 
-          {/* Email Verification Message */}
-          {registrationSuccess && (
-            <div className="mb-[2vh] p-4 bg-blue-100 text-blue-700 rounded-lg border border-blue-200">
-              <div className="text-center">
-                <h4 className="font-medium text-lg mb-2">Email Verification Required</h4>
-                <p className="text-sm mb-3">
-                  We've sent a verification link to your email address. You must verify your email before you can log in.
-                </p>
-                <div className="p-2 bg-blue-50 rounded border border-blue-200 mb-3">
-                  <p className="text-xs text-blue-600">
-                    <strong>Important:</strong> Check your spam/junk folder if you don't see the email.
-                  </p>
-                </div>
-                <div className="flex justify-center space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRegistrationSuccess(false);
-                      setGeneralError("");
-                    }}
-                    className="text-sm bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Create Another Account
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit(onSubmit)} className="w-full">
             <div className="flex flex-col sm:flex-row gap-4 mb-[3vh]">
               <div className="w-full sm:w-1/2">
@@ -345,26 +327,22 @@ const SignUp = () => {
               )}
             </div>
 
-            <div className="mb-4">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address *
-              </label>
+            <div className="mb-[3vh]">
               <input
                 type="email"
-                id="email"
-                {...register("email")}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                placeholder="Enter your email address"
-                required
+                placeholder="Email Address"
+                {...register("email", {
+                  onChange: handleInputChange,
+                })}
+                className={`w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent ${
+                  errors.email ? "border-red-400" : "border-gray-400"
+                }`}
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.email.message}
+                </p>
               )}
-              <p className="mt-1 text-xs text-gray-500">
-                We accept emails from Gmail, Yahoo, Hotmail, Outlook, and other legitimate providers.
-                <br />
-                <strong>Note:</strong> Disposable, temporary, or fake email addresses are not allowed.
-              </p>
             </div>
 
             <div className="mb-[2vh] relative">
