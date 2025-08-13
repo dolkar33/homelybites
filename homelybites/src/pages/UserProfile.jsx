@@ -325,11 +325,7 @@ const UserProfile = () => {
       newErrors.username = "Username is required";
     }
     
-    if (!userInfo.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(userInfo.email)) {
-      newErrors.email = "Email format is invalid";
-    }
+    // Email validation removed - email changes not allowed
 
     // If new_password is provided, current_password must also be provided
     if (userInfo.new_password) {
@@ -829,15 +825,14 @@ const UserProfile = () => {
                     <input
                       type="email"
                       value={userInfo.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none ${
-                        errors.email ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      placeholder="Enter your email"
+                      readOnly
+                      disabled
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base bg-gray-100 cursor-not-allowed"
+                      placeholder="Email address"
                     />
-                    {errors.email && (
-                      <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-                    )}
+                    <p className="text-sm text-gray-500 mt-1">
+                      Email address changes are not allowed. Please contact support if you need to change your email.
+                    </p>
                   </div>
                   
                   {/* First Name */}

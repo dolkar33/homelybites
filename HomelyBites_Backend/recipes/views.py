@@ -1389,45 +1389,9 @@ def update_user_profile(request):
                 return Response({'error': 'Last name cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
             user.last_name = request.data['last_name'].strip()
         
-        # Handle email change with verification
-        if 'email' in request.data:
-            new_email = request.data['email'].strip()
-            if not new_email:
-                return Response({'error': 'Email cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Check if email is actually changing
-            if new_email.lower() != user.email.lower():
-                # Check if new email already exists
-                if CustomUser.objects.exclude(id=user.id).filter(email=new_email).exists():
-                    return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
-                
-                # Validate new email format and deliverability
-                from .serializers import UserRegistrationSerializer
-                try:
-                    # Use the same email validation as registration
-                    email_validator = UserRegistrationSerializer()
-                    validated_email = email_validator.validate_email(new_email)
-                except Exception as e:
-                    return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-                
-                # Create email change request and send verification
-                from .services import EmailVerificationService
-                change_request = EmailVerificationService.create_email_change_request(user, validated_email)
-                
-                if EmailVerificationService.send_email_change_verification(user, change_request):
-                    return Response({
-                        'message': 'Email change request sent! Please check your current email for verification link.',
-                        'email_change_pending': True,
-                        'new_email': validated_email,
-                        'note': 'Your email will be updated after you click the verification link sent to your current email address.'
-                    }, status=status.HTTP_200_OK)
-                else:
-                    return Response({
-                        'error': 'Failed to send email change verification. Please try again.'
-                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            # If email is not changing, just update it
-            else:
-                user.email = new_email
+        # Handle email change - DISABLED
+        # Email changes are not allowed in user profiles
+        # Users must contact support to change their email address
         
         user.save()
         
