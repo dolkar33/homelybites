@@ -13,24 +13,27 @@ const RecipeSearchPage = () => {
   const [ingredientInput, setIngredientInput] = useState("");
   const [selectedIngredients, setSelectedIngredients] = useState([]);
 
-  // State for filters
+  // State for filters - single cuisine selection
   const [filters, setFilters] = useState({
-    cuisineType: {
-      Chinese: false,
-      Vietnamese: false,
-      Indian: false,
-      Korean: false,
-      American: false,
-      European: false,
-      Mexican: false,
-      Thai: false,
-    },
+    cuisineType: "", // holds the selected cuisine name or empty string
     calories: {
       lowCal: false,
       midCal: false,
       highCal: false,
     },
   });
+
+  // Available cuisine options
+  const cuisineOptions = [
+    "Chinese",
+    "Vietnamese",
+    "Indian",
+    "Korean",
+    "American",
+    "European",
+    "Mexican",
+    "Thai",
+  ];
 
   // State for recipes and favorites
   const [recipes, setRecipes] = useState([]);
@@ -106,18 +109,28 @@ const RecipeSearchPage = () => {
     handleSearch(newIngredients);
   };
 
-  // Function to handle filter changes
-  const handleFilterChange = (category, item) => {
+  // Cuisine: radio-like behavior with toggle (click again to deselect)
+  const handleCuisineChange = (cuisine) => {
     const newFilters = {
       ...filters,
-      [category]: {
-        ...filters[category],
-        [item]: !filters[category][item],
+      cuisineType: filters.cuisineType === cuisine ? "" : cuisine,
+    };
+    setFilters(newFilters);
+    setTimeout(() => {
+      handleSearch(selectedIngredients, 1, newFilters);
+    }, 0);
+  };
+
+  // Calories: keep checkbox behavior
+  const handleCalorieFilterChange = (item) => {
+    const newFilters = {
+      ...filters,
+      calories: {
+        ...filters.calories,
+        [item]: !filters.calories[item],
       },
     };
     setFilters(newFilters);
-
-    // Use setTimeout to ensure state is updated before search
     setTimeout(() => {
       handleSearch(selectedIngredients, 1, newFilters);
     }, 0);
@@ -126,16 +139,7 @@ const RecipeSearchPage = () => {
   // Function to clear all filters
   const clearFilters = () => {
     const clearedFilters = {
-      cuisineType: {
-        Chinese: false,
-        Vietnamese: false,
-        Indian: false,
-        Korean: false,
-        American: false,
-        European: false,
-        Mexican: false,
-        Thai: false,
-      },
+      cuisineType: "",
       calories: {
         lowCal: false,
         midCal: false,
@@ -143,8 +147,6 @@ const RecipeSearchPage = () => {
       },
     };
     setFilters(clearedFilters);
-
-    // Use setTimeout to ensure state is updated before search
     setTimeout(() => {
       handleSearch(selectedIngredients, 1, clearedFilters);
     }, 0);
@@ -202,77 +204,54 @@ const RecipeSearchPage = () => {
   ) => {
     const baseUrl = `${baseURL}api/recipes/`;
     const params = new URLSearchParams();
-
-    // Add ingredients as search parameter if any
-    if (ingredients.length > 0) {
-      params.append("search", ingredients.join(","));
+  
+    // Ingredients
+    if (Array.isArray(ingredients) && ingredients.length > 0) {
+      params.append("ingredients", ingredients.join(","));
     }
-
-    // Add calorie filters
-    const selectedCalories = Object.keys(filtersToUse.calories).filter(
-      (key) => filtersToUse.calories[key]
-    );
-
-    // Handle multiple calorie selections properly
+  
+    // Calories
+    const selectedCalories = Object.entries(filtersToUse.calories || {})
+      .filter(([, v]) => !!v)
+      .map(([k]) => k);
     if (selectedCalories.length > 0) {
-      if (
-        selectedCalories.includes("lowCal") &&
-        selectedCalories.length === 1
-      ) {
+      if (selectedCalories.length === 1 && selectedCalories[0] === "lowCal") {
         params.append("max_calories", "300");
-      } else if (
-        selectedCalories.includes("midCal") &&
-        selectedCalories.length === 1
-      ) {
+      } else if (selectedCalories.length === 1 && selectedCalories[0] === "midCal") {
         params.append("min_calories", "300");
         params.append("max_calories", "600");
-      } else if (
-        selectedCalories.includes("highCal") &&
-        selectedCalories.length === 1
-      ) {
+      } else if (selectedCalories.length === 1 && selectedCalories[0] === "highCal") {
         params.append("min_calories", "600");
       } else {
-        // Multiple selections - find the range
+        // Multiple selections - compute range union bounds
         let minCal = 0;
-        let maxCal = 10000; // High number as max
-
+        let maxCal = 10000;
         if (selectedCalories.includes("lowCal")) {
           maxCal = Math.min(maxCal, 300);
         }
         if (selectedCalories.includes("midCal")) {
-          minCal = Math.max(
-            minCal,
-            selectedCalories.includes("lowCal") ? 0 : 300
-          );
-          maxCal = selectedCalories.includes("highCal")
-            ? 10000
-            : Math.min(maxCal, 600);
+          minCal = Math.max(minCal, selectedCalories.includes("lowCal") ? 0 : 300);
+          maxCal = selectedCalories.includes("highCal") ? 10000 : Math.min(maxCal, 600);
         }
         if (selectedCalories.includes("highCal")) {
-          minCal = Math.max(
-            minCal,
-            selectedCalories.includes("midCal") ? 300 : 600
-          );
+          minCal = Math.max(minCal, selectedCalories.includes("midCal") ? 300 : 600);
         }
-
-        if (minCal > 0) params.append("min_calories", minCal.toString());
-        if (maxCal < 10000) params.append("max_calories", maxCal.toString());
+        if (minCal > 0) params.append("min_calories", String(minCal));
+        if (maxCal < 10000) params.append("max_calories", String(maxCal));
       }
     }
-
-    // Add cuisine filters (OR semantics): comma-separated list in a single param
-    const selectedCuisines = Object.keys(filtersToUse.cuisineType)
-      .filter((key) => filtersToUse.cuisineType[key])
-      .map((name) => name.toLowerCase().replace(/\s+/g, "_"));
-    if (selectedCuisines.length > 0) {
-      params.append("cuisine", selectedCuisines.join(","));
+  
+    // Cuisine: only append if there's actually a cuisine selected
+    if (filtersToUse.cuisineType && filtersToUse.cuisineType.trim()) {
+      params.append(
+        "cuisine",
+        String(filtersToUse.cuisineType).toLowerCase().replace(/\s+/g, "_")
+      );
     }
-
-    // Add pagination
-    if (page > 1) {
-      params.append("page", page.toString());
-    }
-
+  
+    // Pagination
+    if (page > 1) params.append("page", String(page));
+  
     return `${baseUrl}?${params.toString()}`;
   };
 
@@ -282,12 +261,14 @@ const RecipeSearchPage = () => {
     page = 1,
     filtersToUse = filters
   ) => {
-    // If no ingredients are selected and no filters are applied, clear the recipes
+    // Check if we have any search criteria
+    const hasIngredients = ingredients.length > 0;
     const hasFilters =
-      Object.values(filtersToUse.cuisineType).some(Boolean) ||
+      !!filtersToUse.cuisineType ||
       Object.values(filtersToUse.calories).some(Boolean);
-
-    if (ingredients.length === 0 && !hasFilters) {
+  
+    // If no ingredients are selected and no filters are applied, clear the recipes
+    if (!hasIngredients && !hasFilters) {
       setRecipes([]);
       const emptyPg = { count: 0, next: null, previous: null, currentPage: 1 };
       setPagination(emptyPg);
@@ -295,26 +276,26 @@ const RecipeSearchPage = () => {
       localStorage.removeItem("searchPageState");
       return;
     }
-
+  
     setLoading(true);
-
+  
     try {
       const apiUrl = buildApiUrl(ingredients, page, filtersToUse);
       console.log("Fetching from:", apiUrl); // For debugging
-
+  
       const response = await fetch(apiUrl, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
       });
-
+  
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
+  
       const data = await response.json();
-
+  
       // Transform API data to match our component's expected format
       const transformedRecipes = data.results.map((recipe) => ({
         id: recipe.id,
@@ -341,11 +322,11 @@ const RecipeSearchPage = () => {
         instructions: recipe.instructions,
         slug: recipe.slug,
       }));
-
+  
       // Compute new recipes list for UI and caching
       const newRecipes = page === 1 ? transformedRecipes : [...recipes, ...transformedRecipes];
       setRecipes(newRecipes);
-
+  
       const newPagination = {
         count: data.count,
         next: data.next,
@@ -353,7 +334,7 @@ const RecipeSearchPage = () => {
         currentPage: page,
       };
       setPagination(newPagination);
-
+  
       // Persist minimal search state (avoid storing large recipe arrays)
       try {
         localStorage.setItem(
@@ -425,9 +406,7 @@ const goToRecipe = (recipe) => {
 
   // Helpers: cuisine grouping for sectioned rendering
   const getSelectedCuisines = () =>
-    Object.entries(filters.cuisineType)
-      .filter(([, checked]) => checked)
-      .map(([name]) => name.toLowerCase());
+    filters.cuisineType ? [String(filters.cuisineType).toLowerCase()] : [];
 
   const normalize = (s) => String(s || "").trim().toLowerCase();
 
@@ -471,90 +450,98 @@ const goToRecipe = (recipe) => {
           <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 xl:gap-6">
             {/* Filter Section */}
             <div className="w-full lg:w-64 xl:w-72 flex-shrink-0 mb-4">
-              <div className="bg-white rounded-lg lg:rounded-2xl xl:rounded-3xl shadow-md lg:shadow-lg p-3 sm:p-4 lg:p-5 xl:p-6">
-                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-3 sm:mb-4 lg:mb-6">
-                  Filters
-                </h2>
-
-                {/* Cuisine Type */}
+              <div className="bg-white rounded-lg shadow p-4 sm:p-5 lg:p-6">
+                {/* Cuisine Type - single-select radio with toggle */}
                 <div className="mb-3 sm:mb-4 lg:mb-6">
                   <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">
                     Cuisine Type
                   </h3>
                   <div className="space-y-1.5 sm:space-y-2 lg:space-y-3">
-                    {Object.keys(filters.cuisineType).map((cuisine) => (
-                      <label key={cuisine} className="flex items-center">
+                    {cuisineOptions.map((cuisine) => (
+                      <label key={cuisine} className="flex items-center cursor-pointer select-none">
+                        {/* Visually hidden native control for accessibility */}
                         <input
-                          type="checkbox"
-                          checked={filters.cuisineType[cuisine]}
-                          onChange={() =>
-                            handleFilterChange("cuisineType", cuisine)
-                          }
-                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
+                          type="radio"
+                          name="cuisine"
+                          checked={filters.cuisineType === cuisine}
+                          onChange={() => {}}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleCuisineChange(cuisine);
+                          }}
+                          className="sr-only peer"
                         />
-                        <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
+                        {/* Custom radio visual */}
+                        <span
+                          className="inline-flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full border-2 border-gray-300
+                                     peer-checked:border-accent peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent"
+                          aria-hidden="true"
+                        >
+                          <span className="h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-transparent peer-checked:bg-accent"></span>
+                        </span>
+                        <span
+                          className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleCuisineChange(cuisine);
+                          }}
+                        >
                           {cuisine}
                         </span>
                       </label>
                     ))}
                   </div>
-                </div>
 
-                {/* Calories */}
-                <div className="mb-3 sm:mb-4 lg:mb-6">
-                  <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">
-                    Calories
-                  </h3>
-                  <div className="space-y-1.5 sm:space-y-2 lg:space-y-3">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={filters.calories.lowCal}
-                        onChange={() =>
-                          handleFilterChange("calories", "lowCal")
-                        }
-                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
-                      />
-                      <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
-                        Low Cal (&lt;300)
-                      </span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={filters.calories.midCal}
-                        onChange={() =>
-                          handleFilterChange("calories", "midCal")
-                        }
-                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
-                      />
-                      <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
-                        Mid Cal(300-600)
-                      </span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={filters.calories.highCal}
-                        onChange={() =>
-                          handleFilterChange("calories", "highCal")
-                        }
-                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
-                      />
-                      <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
-                        High Cal (&gt;600)
-                      </span>
-                    </label>
+                  {/* Calories */}
+                  <div className="mb-3 sm:mb-4 lg:mb-6">
+                    <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">
+                      Calories
+                    </h3>
+                    <div className="space-y-1.5 sm:space-y-2 lg:space-y-3">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={filters.calories.lowCal}
+                          onChange={() => handleCalorieFilterChange("lowCal")}
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
+                        />
+                        <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
+                          Low Cal (&lt;300)
+                        </span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={filters.calories.midCal}
+                          onChange={() => handleCalorieFilterChange("midCal")}
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
+                        />
+                        <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
+                          Mid Cal (300-600)
+                        </span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={filters.calories.highCal}
+                          onChange={() => handleCalorieFilterChange("highCal")}
+                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
+                        />
+                        <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
+                          High Cal (&gt;600)
+                        </span>
+                      </label>
+                    </div>
                   </div>
-                </div>
 
-                {/* Clear Filters Button */}
-                <button
-                  onClick={clearFilters}
-                  className="w-full py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-lg lg:rounded-xl hover:bg-red-500 transition-colors font-medium"
-                >
-                  Clear Filters
-                </button>
+                  {/* Clear Filters Button */}
+                  <button
+                    onClick={clearFilters}
+                    className="w-full py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-lg lg:rounded-xl hover:bg-red-500 transition-colors font-medium"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -611,7 +598,7 @@ const goToRecipe = (recipe) => {
                   </p>
                 </div>
               ) : selectedIngredients.length === 0 &&
-                !Object.values(filters.cuisineType).some(Boolean) &&
+                !filters.cuisineType &&
                 !Object.values(filters.calories).some(Boolean) ? (
                 <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
                   <div className="max-w-md mx-auto">
@@ -842,17 +829,17 @@ const goToRecipe = (recipe) => {
               {recipes.length === 0 &&
                 !loading &&
                 (selectedIngredients.length > 0 ||
-                  Object.values(filters.cuisineType).some(Boolean) ||
+                  !!filters.cuisineType ||
                   Object.values(filters.calories).some(Boolean)) && (
-                  <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
-                    <p className="text-sm sm:text-base lg:text-lg text-gray-600">
-                      No recipes found matching your criteria.
-                    </p>
-                    <p className="text-xs sm:text-sm lg:text-base text-gray-500 mt-2 sm:mt-2 lg:mt-3">
-                      Try adjusting your filters or ingredients.
-                    </p>
-                  </div>
-                )}
+                <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
+                  <p className="text-sm sm:text-base lg:text-lg text-gray-600">
+                    No recipes found matching your criteria.
+                  </p>
+                  <p className="text-xs sm:text-sm lg:text-base text-gray-500 mt-2 sm:mt-2 lg:mt-3">
+                    Try adjusting your filters or ingredients.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
