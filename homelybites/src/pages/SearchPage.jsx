@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Heart, Star, ChevronLeft, X, User } from "lucide-react";
+import { Heart, ChevronLeft, X, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Navbar from "../components/Navbar";
@@ -15,12 +15,14 @@ const RecipeSearchPage = () => {
   // State for filters
   const [filters, setFilters] = useState({
     cuisineType: {
-      Italian: false,
+      Chinese: false,
+      Vietnamese: false,
       Indian: false,
+      Korean: false,
+      American: false,
+      European: false,
+      Mexican: false,
       Thai: false,
-      Turkish: false,
-      Caribbean: false,
-      "Central American": false,
     },
     calories: {
       lowCal: false,
@@ -423,20 +425,6 @@ const RecipeSearchPage = () => {
     }
   };
 
-  const renderStars = (rating) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        size={16}
-        className={`${
-          i < Math.floor(rating)
-            ? "fill-yellow-400 text-yellow-400"
-            : "text-gray-300"
-        }`}
-      />
-    ));
-  };
-
   useEffect(() => {
     const alertShown = sessionStorage.getItem("alertShown");
     if (!alertShown) {
@@ -547,29 +535,7 @@ const RecipeSearchPage = () => {
                   </div>
                 </div>
 
-                {/* Difficulty */}
-                <div className="mb-3 sm:mb-4 lg:mb-6">
-                  <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">
-                    Difficulty
-                  </h3>
-                  <div className="space-y-1.5 sm:space-y-2 lg:space-y-3">
-                    {Object.keys(filters.difficulty).map((level) => (
-                      <label key={level} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.difficulty[level]}
-                          onChange={() =>
-                            handleFilterChange("difficulty", level)
-                          }
-                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
-                        />
-                        <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
-                          {level.charAt(0).toUpperCase() + level.slice(1)}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                {/* Difficulty filter removed per request */}
 
                 {/* Clear Filters Button */}
                 <button
@@ -635,8 +601,7 @@ const RecipeSearchPage = () => {
                 </div>
               ) : selectedIngredients.length === 0 &&
                 !Object.values(filters.cuisineType).some(Boolean) &&
-                !Object.values(filters.calories).some(Boolean) &&
-                !Object.values(filters.difficulty).some(Boolean) ? (
+                !Object.values(filters.calories).some(Boolean) ? (
                 <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
                   <div className="max-w-md mx-auto">
                     <div className="w-12 sm:w-14 lg:w-16 xl:w-20 h-12 sm:h-14 lg:h-16 xl:h-20 mx-auto mb-3 sm:mb-4 bg-gray-100 rounded-full flex items-center justify-center">
@@ -705,15 +670,6 @@ const RecipeSearchPage = () => {
                             </div>
 
                             <div className="flex items-center mb-2 sm:mb-2 lg:mb-3">
-                              <div className="flex mr-2">
-                                {renderStars(recipe.rating)}
-                              </div>
-                              <span className="text-xs sm:text-sm lg:text-base text-gray-600 mr-2">
-                                {recipe.rating}
-                              </span>
-                              <span className="text-xs sm:text-sm lg:text-base text-gray-400">
-                                |
-                              </span>
                               <span className="text-xs sm:text-sm lg:text-base text-gray-600 ml-2">
                                 {recipe.difficulty.charAt(0).toUpperCase() +
                                   recipe.difficulty.slice(1)}
@@ -773,8 +729,7 @@ const RecipeSearchPage = () => {
                 !loading &&
                 (selectedIngredients.length > 0 ||
                   Object.values(filters.cuisineType).some(Boolean) ||
-                  Object.values(filters.calories).some(Boolean) ||
-                  Object.values(filters.difficulty).some(Boolean)) && (
+                  Object.values(filters.calories).some(Boolean)) && (
                   <div className="text-center py-8 sm:py-10 lg:py-12 xl:py-16">
                     <p className="text-sm sm:text-base lg:text-lg text-gray-600">
                       No recipes found matching your criteria.
