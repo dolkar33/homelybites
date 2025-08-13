@@ -5,10 +5,13 @@ const RecipeCard = ({ image, title, description, slug }) => {
   const navigate = useNavigate();
 
   const handleNavigateToRecipe = () => {
+    console.log("RecipeCard clicked!", { title, slug, image });
     if (slug) {
+      console.log("Navigating to:", `/recipes/${slug}`);
       navigate(`/recipes/${slug}`);
     } else {
-      navigate('/recipepage'); // fallback
+      console.log("No slug found, navigating to fallback");
+      navigate("/recipepage"); // fallback
     }
   };
 
@@ -21,7 +24,7 @@ const RecipeCard = ({ image, title, description, slug }) => {
       />
       <div className="font-bold text-base mb-1">{title}</div>
       <div className="text-xs text-gray-500 mb-8">{description}</div>
-      <button 
+      <button
         onClick={handleNavigateToRecipe}
         className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-accent flex items-center justify-center shadow hover:opacity-80 transition"
       >

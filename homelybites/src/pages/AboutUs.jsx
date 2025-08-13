@@ -32,7 +32,7 @@ const AboutUs = () => {
                 they want. We not only aim to make people use home ingredients
                 and reduce food waste.<br></br> */}
                 <div className="text-accent font-sans font-extrabold block  sm:inline sm:mt-0 sm:ml-2">
-                  "YApping is left to be filled here".
+                  "Where Healthy Meets Homely.".
                 </div>
               </p>
             </div>

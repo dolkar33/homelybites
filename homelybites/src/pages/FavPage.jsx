@@ -3,6 +3,7 @@ import { Heart, Star, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import BackButton from "../components/BackButton";
 
 const FavPage = () => {
   const [favorites, setFavorites] = useState([]);
@@ -107,6 +108,7 @@ const FavPage = () => {
 
       <div className="flex-1 w-full px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         <div className="max-w-4xl mx-auto">
+            <BackButton />
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-6 sm:mb-8 lg:mb-10 text-center">
             My Favorite Recipes
           </h1>

@@ -107,7 +107,7 @@ const CommunityPage = () => {
 
         
         try {
-          const catRes = await axiosInstance.get("/api/categories/");
+          const catRes = await axiosInstance.get("/api/community-categories/");
           setCategories(catRes.data.results || []);
         } catch {}
 

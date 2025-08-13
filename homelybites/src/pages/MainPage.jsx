@@ -5,7 +5,7 @@ import RecipeCard from "../components/RecipeCard";
 import CategoryButton from "../components/CategoryButton";
 import { recipeAPI } from "../services/MainPageURL";
 import { Carousel, Row, Col } from "react-bootstrap";
-
+import api from "../services/api";
 import axios from "axios";
 
 const categories = ["breakfast", "soup", "lunch", "dessert", "salad", "drink"];
@@ -20,6 +20,16 @@ const categoryMapping = {
   drink: "Beverage",
 };
 
+// Map frontend categories to backend category slugs (preferred for API)
+const categorySlugMapping = {
+  breakfast: "breakfast",
+  soup: "soup",
+  lunch: "main-course",
+  dessert: "dessert",
+  salad: "salad",
+  drink: "beverage",
+};
+
 const MainPage = () => {
   const [activeCategory, setActiveCategory] = useState(categories[0]);
   const [recipes, setRecipes] = useState([]);
@@ -27,6 +37,7 @@ const MainPage = () => {
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [recentRecipes, setRecentRecipes] = useState([]);
   const [recommendedRecipes, setRecommendedRecipes] = useState([]);
 
   useEffect(() => {
@@ -40,9 +51,9 @@ const MainPage = () => {
           setRecipes([]);
         }
 
-        // Fixed: Use getRecipeByCategory (without 's')
+        // Use slug mapping for backend fetch
         const mappedCategory =
-          categoryMapping[activeCategory] || activeCategory;
+          categorySlugMapping[activeCategory] || activeCategory;
         const { items, count, next } = await recipeAPI.getRecipeByCategory(
           mappedCategory,
           page
@@ -58,44 +69,30 @@ const MainPage = () => {
           `(total: ${count})`
         );
 
-        let filteredRecipes = items || [];
-
-        // Client-side filtering as backup if backend doesn't filter properly
-        if (filteredRecipes.length > 0) {
-          const categoryKeywords = {
-            breakfast: ["breakfast", "morning", "brunch"],
-            soup: ["soup"],
-            lunch: ["main course", "lunch", "main dish", "dinner"],
-            dessert: ["dessert", "sweet"],
-            salad: ["salad"],
-            drink: ["beverage", "drink", "cocktail", "smoothie"],
-          };
-
-          const keywords = categoryKeywords[activeCategory] || [activeCategory];
-
-          filteredRecipes = filteredRecipes.filter((recipe) => {
-            return recipe.categories.some((cat) =>
-              keywords.some(
-                (keyword) =>
-                  cat.name.toLowerCase().includes(keyword.toLowerCase()) ||
-                  cat.slug.toLowerCase().includes(keyword.toLowerCase())
-              )
-            );
-          });
-
-          console.log(
-            `🎯 Filtered recipes for ${activeCategory}:`,
-            filteredRecipes.length
-          );
+        // Debug: Log the first recipe to see its structure
+        if (items && items.length > 0) {
+          console.log("🔍 First recipe structure:", items[0]);
+          console.log("🔍 First recipe slug:", items[0].slug);
         }
+        // Strict client-side filter to ensure only specific category recipes are shown
+        const received = items || [];
+        const expectedSlug = (categorySlugMapping[activeCategory] || "").toLowerCase();
+        const expectedName = (categoryMapping[activeCategory] || "").toLowerCase();
+        const finalList = received.filter((recipe) => {
+          const cats = Array.isArray(recipe.categories) ? recipe.categories : [];
+          return cats.some((cat) =>
+            (cat.slug || "").toLowerCase() === expectedSlug ||
+            (cat.name || "").toLowerCase() === expectedName
+          );
+        });
 
-        if (filteredRecipes && filteredRecipes.length > 0) {
+        if (finalList && finalList.length > 0) {
           if (page === 1) {
             // First page - replace recipes
-            setRecipes(filteredRecipes);
+            setRecipes(finalList);
           } else {
             // Subsequent pages - append recipes
-            setRecipes((prevRecipes) => [...prevRecipes, ...filteredRecipes]);
+            setRecipes((prevRecipes) => [...prevRecipes, ...finalList]);
           }
 
           // Use backend pagination hint
@@ -121,6 +118,8 @@ const MainPage = () => {
 
     fetchRecipesByCategory();
   }, [activeCategory, page]);
+
+  
 
   const loadMore = () => {
     if (!loading && hasMore) {
@@ -177,25 +176,35 @@ const MainPage = () => {
     return (
       <>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {recipeList.map((recipe, index) => (
-            <RecipeCard
-              key={recipe.id || index}
-              image={recipe.image_url || recipe.image}
-              title={recipe.title}
-              description={
-                recipe.description ||
-                `${recipe.prep_time ? `Prep: ${recipe.prep_time}min` : ""}${
-                  recipe.prep_time && recipe.cook_time ? " | " : ""
-                }${recipe.cook_time ? `Cook: ${recipe.cook_time}min` : ""}` ||
-                recipe.difficulty ||
-                "Delicious recipe"
-              }
-              slug={recipe.slug}
-              difficulty={recipe.difficulty}
-              prepTime={recipe.prep_time}
-              cookTime={recipe.cook_time}
-            />
-          ))}
+          {recipeList.map((recipe, index) => {
+            console.log(`🎯 Rendering RecipeCard ${index}:`, {
+              title: recipe.title,
+              slug: recipe.slug,
+              fallbackSlug:
+                recipe.slug || recipe.title.toLowerCase().replace(/\s+/g, "-"),
+            });
+            return (
+              <RecipeCard
+                key={recipe.id || index}
+                image={recipe.image_url || recipe.image}
+                title={recipe.title}
+                description={
+                  recipe.description ||
+                  `${recipe.prep_time ? `Prep: ${recipe.prep_time}min` : ""}${
+                    recipe.prep_time && recipe.cook_time ? " | " : ""
+                  }${recipe.cook_time ? `Cook: ${recipe.cook_time}min` : ""}` ||
+                  recipe.difficulty ||
+                  "Delicious recipe"
+                }
+                slug={
+                  recipe.slug || recipe.title.toLowerCase().replace(/\s+/g, "-")
+                }
+                difficulty={recipe.difficulty}
+                prepTime={recipe.prep_time}
+                cookTime={recipe.cook_time}
+              />
+            );
+          })}
         </div>
         {recipeList === recipes && hasMore && (
           <div className="text-center mt-8">
@@ -315,6 +324,9 @@ const MainPage = () => {
               </div>
             )}
           </div>
+
+       
+         
         </div>
         <Footer />
       </div>

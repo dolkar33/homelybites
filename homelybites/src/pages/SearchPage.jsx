@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+
 import { Heart, ChevronLeft, X, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import api, { baseURL } from "../config/axiosInstance";
 
 const RecipeSearchPage = () => {
   const navigate = useNavigate();
@@ -41,9 +43,44 @@ const RecipeSearchPage = () => {
     currentPage: 1,
   });
 
-  // Initialize recipes - Start with empty array
+  // Initialize recipes - Start with empty array only if no saved state
   useEffect(() => {
-    setRecipes([]);
+    try {
+      const saved = localStorage.getItem("searchPageState");
+      if (!saved) setRecipes([]);
+    } catch {
+      setRecipes([]);
+    }
+  }, []);
+
+  // Restore previous search state on mount (ingredients, filters, pagination) and show cached recipes quickly
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("searchPageState") || "null");
+      if (saved) {
+        // Show a small cached list instantly (up to 10)
+        const recents = Array.isArray(saved.recentRecipes) ? saved.recentRecipes : [];
+        setRecipes(recents);
+
+        // Restore inputs and filters
+        const ingr = Array.isArray(saved.ingredients) ? saved.ingredients : [];
+        setSelectedIngredients(ingr);
+        if (saved.filters) setFilters(saved.filters);
+        if (saved.pagination) setPagination(saved.pagination);
+
+        // Background refresh using restored state
+        const page = saved.pagination?.currentPage || 1;
+        setTimeout(() => {
+          handleSearch(ingr, page, saved.filters || filters);
+        }, 0);
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      restoredRef.current = true;
+    }
   }, []);
 
   // Function to add ingredient
@@ -113,40 +150,47 @@ const RecipeSearchPage = () => {
     }, 0);
   };
 
-  // Function to toggle favorites
-  const toggleFavorite = (recipeId) => {
+  // Function to toggle favorites and persist to localStorage
+  const toggleFavorite = (recipe) => {
+    if (!recipe) return;
+    const recipeId = recipe.id;
     const newFavorites = new Set(favorites);
-    const recipeToToggle = recipes.find((r) => r.id === recipeId);
-    let updatedFavoriteRecipes = [];
 
-    // Load existing favorites from localStorage
-    const savedFavorites = localStorage.getItem("favoriteRecipeDetails");
-    if (savedFavorites) {
-      updatedFavoriteRecipes = JSON.parse(savedFavorites);
-    }
+    // Load existing storage
+    const storedIds = JSON.parse(localStorage.getItem("favoriteRecipes") || "[]");
+    const storedDetails = JSON.parse(localStorage.getItem("favoriteRecipeDetails") || "[]");
 
     if (newFavorites.has(recipeId)) {
+      // Unfavorite
       newFavorites.delete(recipeId);
-      // Remove from localStorage
-      updatedFavoriteRecipes = updatedFavoriteRecipes.filter(
-        (r) => r.id !== recipeId
-      );
+      const updatedIds = storedIds.filter((id) => id !== recipeId);
+      const updatedDetails = storedDetails.filter((r) => r.id !== recipeId);
+      localStorage.setItem("favoriteRecipes", JSON.stringify(updatedIds));
+      localStorage.setItem("favoriteRecipeDetails", JSON.stringify(updatedDetails));
     } else {
+      // Favorite
       newFavorites.add(recipeId);
-      // Add to localStorage if not already present
-      if (
-        recipeToToggle &&
-        !updatedFavoriteRecipes.some((r) => r.id === recipeId)
-      ) {
-        // Save minimal data or all relevant fields
-        updatedFavoriteRecipes.push(recipeToToggle);
-      }
+      const updatedIds = Array.from(new Set([...storedIds, recipeId]));
+      // Avoid duplicates, store minimal necessary fields already used by FavPage
+      const minimal = {
+        id: recipe.id,
+        name: recipe.name || recipe.title,
+        title: recipe.title || recipe.name,
+        image: recipe.image,
+        image_url: recipe.image, // in case FavPage expects image_url
+        rating: recipe.rating || 4.5,
+        difficulty: recipe.difficulty,
+        calories: recipe.calories,
+        cuisineType: recipe.cuisineType,
+        description: recipe.description,
+        slug: recipe.slug,
+      };
+      const detailsMap = new Map(storedDetails.map((r) => [r.id, r]));
+      detailsMap.set(recipeId, minimal);
+      localStorage.setItem("favoriteRecipes", JSON.stringify(updatedIds));
+      localStorage.setItem("favoriteRecipeDetails", JSON.stringify(Array.from(detailsMap.values())));
     }
-    // Save updated favorites to localStorage
-    localStorage.setItem(
-      "favoriteRecipeDetails",
-      JSON.stringify(updatedFavoriteRecipes)
-    );
+
     setFavorites(newFavorites);
   };
 
@@ -156,7 +200,7 @@ const RecipeSearchPage = () => {
     page = 1,
     filtersToUse = filters
   ) => {
-    const baseUrl = "http://localhost:8000/api/recipes/";
+    const baseUrl = `${baseURL}api/recipes/`;
     const params = new URLSearchParams();
 
     // Add ingredients as search parameter if any
@@ -216,14 +260,13 @@ const RecipeSearchPage = () => {
       }
     }
 
-    // Add cuisine filters - check if your API supports this parameter
-    const selectedCuisines = Object.keys(filtersToUse.cuisineType).filter(
-      (key) => filtersToUse.cuisineType[key]
-    );
-    selectedCuisines.forEach((cuisine) => {
-      // Try different parameter names based on your API
-      params.append("cuisine", cuisine.toLowerCase().replace(" ", "_"));
-    });
+    // Add cuisine filters (OR semantics): comma-separated list in a single param
+    const selectedCuisines = Object.keys(filtersToUse.cuisineType)
+      .filter((key) => filtersToUse.cuisineType[key])
+      .map((name) => name.toLowerCase().replace(/\s+/g, "_"));
+    if (selectedCuisines.length > 0) {
+      params.append("cuisine", selectedCuisines.join(","));
+    }
 
     // Add pagination
     if (page > 1) {
@@ -246,7 +289,10 @@ const RecipeSearchPage = () => {
 
     if (ingredients.length === 0 && !hasFilters) {
       setRecipes([]);
-      setPagination({ count: 0, next: null, previous: null, currentPage: 1 });
+      const emptyPg = { count: 0, next: null, previous: null, currentPage: 1 };
+      setPagination(emptyPg);
+      // Clear persisted search state
+      localStorage.removeItem("searchPageState");
       return;
     }
 
@@ -296,18 +342,32 @@ const RecipeSearchPage = () => {
         slug: recipe.slug,
       }));
 
-      if (page === 1) {
-        setRecipes(transformedRecipes);
-      } else {
-        setRecipes((prev) => [...prev, ...transformedRecipes]);
-      }
+      // Compute new recipes list for UI and caching
+      const newRecipes = page === 1 ? transformedRecipes : [...recipes, ...transformedRecipes];
+      setRecipes(newRecipes);
 
-      setPagination({
+      const newPagination = {
         count: data.count,
         next: data.next,
         previous: data.previous,
         currentPage: page,
-      });
+      };
+      setPagination(newPagination);
+
+      // Persist minimal search state (avoid storing large recipe arrays)
+      try {
+        localStorage.setItem(
+          "searchPageState",
+          JSON.stringify({
+            ingredients,
+            filters: filtersToUse,
+            pagination: newPagination,
+            recentRecipes: newRecipes.slice(0, 10),
+          })
+        );
+      } catch (e) {
+        // ignore storage errors
+      }
     } catch (error) {
       console.error("Search failed:", error);
       // Show user-friendly error message
@@ -320,15 +380,21 @@ const RecipeSearchPage = () => {
     }
   };
 
-  // Function to navigate to recipe details
-  const goToRecipe = (slug) => {
-    // Navigate to recipe details page using the recipe ID
-    if (slug) {
-      navigate(`/recipes/${slug}`);
-    } else {
-      navigate("/recipes"); // fallback
-    }
-  };
+
+ // Function to navigate to recipe details
+const goToRecipe = (recipe) => {
+  // Prefer slug to match route "/recipes/:slug"
+  const slug = recipe?.slug || (recipe?.title && recipe.title.toLowerCase().replace(/\s+/g, "-"));
+  if (slug) {
+    navigate(`/recipes/${slug}`);
+  } else if (recipe?.id) {
+
+    navigate(`/recipepage?id=${recipe.id}`);
+  } else {
+    console.warn("No valid identifier found for recipe:", recipe);
+    navigate("/recipe"); 
+  }
+};
 
   // Function to load more recipes (pagination)
   const loadMoreRecipes = () => {
@@ -347,11 +413,46 @@ const RecipeSearchPage = () => {
     }
   }, []);
 
-  // Load favorites from storage
+  // Load favorites from localStorage so state syncs across pages
   useEffect(() => {
-    // Using in-memory storage for this environment
-    setFavorites(new Set());
+    try {
+      const saved = JSON.parse(localStorage.getItem("favoriteRecipes") || "[]");
+      setFavorites(new Set(Array.isArray(saved) ? saved : []));
+    } catch (e) {
+      setFavorites(new Set());
+    }
   }, []);
+
+  // Helpers: cuisine grouping for sectioned rendering
+  const getSelectedCuisines = () =>
+    Object.entries(filters.cuisineType)
+      .filter(([, checked]) => checked)
+      .map(([name]) => name.toLowerCase());
+
+  const normalize = (s) => String(s || "").trim().toLowerCase();
+
+  const recipeHasCuisine = (recipe, cuisineLc) => {
+    const rcuisines = (recipe.cuisines || []).map((c) =>
+      normalize(c.name || c)
+    );
+    if (rcuisines.includes(cuisineLc)) return true;
+    // Optional: treat categories as cuisine proxies
+    const rcats = Array.isArray(recipe.categories) ? recipe.categories : [];
+    const catNames = rcats.map((c) => normalize(c.name));
+    const catSlugs = rcats.map((c) => normalize(c.slug));
+    return catNames.includes(cuisineLc) || catSlugs.includes(cuisineLc);
+  };
+
+  const groupRecipesByCuisine = (recipesArr, cuisinesLc) => {
+    const grouped = {};
+    cuisinesLc.forEach((c) => (grouped[c] = []));
+    for (const r of recipesArr) {
+      for (const c of cuisinesLc) {
+        if (recipeHasCuisine(r, c)) grouped[c].push(r);
+      }
+    }
+    return grouped;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -360,7 +461,7 @@ const RecipeSearchPage = () => {
       {/* Back Button at the top */}
       <div className="w-full px-3 sm:px-4 lg:px-6 py-2">
         <div className="max-w-7xl mx-auto">
-          <BackButton />
+        <BackButton />
         </div>
       </div>
 
@@ -540,85 +641,188 @@ const RecipeSearchPage = () => {
                     </div>
                   )}
 
-                  <div className="space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6 mb-4 sm:mb-5">
-                    {recipes.map((recipe) => (
-                      <div
-                        key={recipe.id}
-                        className="bg-white rounded-lg shadow-md lg:shadow-lg p-3 sm:p-4 lg:p-5 xl:p-6 hover:shadow-lg lg:hover:shadow-xl transition-shadow flex gap-3 sm:gap-4 lg:gap-5 xl:gap-6"
-                      >
-                        <div className="flex-shrink-0">
-                          <img
-                            src={recipe.image}
-                            alt={recipe.name}
-                            className="w-16 sm:w-20 lg:w-24 xl:w-32 h-16 sm:h-20 lg:h-24 xl:h-32 object-cover rounded-lg"
-                            onError={(e) => {
-                              e.target.src =
-                                "https://via.placeholder.com/150x150?text=Recipe";
-                            }}
-                          />
-                        </div>
-
-                        <div className="flex-1 flex flex-col justify-between min-h-0">
-                          <div>
-                            <div className="flex items-start justify-between mb-1 sm:mb-2">
-                              <h3 className="font-bold text-sm sm:text-base lg:text-lg xl:text-xl leading-tight pr-2">
-                                {recipe.name}
-                              </h3>
-                              <button
-                                onClick={() => toggleFavorite(recipe.id)}
-                                className="flex-shrink-0 p-1 hover:bg-gray-50 rounded-full transition-colors"
-                              >
-                                <Heart
-                                  size={20}
-                                  className={`sm:w-6 sm:h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 ${
-                                    favorites.has(recipe.id)
-                                      ? "fill-red-500 text-red-500"
-                                      : "text-gray-400"
-                                  }`}
+                  {(() => {
+                    const cuisinesSelected = getSelectedCuisines();
+                    if (cuisinesSelected.length === 0) {
+                      return (
+                        <div className="space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6 mb-4 sm:mb-5">
+                          {recipes.map((recipe) => (
+                            <div
+                              key={recipe.id}
+                              className="bg-white rounded-lg shadow-md lg:shadow-lg p-3 sm:p-4 lg:p-5 xl:p-6 hover:shadow-lg lg:hover:shadow-xl transition-shadow flex gap-3 sm:gap-4 lg:gap-5 xl:gap-6"
+                            >
+                              <div className="flex-shrink-0">
+                                <img
+                                  src={recipe.image}
+                                  alt={recipe.name}
+                                  className="w-16 sm:w-20 lg:w-24 xl:w-32 h-16 sm:h-20 lg:h-24 xl:h-32 object-cover rounded-lg"
+                                  onError={(e) => {
+                                    e.target.src =
+                                      "https://via.placeholder.com/150x150?text=Recipe";
+                                  }}
                                 />
-                              </button>
-                            </div>
+                              </div>
 
-                            <div className="flex items-center mb-2 sm:mb-2 lg:mb-3">
-                              <span className="text-xs sm:text-sm lg:text-base text-gray-600 mr-2">
-                                {recipe.difficulty.charAt(0).toUpperCase() +
-                                  recipe.difficulty.slice(1)}
-                              </span>
-                              <span className="text-xs sm:text-sm lg:text-base text-gray-400 mx-2">
-                                |
-                              </span>
-                              <span className="text-xs sm:text-sm lg:text-base text-gray-600">
-                                {recipe.calories}
-                              </span>
-                            </div>
+                              <div className="flex-1 flex flex-col justify-between min-h-0">
+                                <div>
+                                  <div className="flex items-start justify-between mb-1 sm:mb-2">
+                                    <h3 className="font-bold text-sm sm:text-base lg:text-lg xl:text-xl leading-tight pr-2">
+                                      {recipe.name}
+                                    </h3>
+                                    <button
+                                      onClick={() => toggleFavorite(recipe)}
+                                      className="flex-shrink-0 p-1 hover:bg-gray-50 rounded-full transition-colors"
+                                    >
+                                      <Heart
+                                        size={20}
+                                        className={`sm:w-6 sm:h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 ${
+                                          favorites.has(recipe.id)
+                                            ? "fill-red-500 text-red-500"
+                                            : "text-gray-400"
+                                        }`}
+                                      />
+                                    </button>
+                                  </div>
 
-                            <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-2 sm:mb-2 lg:mb-3">
-                              {recipe.description}
-                            </p>
+                                  <div className="flex items-center mb-2 sm:mb-2 lg:mb-3">
+                                    <span className="text-xs sm:text-sm lg:text-base text-gray-600 mr-2">
+                                      {recipe.difficulty.charAt(0).toUpperCase() +
+                                        recipe.difficulty.slice(1)}
+                                    </span>
+                                    <span className="text-xs sm:text-sm lg:text-base text-gray-400 mx-2">
+                                      |
+                                    </span>
+                                    <span className="text-xs sm:text-sm lg:text-base text-gray-600">
+                                      {recipe.calories}
+                                    </span>
+                                  </div>
 
-                            {/* Cuisine and Categories */}
-                            <div className="flex flex-wrap gap-1 mb-2">
-                              {recipe.cuisines.map((cuisine) => (
-                                <span
-                                  key={cuisine.id}
-                                  className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                                  <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-2 sm:mb-2 lg:mb-3">
+                                    {recipe.description}
+                                  </p>
+
+                                  {/* Cuisine and Categories */}
+                                  <div className="flex flex-wrap gap-1 mb-2">
+                                    {recipe.cuisines.map((cuisine) => (
+                                      <span
+                                        key={cuisine.id}
+                                        className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                                      >
+                                        {cuisine.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* FIXED: Updated button click handler */}
+                                <button
+                                  onClick={() => goToRecipe(recipe)}
+                                  className="self-start px-3 sm:px-4 lg:px-5 xl:px-6 py-1 sm:py-1.5 lg:py-2 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors"
                                 >
-                                  {cuisine.name}
-                                </span>
-                              ))}
+                                  Go to Recipe
+                                </button>
+                              </div>
                             </div>
-                          </div>
-
-                          <button
-                            onClick={() => goToRecipe(recipe.slug)}
-                            className="self-start px-3 sm:px-4 lg:px-5 xl:px-6 py-1 sm:py-1.5 lg:py-2 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors"
-                          >
-                            Go to Recipe
-                          </button>
+                          ))}
                         </div>
+                      );
+                    }
+
+                    const grouped = groupRecipesByCuisine(recipes, cuisinesSelected);
+                    return (
+                      <div className="space-y-8">
+                        {Object.entries(grouped).map(([cuisineLc, list]) => (
+                          list.length > 0 && (
+                            <div key={cuisineLc}>
+                              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-3 capitalize">
+                                {cuisineLc} Recipes
+                              </h2>
+                              <div className="space-y-3 sm:space-y-4 lg:space-y-5 xl:space-y-6 mb-4 sm:mb-5">
+                                {list.map((recipe) => (
+                                  <div
+                                    key={recipe.id}
+                                    className="bg-white rounded-lg shadow-md lg:shadow-lg p-3 sm:p-4 lg:p-5 xl:p-6 hover:shadow-lg lg:hover:shadow-xl transition-shadow flex gap-3 sm:gap-4 lg:gap-5 xl:gap-6"
+                                  >
+                                    <div className="flex-shrink-0">
+                                      <img
+                                        src={recipe.image}
+                                        alt={recipe.name}
+                                        className="w-16 sm:w-20 lg:w-24 xl:w-32 h-16 sm:h-20 lg:h-24 xl:h-32 object-cover rounded-lg"
+                                        onError={(e) => {
+                                          e.target.src =
+                                            "https://via.placeholder.com/150x150?text=Recipe";
+                                        }}
+                                      />
+                                    </div>
+
+                                    <div className="flex-1 flex flex-col justify-between min-h-0">
+                                      <div>
+                                        <div className="flex items-start justify-between mb-1 sm:mb-2">
+                                          <h3 className="font-bold text-sm sm:text-base lg:text-lg xl:text-xl leading-tight pr-2">
+                                            {recipe.name}
+                                          </h3>
+                                          <button
+                                            onClick={() => toggleFavorite(recipe)}
+                                            className="flex-shrink-0 p-1 hover:bg-gray-50 rounded-full transition-colors"
+                                          >
+                                            <Heart
+                                              size={20}
+                                              className={`sm:w-6 sm:h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 ${
+                                                favorites.has(recipe.id)
+                                                  ? "fill-red-500 text-red-500"
+                                                  : "text-gray-400"
+                                              }`}
+                                            />
+                                          </button>
+                                        </div>
+
+                                        <div className="flex items-center mb-2 sm:mb-2 lg:mb-3">
+                                          <span className="text-xs sm:text-sm lg:text-base text-gray-600 mr-2">
+                                            {recipe.difficulty.charAt(0).toUpperCase() +
+                                              recipe.difficulty.slice(1)}
+                                          </span>
+                                          <span className="text-xs sm:text-sm lg:text-base text-gray-400 mx-2">
+                                            |
+                                          </span>
+                                          <span className="text-xs sm:text-sm lg:text-base text-gray-600">
+                                            {recipe.calories}
+                                          </span>
+                                        </div>
+
+                                        <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-2 sm:mb-2 lg:mb-3">
+                                          {recipe.description}
+                                        </p>
+
+                                        {/* Cuisine and Categories */}
+                                        <div className="flex flex-wrap gap-1 mb-2">
+                                          {recipe.cuisines.map((cuisine) => (
+                                            <span
+                                              key={cuisine.id}
+                                              className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                                            >
+                                              {cuisine.name}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      {/* FIXED: Updated button click handler */}
+                                      <button
+                                        onClick={() => goToRecipe(recipe)}
+                                        className="self-start px-3 sm:px-4 lg:px-5 xl:px-6 py-1 sm:py-1.5 lg:py-2 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors"
+                                      >
+                                        Go to Recipe
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
 
                   {/* Load More Button */}
                   {pagination.next && (

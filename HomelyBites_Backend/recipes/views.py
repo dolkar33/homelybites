@@ -7,6 +7,173 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
 from .services import SpoonacularService
 
+# Spoonacular-compatible intolerance keys and mapper (keeps CSV model intact)
+SPOONACULAR_ALLERGY_SLUGS = {
+    'dairy', 'egg', 'gluten', 'grain', 'peanut', 'seafood', 'sesame', 'shellfish', 'soy', 'sulfite', 'tree nut', 'wheat'
+}
+
+# Conservative keyword map for common allergens (err on side of caution)
+ALLERGEN_KEYWORDS = {
+    'peanut': ['peanut', 'peanuts', 'peanut butter', 'groundnut', 'ground nut', 'ground nuts'],
+    'tree nut': ['almond', 'walnut', 'cashew', 'hazelnut', 'pistachio', 'pecan', 'macadamia', 'brazil nut', 'pine nut', 'tree nut', 'nut'],
+    'dairy': ['dairy', 'milk', 'cheese', 'yogurt', 'butter', 'cream', 'ghee', 'paneer', 'curd', 'whey', 'casein','mozzarella'],
+    'egg': ['egg', 'eggs', 'albumen', 'mayonnaise', 'mayo', 'omelet', 'omelette', 'scrambled egg', 'fried egg', 'boiled egg'],
+    'gluten': ['gluten', 'wheat', 'barley', 'rye', 'farina', 'spelt', 'semolina', 'malt'],
+    'grain': ['grain', 'grains', 'millet', 'sorghum', 'oats', 'corn', 'maize', 'rice bran'],
+    'seafood': ['seafood', 'fish', 'anchovy', 'salmon', 'tuna', 'mackerel', 'cod', 'sardine', 'trout', 'prawn', 'shrimp', 'crab', 'lobster'],
+    'shellfish': ['shellfish', 'shrimp', 'prawn', 'crab', 'lobster', 'scallop', 'clam', 'oyster', 'mussel'],
+    'sesame': ['sesame', 'tahini'],
+    'soy': ['soy', 'soya', 'soybean', 'soy sauce', 'edamame', 'tofu', 'tempeh', 'miso'],
+    'sulfite': ['sulfite', 'sulphite'],
+    'wheat': ['wheat', 'atta', 'semolina', 'durum', 'spelt']
+}
+
+# Conservative keyword map for dietary preferences (exclude recipes containing these)
+DIETARY_KEYWORDS = {
+    # Vegan: exclude all animal products
+    'vegan': [
+        # meats
+        'chicken','beef','pork','lamb','mutton','turkey','bacon','ham','sausage','meat',
+        # fish/seafood
+        'fish','salmon','tuna','mackerel','cod','sardine','anchovy','shrimp','prawn','crab','lobster','shellfish','oyster','clam','mussel',
+        # dairy/eggs/honey
+        'milk','cheese','butter','cream','yogurt','ghee','paneer','whey','casein','egg','eggs','mayonnaise','mayo','honey'
+    ],
+    # Vegetarian: exclude meat and fish/seafood, allow dairy/eggs
+    'vegetarian': [
+        'chicken','beef','pork','lamb','mutton','turkey','bacon','ham','sausage','meat',
+        'fish','salmon','tuna','mackerel','cod','sardine','anchovy','shrimp','prawn','crab','lobster','shellfish','oyster','clam','mussel'
+    ],
+    
+    # Gluten-free: overlaps with allergy keywords
+    'gluten-free': ['gluten','wheat','barley','rye','farina','spelt','semolina','malt','durum','atta'],
+    
+    # Keto: exclude high-carb staples conservatively
+    'keto': ['sugar','honey','rice','bread','pasta','noodle','noodles','potato','corn','maize','oats'],
+    
+}
+
+def _map_allergy_to_slug(token: str):
+    if not token:
+        return None
+    t = str(token).strip().lower()
+    if t in SPOONACULAR_ALLERGY_SLUGS:
+        return t
+    # Map common phrases/variants to canonical slugs
+    if 'peanut' in t or 'groundnut' in t or 'ground nut' in t:
+        return 'peanut'
+    if 'tree nut' in t or (('nut' in t) and ('peanut' not in t)) or any(n in t for n in ['almond','walnut','cashew','hazelnut','pistachio','pecan','macadamia','brazil nut','pine nut']):
+        return 'tree nut'
+    if 'shellfish' in t or any(x in t for x in ['shrimp','prawn','crab','lobster','scallop','clam','oyster','mussel']):
+        return 'shellfish'
+    if 'seafood' in t or any(x in t for x in ['fish','anchovy','salmon','tuna','mackerel','cod','sardine','trout']):
+        return 'seafood'
+    if 'milk' in t or 'dairy' in t or any(x in t for x in ['cheese','yogurt','butter','cream','whey','casein','ghee','paneer','curd']):
+        return 'dairy'
+    if 'egg' in t or any(x in t for x in ['albumen','mayonnaise','mayo','omelet','omelette','scrambled egg','fried egg','boiled egg']):
+        return 'egg'
+    if 'gluten' in t or any(x in t for x in ['barley','rye','farina','spelt','semolina','malt']):
+        return 'gluten'
+    if 'grain' in t or any(x in t for x in ['millet','sorghum','oats','corn','maize','rice bran']):
+        return 'grain'
+    if 'sesame' in t or 'tahini' in t:
+        return 'sesame'
+    if 'soy' in t or 'soya' in t or any(x in t for x in ['soybean','soy sauce','edamame','tofu','tempeh','miso']):
+        return 'soy'
+    if 'sulfite' in t or 'sulphite' in t:
+        return 'sulfite'
+    if 'wheat' in t or 'durum' in t or 'atta' in t:
+        return 'wheat'
+    return None
+
+def _get_user_allergy_slugs(user):
+    """Return a set of normalized allergy slugs for an authenticated user."""
+    try:
+        profile = UserProfile.objects.get(user=user)
+    except UserProfile.DoesNotExist:
+        return set()
+    if not profile.allergies:
+        return set()
+    slugs = set()
+    for a in str(profile.allergies).split(','):
+        slug = _map_allergy_to_slug(a)
+        if slug:
+            slugs.add(slug)
+    return slugs
+
+def _filter_recipes_by_allergies(qs, user, allergy_filter_toggle: bool = True):
+    """
+    Given a Recipe queryset, exclude recipes that contain any ingredient keyword
+    matching the authenticated user's allergy slugs. Returns (filtered_qs, counts_dict).
+    """
+    if not allergy_filter_toggle or not user or not user.is_authenticated:
+        return qs, {"original": qs.count(), "safe": qs.count(), "filtered_out": 0}
+    slugs = _get_user_allergy_slugs(user)
+    if not slugs:
+        return qs, {"original": qs.count(), "safe": qs.count(), "filtered_out": 0}
+    keywords = []
+    for s in slugs:
+        keywords.extend(ALLERGEN_KEYWORDS.get(s, [s]))
+    # Build OR query of all keywords, then exclude
+    original_count = qs.count()
+    if keywords:
+        or_q = Q()
+        for kw in set(k.strip().lower() for k in keywords if k):
+            # Check ingredients, title, and instructions to be conservative
+            or_q |= Q(ingredients__icontains=kw) | Q(title__icontains=kw) | Q(instructions__icontains=kw)
+        qs = qs.exclude(or_q)
+    safe_count = qs.count()
+    return qs, {"original": original_count, "safe": safe_count, "filtered_out": max(original_count - safe_count, 0)}
+
+def _get_user_diet_slugs(user):
+    """Return normalized diet slugs from `UserProfile.dietary_preference` (comma-separated)."""
+    try:
+        profile = UserProfile.objects.get(user=user)
+    except UserProfile.DoesNotExist:
+        return []
+    if not profile.dietary_preference:
+        return []
+    raw = [p.strip().lower() for p in str(profile.dietary_preference).split(',') if p and str(p).strip()]
+    # Normalize common variants
+    norm = []
+    for d in raw:
+        # Map common synonyms/misspellings
+        if d in ('vegan','vegetarian','pescatarian','gluten-free','dairy-free','keto','paleo'):
+            norm.append(d)
+        elif d in ('veg', 'veggie', 'vegeterian', 'pure veg'):
+            norm.append('vegetarian')
+        elif d == 'gluten free':
+            norm.append('gluten-free')
+        elif d == 'dairy free':
+            norm.append('dairy-free')
+    # Deduplicate while preserving order
+    seen = set()
+    result = []
+    for d in norm:
+        if d not in seen:
+            seen.add(d)
+            result.append(d)
+    return result
+
+def _filter_recipes_by_diet(qs, user, diet_filter_toggle: bool = True):
+    """Exclude recipes that violate the user's dietary preferences."""
+    if not diet_filter_toggle or not user or not user.is_authenticated:
+        return qs, {"original": qs.count(), "safe": qs.count(), "filtered_out": 0}
+    diets = _get_user_diet_slugs(user)
+    if not diets:
+        return qs, {"original": qs.count(), "safe": qs.count(), "filtered_out": 0}
+    keywords = []
+    for d in diets:
+        keywords.extend(DIETARY_KEYWORDS.get(d, []))
+    original_count = qs.count()
+    if keywords:
+        or_q = Q()
+        for kw in set(k.strip().lower() for k in keywords if k):
+            or_q |= Q(ingredients__icontains=kw) | Q(title__icontains=kw) | Q(instructions__icontains=kw)
+        qs = qs.exclude(or_q)
+    safe_count = qs.count()
+    return qs, {"original": original_count, "safe": safe_count, "filtered_out": max(original_count - safe_count, 0)}
+
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
 def import_cuisines_from_spoonacular(request):
@@ -23,6 +190,7 @@ def import_cuisines_from_spoonacular(request):
         "added": cuisines_added,
         "count": len(cuisines_added)
     })
+
 from django.utils import timezone
 from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage, Cuisine
 from .serializers import (
@@ -67,6 +235,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['title', 'ingredients']
     ordering_fields = ['created_at', 'title', 'prep_time', 'cook_time']
+    _allergy_counts = None
+    _diet_counts = None
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -75,6 +245,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Recipe.objects.all()
+        # For detail routes (e.g., retrieve/interact/track_view), avoid applying
+        # global filters that could hide an existing recipe by slug.
+        # DRF calls get_queryset() for get_object() lookups as well.
+        if self.kwargs.get(self.lookup_field):
+            return queryset
         
         # Filter by category if provided (accept slug or display name, case-insensitive)
         category_param = self.request.query_params.get('category', None)
@@ -110,7 +285,36 @@ class RecipeViewSet(viewsets.ModelViewSet):
         if max_calories is not None:
             queryset = queryset.filter(calories__isnull=False).extra(where=["CAST(calories as INTEGER) <= %s"], params=[int(max_calories)])
 
+        # Apply allergy filtering for authenticated users unless disabled
+        try:
+            toggle = self.request.query_params.get('allergy_filter', 'true').lower() not in ('false', '0', 'no')
+        except Exception:
+            toggle = True
+        queryset, a_counts = _filter_recipes_by_allergies(queryset, self.request.user, toggle)
+        # Apply diet filter
+        try:
+            diet_toggle = self.request.query_params.get('diet_filter', 'true').lower() not in ('false','0','no')
+        except Exception:
+            diet_toggle = True
+        queryset, d_counts = _filter_recipes_by_diet(queryset, self.request.user, diet_toggle)
+        # stash counts for list() to emit headers
+        self._allergy_counts = a_counts
+        self._diet_counts = d_counts
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        counts = getattr(self, '_allergy_counts', None)
+        if counts:
+            response["X-Allergy-Original"] = str(counts.get('original', 0))
+            response["X-Allergy-Safe"] = str(counts.get('safe', 0))
+            response["X-Allergy-Filtered"] = str(counts.get('filtered_out', 0))
+        dcounts = getattr(self, '_diet_counts', None)
+        if dcounts:
+            response["X-Diet-Original"] = str(dcounts.get('original', 0))
+            response["X-Diet-Safe"] = str(dcounts.get('safe', 0))
+            response["X-Diet-Filtered"] = str(dcounts.get('filtered_out', 0))
+        return response
     
     @action(detail=False, methods=['get'])
     def recommended(self, request):
@@ -154,23 +358,55 @@ class RecipeViewSet(viewsets.ModelViewSet):
                     interaction_count=Count('user_interactions')
                 ).order_by('-interaction_count')
 
+        # Apply allergy filter before pagination
+        toggle = request.query_params.get('allergy_filter', 'true').lower() not in ('false', '0', 'no')
+        qs, a_counts = _filter_recipes_by_allergies(qs, request.user, toggle)
+        diet_toggle = request.query_params.get('diet_filter', 'true').lower() not in ('false','0','no')
+        qs, d_counts = _filter_recipes_by_diet(qs, request.user, diet_toggle)
+
         page = self.paginate_queryset(qs)
         if page is not None:
             serializer = RecipeListSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            resp = self.get_paginated_response(serializer.data)
+            resp["X-Allergy-Original"] = str(a_counts.get('original', 0))
+            resp["X-Allergy-Safe"] = str(a_counts.get('safe', 0))
+            resp["X-Allergy-Filtered"] = str(a_counts.get('filtered_out', 0))
+            resp["X-Diet-Original"] = str(d_counts.get('original', 0))
+            resp["X-Diet-Safe"] = str(d_counts.get('safe', 0))
+            resp["X-Diet-Filtered"] = str(d_counts.get('filtered_out', 0))
+            return resp
 
         serializer = RecipeListSerializer(qs, many=True)
-        return Response(serializer.data)
+        resp = Response(serializer.data)
+        resp["X-Allergy-Original"] = str(a_counts.get('original', 0))
+        resp["X-Allergy-Safe"] = str(a_counts.get('safe', 0))
+        resp["X-Allergy-Filtered"] = str(a_counts.get('filtered_out', 0))
+        resp["X-Diet-Original"] = str(d_counts.get('original', 0))
+        resp["X-Diet-Safe"] = str(d_counts.get('safe', 0))
+        resp["X-Diet-Filtered"] = str(d_counts.get('filtered_out', 0))
+        return resp
     
     @action(detail=False, methods=['get'])
     def popular(self, request):
         """Get most popular recipes based on user interactions."""
         popular_recipes = Recipe.objects.annotate(
             interaction_count=Count('user_interactions')
-        ).order_by('-interaction_count')[:10]
-        
-        serializer = RecipeListSerializer(popular_recipes, many=True)
-        return Response(serializer.data)
+        ).order_by('-interaction_count')
+        # Apply allergy filtering and then limit
+        toggle = request.query_params.get('allergy_filter', 'true').lower() not in ('false', '0', 'no')
+        filtered_qs, a_counts = _filter_recipes_by_allergies(popular_recipes, request.user, toggle)
+        diet_toggle = request.query_params.get('diet_filter', 'true').lower() not in ('false','0','no')
+        filtered_qs, d_counts = _filter_recipes_by_diet(filtered_qs, request.user, diet_toggle)
+        filtered_qs = filtered_qs[:10]
+        serializer = RecipeListSerializer(filtered_qs, many=True)
+        resp = Response(serializer.data)
+        resp["X-Allergy-Original"] = str(a_counts.get('original', 0))
+        resp["X-Allergy-Safe"] = str(a_counts.get('safe', 0))
+        resp["X-Allergy-Filtered"] = str(a_counts.get('filtered_out', 0))
+        resp["X-Diet-Original"] = str(d_counts.get('original', 0))
+        resp["X-Diet-Safe"] = str(d_counts.get('safe', 0))
+        resp["X-Diet-Filtered"] = str(d_counts.get('filtered_out', 0))
+        return resp
     
     @action(detail=False, methods=['get'])
     def by_category(self, request):
@@ -184,9 +420,20 @@ class RecipeViewSet(viewsets.ModelViewSet):
             
         category = get_object_or_404(Category, slug=category_slug)
         recipes = Recipe.objects.filter(categories=category)
+        toggle = request.query_params.get('allergy_filter', 'true').lower() not in ('false', '0', 'no')
+        recipes, a_counts = _filter_recipes_by_allergies(recipes, request.user, toggle)
+        diet_toggle = request.query_params.get('diet_filter', 'true').lower() not in ('false','0','no')
+        recipes, d_counts = _filter_recipes_by_diet(recipes, request.user, diet_toggle)
         
         serializer = RecipeListSerializer(recipes, many=True)
-        return Response(serializer.data)
+        resp = Response(serializer.data)
+        resp["X-Allergy-Original"] = str(a_counts.get('original', 0))
+        resp["X-Allergy-Safe"] = str(a_counts.get('safe', 0))
+        resp["X-Allergy-Filtered"] = str(a_counts.get('filtered_out', 0))
+        resp["X-Diet-Original"] = str(d_counts.get('original', 0))
+        resp["X-Diet-Safe"] = str(d_counts.get('safe', 0))
+        resp["X-Diet-Filtered"] = str(d_counts.get('filtered_out', 0))
+        return resp
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def interact(self, request, slug=None):
@@ -465,6 +712,7 @@ def login_user(request):
             'error': 'Invalid credentials'
         }, status=status.HTTP_401_UNAUTHORIZED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageSerializer
@@ -588,13 +836,56 @@ def search_recipes(request):
         params["maxCalories"] = max_calories
     
     # Add user preferences to search parameters if available
+    mapped_allergy_slugs = []
+    # Prefer canonical allergy slugs from profile using shared helper
+    if request.user and request.user.is_authenticated:
+        try:
+            mapped_allergy_slugs = list(_get_user_allergy_slugs(request.user))
+        except Exception:
+            mapped_allergy_slugs = []
     if user_preferences:
         if user_preferences['dietary_preference']:
-            params["diet"] = user_preferences['dietary_preference']
-        if user_preferences['allergies']:
-            params["intolerances"] = ",".join(user_preferences['allergies'])
+            # Normalize dietary preferences to supported Spoonacular diet param
+            diet_str = str(user_preferences['dietary_preference']).strip().lower()
+            # Map common synonyms to Spoonacular-supported diets
+            if diet_str in ('veg', 'veggie', 'vegeterian', 'pure veg'):
+                diet_str = 'vegetarian'
+            params["diet"] = diet_str
+        if mapped_allergy_slugs:
+            params["intolerances"] = ",".join(mapped_allergy_slugs)
+            print("Applied intolerances:", params["intolerances"])  # debug
         if user_preferences['favorite_categories']:
             params["cuisine"] = ",".join(user_preferences['favorite_categories'])
+
+    # Respect allergy filter toggle (default true)
+    allergy_filter_toggle = request.query_params.get('allergy_filter', 'true').lower() not in ('false', '0', 'no')
+
+    # Add intolerances if filtering is enabled and we have slugs
+    if allergy_filter_toggle and mapped_allergy_slugs:
+        params["intolerances"] = ",".join(mapped_allergy_slugs)
+        print("Applied intolerances (toggle):", params["intolerances"])  # debug
+
+    # Diet filter toggle (default true)
+    diet_filter_toggle = request.query_params.get('diet_filter', 'true').lower() not in ('false','0','no')
+
+    # Build diet keywords from user's dietary preferences
+    diet_keywords = []
+    # 1) Authenticated user profile slugs
+    if diet_filter_toggle and request.user and request.user.is_authenticated:
+        try:
+            diet_slugs = _get_user_diet_slugs(request.user)
+            for d in diet_slugs:
+                diet_keywords.extend(DIETARY_KEYWORDS.get(d, []))
+        except Exception:
+            pass
+    # 2) Optional explicit diet= query param (works even if unauthenticated)
+    if diet_filter_toggle:
+        qp_diet = (request.query_params.get('diet') or '').strip().lower()
+        if qp_diet:
+            if qp_diet in ('veg','veggie','vegeterian','pure veg'):
+                qp_diet = 'vegetarian'
+            params["diet"] = qp_diet
+            diet_keywords.extend(DIETARY_KEYWORDS.get(qp_diet, []))
 
     # Call Spoonacular API
     response = requests.get(endpoint, params=params)
@@ -603,11 +894,61 @@ def search_recipes(request):
     def process_results(data):
         filtered_results = []
         calories_list = []
+        # counts
+        original_total = len(data.get('results', []) or [])
+        allergy_filtered_count = 0
+        diet_filtered_count = 0
+        # Build keyword lists for allergens using shared mapping for consistency
+        allergen_keywords = {}
+        if allergy_filter_toggle and mapped_allergy_slugs:
+            for slug in mapped_allergy_slugs:
+                kws = ALLERGEN_KEYWORDS.get(slug, [])
+                if kws:
+                    allergen_keywords[slug] = kws
         for recipe in data.get('results', []):
-            # Strictly filter by dietary preference if set
-            if user_preferences.get('dietary_preference') and not dietary_fallback:
-                if user_preferences['dietary_preference'].lower() not in [d.lower() for d in recipe.get('diets', [])]:
-                    continue
+            # Build common text fields
+            title_text = str(recipe.get('title', '')).lower()
+            ing_text = ''
+            if 'extendedIngredients' in recipe:
+                names = []
+                for ing in recipe.get('extendedIngredients', []) or []:
+                    try:
+                        names.append(str(ing.get('name', '')))
+                        names.append(str(ing.get('original', '')))
+                    except Exception:
+                        pass
+                ing_text = " ".join(names).lower()
+            instructions_text = ''
+            try:
+                if 'analyzedInstructions' in recipe and recipe['analyzedInstructions']:
+                    steps = recipe['analyzedInstructions'][0].get('steps', [])
+                    instructions_text = " ".join(str(s.get('step','')) for s in steps).lower()
+            except Exception:
+                pass
+
+            # Independent violation checks for counts
+            diet_violates = False
+            if diet_filter_toggle and diet_keywords:
+                haystack_diet = f"{title_text} {ing_text} {instructions_text}"
+                diet_violates = any(kw in haystack_diet for kw in set(k.strip().lower() for k in diet_keywords if k))
+
+            allergy_violates = False
+            if allergy_filter_toggle and allergen_keywords:
+                haystack = f"{title_text} {ing_text}"
+                for slug, kws in allergen_keywords.items():
+                    if any(kw in haystack for kw in kws):
+                        allergy_violates = True
+                        break
+
+            # Update counts
+            if diet_violates:
+                diet_filtered_count += 1
+            if allergy_violates:
+                allergy_filtered_count += 1
+
+            # Exclude if any violation
+            if diet_violates or allergy_violates:
+                continue
             # Format recipe timing information
             recipe['timing'] = {
                 'prep_time': f"{recipe.get('preparationMinutes', 0)} Minutes",
@@ -669,11 +1010,22 @@ def search_recipes(request):
             filtered_results.append(recipe)
         min_calories = min(calories_list) if calories_list else None
         max_calories = max(calories_list) if calories_list else None
-        return filtered_results, min_calories, max_calories
+        # Prepare counts similar to queryset approach (independent per filter)
+        allergy_counts = {
+            'original': original_total,
+            'safe': original_total - allergy_filtered_count if allergy_filter_toggle else original_total,
+            'filtered_out': allergy_filtered_count if allergy_filter_toggle else 0,
+        }
+        diet_counts = {
+            'original': original_total,
+            'safe': original_total - diet_filtered_count if diet_filter_toggle else original_total,
+            'filtered_out': diet_filtered_count if diet_filter_toggle else 0,
+        }
+        return filtered_results, min_calories, max_calories, allergy_counts, diet_counts
 
     if response.status_code == 200:
         data = response.json()
-        filtered_results, min_calories, max_calories = process_results(data)
+        filtered_results, min_calories, max_calories, allergy_counts, diet_counts = process_results(data)
         # If no results and dietary preference was set, try fallback
         if not filtered_results and user_preferences.get('dietary_preference'):
             dietary_fallback = True
@@ -681,20 +1033,34 @@ def search_recipes(request):
             response2 = requests.get(endpoint, params=params)
             if response2.status_code == 200:
                 data2 = response2.json()
-                filtered_results, min_calories, max_calories = process_results(data2)
-                return Response({
+                filtered_results, min_calories, max_calories, allergy_counts, diet_counts = process_results(data2)
+                resp = Response({
                     'results': filtered_results,
                     'min_calories': min_calories,
                     'max_calories': max_calories,
                     'dietary_fallback': True,
                     'message': 'No recipes found matching your dietary preference. Showing all results instead.'
                 })
-        return Response({
+                resp["X-Allergy-Original"] = str(allergy_counts.get('original', 0))
+                resp["X-Allergy-Safe"] = str(allergy_counts.get('safe', 0))
+                resp["X-Allergy-Filtered"] = str(allergy_counts.get('filtered_out', 0))
+                resp["X-Diet-Original"] = str(diet_counts.get('original', 0))
+                resp["X-Diet-Safe"] = str(diet_counts.get('safe', 0))
+                resp["X-Diet-Filtered"] = str(diet_counts.get('filtered_out', 0))
+                return resp
+        resp = Response({
             'results': filtered_results,
             'min_calories': min_calories,
             'max_calories': max_calories,
             'dietary_fallback': False
         })
+        resp["X-Allergy-Original"] = str(allergy_counts.get('original', 0))
+        resp["X-Allergy-Safe"] = str(allergy_counts.get('safe', 0))
+        resp["X-Allergy-Filtered"] = str(allergy_counts.get('filtered_out', 0))
+        resp["X-Diet-Original"] = str(diet_counts.get('original', 0))
+        resp["X-Diet-Safe"] = str(diet_counts.get('safe', 0))
+        resp["X-Diet-Filtered"] = str(diet_counts.get('filtered_out', 0))
+        return resp
     else:
         return Response({"error": "Failed to fetch recipes from Spoonacular"}, status=500)
 
@@ -818,9 +1184,14 @@ def update_user_profile(request):
         if 'allergies' in request.data:
             allergies = request.data['allergies']
             if isinstance(allergies, list):
-                profile.allergies = ','.join([a.strip() for a in allergies])
+                normalized = [a.strip().lower() for a in allergies if a and str(a).strip()]
+                if not normalized or 'none' in normalized:
+                    profile.allergies = ''
+                else:
+                    profile.allergies = ','.join(normalized)
             else:
-                profile.allergies = allergies.strip()
+                val = str(allergies).strip().lower()
+                profile.allergies = '' if (val == '' or val == 'none') else val
         if 'profile_image' in request.FILES:
             image = request.FILES['profile_image']
             if image.size > 5 * 1024 * 1024:
@@ -870,4 +1241,3 @@ def change_password(request):
         
         return Response({'message': 'Password changed successfully'})
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-

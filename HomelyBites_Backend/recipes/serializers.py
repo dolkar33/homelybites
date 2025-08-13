@@ -2,40 +2,91 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import Recipe, Category, UserProfile, CustomUser, UserRecipeInteraction, ContactMessage, Cuisine
 
+# Spoonacular-compatible intolerance keys
+SPOONACULAR_ALLERGY_SLUGS = {
+    'dairy', 'egg', 'gluten', 'grain', 'peanut', 'seafood', 'sesame', 'shellfish', 'soy', 'sulfite', 'tree nut', 'wheat'
+}
+
+
+def _map_allergy_to_slug(token: str):
+    """Map free-text allergy tokens to Spoonacular-compatible slugs.
+    Returns a slug or None if not recognized.
+    """
+    if not token:
+        return None
+    t = str(token).strip().lower()
+
+    # direct hit
+    if t in SPOONACULAR_ALLERGY_SLUGS:
+        return t
+
+    # heuristics / synonyms
+    if 'peanut' in t:
+        return 'peanut'
+    if 'tree nut' in t or (('nut' in t) and ('peanut' not in t)):
+        return 'tree nut'
+    if 'shellfish' in t:
+        return 'shellfish'
+    if 'seafood' in t:
+        return 'seafood'
+    if 'milk' in t or 'dairy' in t:
+        return 'dairy'
+    if 'egg' in t:
+        return 'egg'
+    if 'gluten' in t:
+        return 'gluten'
+    if 'grain' in t:
+        return 'grain'
+    if 'sesame' in t:
+        return 'sesame'
+    if 'soy' in t:
+        return 'soy'
+    if 'sulfite' in t or 'sulphite' in t:
+        return 'sulfite'
+    if 'wheat' in t:
+        return 'wheat'
+    return None
+
+
 class CuisineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cuisine
         fields = ['id', 'name', 'slug']
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ['id', 'name', 'slug']
 
+
 class RecipeSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
     cuisines = CuisineSerializer(many=True, read_only=True)
-    
+
     class Meta:
         model = Recipe
         fields = '__all__'
 
+
 class RecipeListSerializer(serializers.ModelSerializer):
     categories = CategorySerializer(many=True, read_only=True)
     cuisines = CuisineSerializer(many=True, read_only=True)
-    
+
     class Meta:
         model = Recipe
         fields = [
-    'id', 'title', 'slug', 'image_url', 'prep_time', 'cook_time', 'difficulty', 'categories', 'cuisines',
-    'instructions', 'calories', 'fat', 'sugar', 'protein', 'carbohydrates'
-]
+            'id', 'title', 'slug', 'image_url', 'prep_time', 'cook_time', 'difficulty', 'categories', 'cuisines',
+            'instructions', 'calories', 'fat', 'sugar', 'protein', 'carbohydrates'
+        ]
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
         extra_kwargs = {'password': {'write_only': True}}
+
 
 class UserProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
@@ -64,7 +115,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return rep
 
     def validate(self, attrs):
-        """Normalize incoming list or CSV strings into CSV strings for storage."""
+        """Normalize incoming list or CSV strings into CSV strings for storage.
+        Also maps free-text allergy entries to Spoonacular slugs and filters unknowns.
+        """
         def normalize(value, lower=False):
             if value is None:
                 return None
@@ -83,7 +136,23 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if 'dietary_preference' in attrs:
             attrs['dietary_preference'] = normalize(attrs.get('dietary_preference'), lower=True)
         if 'allergies' in attrs:
-            attrs['allergies'] = normalize(attrs.get('allergies'), lower=False)
+            # normalize to list first
+            raw = attrs.get('allergies')
+            if isinstance(raw, str):
+                tokens = [p.strip() for p in raw.split(',') if p.strip()]
+            elif isinstance(raw, list):
+                tokens = [str(p).strip() for p in raw if str(p).strip()]
+            else:
+                tokens = []
+            # map to slugs and de-duplicate
+            mapped = []
+            seen = set()
+            for tok in tokens:
+                slug = _map_allergy_to_slug(tok)
+                if slug and slug not in seen:
+                    seen.add(slug)
+                    mapped.append(slug)
+            attrs['allergies'] = ','.join(mapped)
         return attrs
 
     def update(self, instance, validated_data):
@@ -102,10 +171,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
 class UserRecipeInteractionSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserRecipeInteraction
         fields = ['id', 'user', 'recipe', 'interaction_type', 'rating', 'timestamp']
+
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
@@ -131,12 +202,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         UserProfile.objects.create(user=user)
         return user
 
+
 class UserLoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
     password = serializers.CharField(required=True, write_only=True)
 
+
 class PasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
+
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
@@ -148,6 +222,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError({"password": "Password fields didn't match."})
         return attrs
 
+
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True, write_only=True)
     new_password = serializers.CharField(required=True, write_only=True)
@@ -158,34 +233,35 @@ class PasswordChangeSerializer(serializers.Serializer):
             raise serializers.ValidationError({
                 'confirm_password': 'Passwords do not match'
             })
-        
+
         # Password validation
         if len(data['new_password']) < 8:
             raise serializers.ValidationError({
                 'new_password': 'Password must be at least 8 characters long'
             })
-        
+
         if not any(char.isupper() for char in data['new_password']):
             raise serializers.ValidationError({
                 'new_password': 'Password must contain at least one uppercase letter'
             })
-        
+
         if not any(char.islower() for char in data['new_password']):
             raise serializers.ValidationError({
                 'new_password': 'Password must contain at least one lowercase letter'
             })
-        
+
         if not any(char.isdigit() for char in data['new_password']):
             raise serializers.ValidationError({
                 'new_password': 'Password must contain at least one number'
             })
-        
+
         if not any(char in '!@#$%^&*()_+-=[]{};\':"|,.<>?/' for char in data['new_password']):
             raise serializers.ValidationError({
                 'new_password': 'Password must contain at least one special character'
             })
-        
+
         return data
+
 
 class ContactMessageSerializer(serializers.ModelSerializer):
     class Meta:

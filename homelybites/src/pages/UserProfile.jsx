@@ -64,12 +64,23 @@ const UserProfile = () => {
     { label: "Vegan", value: "vegan" }
   ];
 
-  const allergyOptions = [
-    "Lactose Intolerance",
-    "Nut Allergy", 
-    "Gluten Intolerance",
-    "Shellfish Allergy"
+  // Canonical Spoonacular-compatible allergies
+  const ALLERGY_OPTIONS = [
+    { label: "Dairy", slug: "dairy" },
+    { label: "Egg", slug: "egg" },
+    { label: "Gluten", slug: "gluten" },
+    { label: "Grain", slug: "grain" },
+    { label: "Peanut", slug: "peanut" },
+    { label: "Seafood", slug: "seafood" },
+    { label: "Sesame", slug: "sesame" },
+    { label: "Shellfish", slug: "shellfish" },
+    { label: "Soy", slug: "soy" },
+    { label: "Sulfite", slug: "sulfite" },
+    { label: "Tree Nut", slug: "tree nut" },
+    { label: "Wheat", slug: "wheat" }
   ];
+
+  const allergyLabel = (slug) => ALLERGY_OPTIONS.find(o => o.slug === slug)?.label || slug;
 
   // Fetch user profile response.data on component mount
   useEffect(() => {
@@ -176,17 +187,15 @@ const UserProfile = () => {
   };
 
   // Handle allergy selection - Multiple select
-  const handleAllergySelect = (allergy) => {
+  const handleAllergySelect = (slug) => {
     setSelectedAllergies(prev => {
-      const newSelection = prev.includes(allergy)
-        ? prev.filter(item => item !== allergy)
-        : [...prev, allergy];
-      
+      const newSelection = prev.includes(slug)
+        ? prev.filter(item => item !== slug)
+        : [...prev, slug];
       setProfileData(prevData => ({
         ...prevData,
         allergies: newSelection
       }));
-      
       return newSelection;
     });
     // Don't close dropdown for multi-select
@@ -692,7 +701,7 @@ const UserProfile = () => {
                       <span className={selectedAllergies.length > 0 ? "text-gray-900" : "text-gray-500"}>
                         {selectedAllergies.length > 0 
                           ? selectedAllergies.length === 1 
-                            ? selectedAllergies[0]
+                            ? allergyLabel(selectedAllergies[0])
                             : `${selectedAllergies.length} allergies selected`
                           : "Select allergies"
                         }
@@ -723,31 +732,31 @@ const UserProfile = () => {
                           </button>
                         </div>
                         <div className="max-h-48 overflow-y-auto">
-                          {allergyOptions.map((allergy) => (
+                          {ALLERGY_OPTIONS.map((opt) => (
                             <label
-                              key={allergy}
+                              key={opt.slug}
                               className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-50 transition-colors"
                             >
                               <div className="relative flex-shrink-0">
                                 <input
                                   type="checkbox"
-                                  checked={selectedAllergies.includes(allergy)}
-                                  onChange={() => handleAllergySelect(allergy)}
+                                  checked={selectedAllergies.includes(opt.slug)}
+                                  onChange={() => handleAllergySelect(opt.slug)}
                                   className="sr-only"
                                 />
                                 <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                                  selectedAllergies.includes(allergy)
+                                  selectedAllergies.includes(opt.slug)
                                     ? 'bg-[#ff6b6b] border-[#ff6b6b]' 
                                     : 'bg-white border-gray-300'
                                 }`}>
-                                  {selectedAllergies.includes(allergy) && (
+                                  {selectedAllergies.includes(opt.slug) && (
                                     <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                     </svg>
                                   )}
                                 </div>
                               </div>
-                              <span className="text-sm">{allergy}</span>
+                              <span className="text-sm">{opt.label}</span>
                             </label>
                           ))}
                         </div>
@@ -768,15 +777,15 @@ const UserProfile = () => {
                     {/* Selected allergies display */}
                   {selectedAllergies.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {selectedAllergies.map((allergy) => (
+                      {selectedAllergies.map((slug) => (
                         <span
-                          key={allergy}
+                          key={slug}
                           className="inline-flex items-center gap-1 bg-[#ff6b6b] text-white px-2 py-1 rounded-full text-xs"
                         >
-                          {allergy}
+                          {allergyLabel(slug)}
                           <button
                             type="button"
-                            onClick={() => handleAllergySelect(allergy)}
+                            onClick={() => handleAllergySelect(slug)}
                             className="hover:bg-red-600 rounded-full p-0.5"
                           >
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
