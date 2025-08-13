@@ -1482,3 +1482,130 @@ def confirm_email_change(request, token):
         # Redirect to frontend login page with error message
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
         return redirect(f'{frontend_url}/login?verified=false&message=Email change failed. Please try updating your profile again.')
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    """Send password reset verification email to user with immediate password change."""
+    email = request.data.get('email', '').strip()
+    new_password = request.data.get('new_password', '').strip()
+    
+    if not email:
+        return Response({
+            'error': 'Email address is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not new_password:
+        return Response({
+            'error': 'New password is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if len(new_password) < 8:
+        return Response({
+            'error': 'Password must be at least 8 characters long'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Find user by email
+        user = CustomUser.objects.get(email=email)
+        
+        # Check if user is active and email verified
+        if not user.is_active or not user.is_email_verified:
+            return Response({
+                'error': 'Account not found or email not verified'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Set the new password immediately
+        user.set_password(new_password)
+        user.save()
+        
+        # Create password reset token for verification email
+        from .services import EmailVerificationService
+        reset_request = EmailVerificationService.create_password_reset_request(user)
+        
+        # Send password reset email
+        if EmailVerificationService.send_password_reset_email(user, reset_request):
+            return Response({
+                'message': 'Password changed successfully! Please check your email for verification link.',
+                'password_changed': True,
+                'email_sent': True
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'error': 'Password changed but failed to send verification email. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except CustomUser.DoesNotExist:
+        # Don't reveal if email exists or not for security
+        return Response({
+            'message': 'If an account with this email exists, a password reset link has been sent.'
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"Error in forgot_password: {e}")
+        return Response({
+            'error': 'An error occurred. Please try again.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_password_reset(request, token):
+    """Verify password reset token and redirect to frontend reset form."""
+    from django.shortcuts import redirect
+    
+    try:
+        from .services import EmailVerificationService
+        is_valid, message, user = EmailVerificationService.verify_password_reset_token(token, None)
+        
+        if is_valid:
+            # Token is valid, redirect to frontend password reset form
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            return redirect(f'{frontend_url}/reset-password/{token}')
+        else:
+            # Token is invalid, redirect with error
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            return redirect(f'{frontend_url}/login?error=Invalid or expired password reset link')
+            
+    except Exception as e:
+        print(f"Error in verify_password_reset: {e}")
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?error=Password reset verification failed')
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request, token):
+    """Reset user password using verification token."""
+    new_password = request.data.get('new_password', '')
+    
+    if not new_password:
+        return Response({
+            'error': 'New password is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if len(new_password) < 8:
+        return Response({
+            'error': 'Password must be at least 8 characters long'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Verify the token and reset password
+        from .services import EmailVerificationService
+        is_valid, message, user = EmailVerificationService.verify_password_reset_token(token, new_password)
+        
+        if is_valid:
+            return Response({
+                'message': 'Password reset successfully! You can now log in with your new password.',
+                'password_reset': True
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'error': message
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        print(f"Error in reset_password: {e}")
+        return Response({
+            'error': 'An error occurred. Please try again.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

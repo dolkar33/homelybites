@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from .models import (
     Recipe, Category, UserProfile, CustomUser, 
     UserRecipeInteraction, ContactMessage, Cuisine,
-    EmailVerification, EmailChangeRequest
+    EmailVerification, EmailChangeRequest, PasswordResetRequest
 )
 from django.contrib.admin.sites import NotRegistered
 

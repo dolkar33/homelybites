@@ -593,13 +593,17 @@ The HomelyBites Team
 
     @staticmethod
     def create_password_reset_request(user):
-        """Create a new password reset request."""
+        """Create a new password reset request for a user."""
         # Delete any existing unused requests for this user
         PasswordResetRequest.objects.filter(user=user, is_used=False).delete()
         
-        token = EmailVerificationService.generate_verification_token()
-        expires_at = timezone.now() + timedelta(hours=24)
+        # Generate unique token
+        token = secrets.token_urlsafe(32)
         
+        # Set expiration to 10 minutes from now
+        expires_at = timezone.now() + timedelta(minutes=10)
+        
+        # Create the reset request
         reset_request = PasswordResetRequest.objects.create(
             user=user,
             token=token,
@@ -607,65 +611,109 @@ The HomelyBites Team
         )
         
         return reset_request
-
+    
     @staticmethod
     def send_password_reset_email(user, reset_request):
-        """Send password reset email to user."""
-        subject = 'Password Reset Request - HomelyBites'
-        message = f"""
-Hello {user.first_name}!
+        """Send password change verification email to user."""
+        try:
+            subject = "Password Changed - Please Verify - HomelyBites"
+            
+            # Create the verification link - this should go to the frontend verification page
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            verification_url = f"{frontend_url}/verify-email/{reset_request.token}"
+            
+            message = f"""
+Hello {user.username},
 
-You have requested to reset your password for your HomelyBites account.
+Your password has been changed successfully!
 
-To reset your password, please click the link below:
+To complete the process, please click the verification link below:
+{verification_url}
 
-{settings.BACKEND_BASE_URL}/api/verify-password-reset/{reset_request.token}/
+This link will expire in 10 minutes for security reasons.
 
-This link will expire in 24 hours.
-
-If you did not request this password reset, please ignore this email and your current password will remain unchanged.
+If you did not request this password change, please contact support immediately.
 
 Best regards,
 The HomelyBites Team
-        """
-        
-        try:
+            """.strip()
+            
+            # Send email
             send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
                 fail_silently=False,
             )
+            
             return True
+            
         except Exception as e:
-            print(f"Failed to send password reset email: {e}")
+            print(f"Error sending password change verification email: {e}")
             return False
-
+    
     @staticmethod
     def verify_password_reset_token(token, new_password=None):
-        """Verify a password reset token and optionally reset the password."""
+        """Verify password reset token and optionally reset password."""
+        print(f"=== DEBUG: verify_password_reset_token ===")
+        print(f"Token received: {token}")
+        print(f"New password provided: {new_password is not None}")
+        
         try:
-            reset_request = PasswordResetRequest.objects.get(token=token, is_used=False)
+            # Find the reset request
+            print(f"Looking for PasswordResetRequest with token: {token}")
+            reset_request = PasswordResetRequest.objects.get(token=token)
+            print(f"✅ Found reset request for user: {reset_request.user.username}")
             
+            # Check if already used
+            if reset_request.is_used:
+                print(f"❌ Token already used")
+                return False, "This password reset link has already been used", None
+            
+            # Check if expired
             if reset_request.is_expired():
-                return False, "Password reset link has expired. Please request a new one.", None
+                print(f"❌ Token expired at: {reset_request.expires_at}")
+                return False, "This password reset link has expired", None
+            
+            print(f"✅ Token is valid and not expired")
+            
+            # Get the user
+            user = reset_request.user
             
             # If new_password is provided, reset the password
             if new_password:
-                # Mark token as used
-                reset_request.is_used = True
-                reset_request.save()
+                print(f"Setting new password for user: {user.username}")
+                # Validate password
+                if len(new_password) < 8:
+                    return False, "Password must be at least 8 characters long", None
                 
-                # Update user's password
-                user = reset_request.user
+                # Set new password
                 user.set_password(new_password)
                 user.save()
+                print(f"✅ Password updated successfully")
+                
+                # Mark reset request as used
+                reset_request.is_used = True
+                reset_request.save()
+                print(f"✅ Reset request marked as used")
                 
                 return True, "Password reset successfully!", user
-            else:
-                # Just verify the token is valid
-                return True, "Token is valid", reset_request.user
-                
+            
+            # Just verify token (no password reset)
+            print(f"✅ Token verification successful")
+            return True, "Token is valid", user
+            
         except PasswordResetRequest.DoesNotExist:
-            return False, "Invalid password reset link.", None
+            print(f"❌ PasswordResetRequest not found with token: {token}")
+            print(f"Available tokens in database:")
+            try:
+                all_requests = PasswordResetRequest.objects.all()
+                for req in all_requests:
+                    print(f"  - Token: {req.token[:20]}... | User: {req.user.username} | Used: {req.is_used} | Expires: {req.expires_at}")
+            except Exception as e:
+                print(f"Error listing requests: {e}")
+            return False, "Invalid password reset link", None
+        except Exception as e:
+            print(f"❌ Error verifying password reset token: {e}")
+            return False, "An error occurred while verifying the token", None

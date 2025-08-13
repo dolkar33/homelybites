@@ -37,6 +37,8 @@ urlpatterns = [
     path('complete-user-questions/', views.complete_user_questions, name='complete_user_questions'),
     path('user-profiles/my_profile/', views.my_profile, name='my_profile'),
     path('user-profiles/update/', views.update_user_profile, name='update_user_profile'),
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('verify-password-reset/<str:token>/', views.verify_password_reset, name='verify_password_reset'),
 
     # Router-generated paths (should be last)
     path('', include(router.urls)),
