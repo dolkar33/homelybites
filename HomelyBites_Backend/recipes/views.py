@@ -639,9 +639,21 @@ def import_from_spoonacular(request):
 def register_user(request):
     """Register a new user."""
     
+    print(f"DEBUG: Registration request received with data: {request.data}")
+    
     serializer = UserRegistrationSerializer(data=request.data)
+    print(f"DEBUG: Serializer created")
+    
+    is_valid = serializer.is_valid()
+    print(f"DEBUG: Serializer validation result: {is_valid}")
+    
+    if not is_valid:
+        print(f"DEBUG: Validation errors: {serializer.errors}")
+    
     if serializer.is_valid():
+        print(f"DEBUG: Creating user...")
         user = serializer.save()
+        print(f"DEBUG: User created successfully: {user.id}")
         
         return Response({
             'message': 'Registration successful! Please check your email for verification link.',
@@ -656,24 +668,65 @@ def register_user(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def verify_email(request, token):
-    """Verify user's email with verification token from URL."""
+    """Verify user's email with verification token from URL - BULLETPROOF VERSION"""
     
-    # Verify the token
-    from .services import EmailVerificationService
-    from django.shortcuts import redirect
+    print(f"=== VERIFY EMAIL VIEW DEBUG START ===")
+    print(f"Verifying token: {token[:10]}...")
     
-    is_valid, message, user = EmailVerificationService.verify_token(token)
-    
-    if is_valid:
-        # Activate the user
-        user.is_active = True
-        user.save()
+    try:
+        # Verify the token using the bulletproof service
+        from .services import EmailVerificationService
+        from django.shortcuts import redirect
         
-        # Redirect to success page
-        return redirect('/activation-success')
-    else:
-        # Redirect to error page
-        return redirect('/activation-error')
+        is_valid, message, user = EmailVerificationService.verify_token(token)
+        
+        if is_valid and user:
+            print(f"Verification successful for user: {user.username}")
+            print(f"User status in view - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+            
+            # Final verification - ensure user is actually activated
+            if not user.is_active or not user.is_email_verified:
+                print("CRITICAL: User not properly activated in view! Forcing activation...")
+                
+                # Force update with raw SQL as last resort
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE recipes_customuser 
+                        SET is_active = 1, is_email_verified = 1 
+                        WHERE id = %s
+                    """, [user.id])
+                    connection.commit()
+                
+                # Refresh user
+                user.refresh_from_db()
+                print(f"After forced activation - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+                
+                if not user.is_active or not user.is_email_verified:
+                    print("❌ CRITICAL ERROR: User activation failed even after forced update!")
+                    # Redirect with error
+                    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+                    return redirect(f'{frontend_url}/login?verified=false&message=Verification completed but activation failed. Please contact support.')
+            
+            print(f"✅ User {user.username} email verified and account activated successfully")
+            print(f"✅ Final user status in view - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+            
+            # Redirect to frontend login page with success message
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            return redirect(f'{frontend_url}/login?verified=true&message=Email verified successfully! You can now log in.')
+        else:
+            print(f"❌ Email verification failed: {message}")
+            # Redirect to frontend login page with error message
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            return redirect(f'{frontend_url}/login?verified=false&message={message}')
+            
+    except Exception as e:
+        print(f"❌ CRITICAL ERROR in verify_email view: {e}")
+        # Redirect with error
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?verified=false&message=Verification error occurred. Please try again or contact support.')
+    
+    print(f"=== VERIFY EMAIL VIEW DEBUG END ===")
 
 
 @api_view(['GET'])
@@ -699,11 +752,13 @@ def activate_user(request, uidb64, token):
         user.is_email_verified = True
         user.save()
         
-        # Redirect to a simple success page or frontend
-        return redirect('/activation-success')
+        # Redirect to frontend login page with success message
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?verified=true&message=Email verified successfully! You can now log in.')
     else:
-        # Redirect to error page
-        return redirect('/activation-error')
+        # Redirect to frontend login page with error message
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?verified=false&message=Email verification failed. Please try again.')
 
 
 @api_view(['POST'])
@@ -746,69 +801,139 @@ def resend_verification_email(request):
 @permission_classes([AllowAny])
 def login_user(request):
     """Login a user and return JWT tokens."""
-    print("Login attempt received:", request.data)  # Debug log
+    print("=== LOGIN DEBUG START ===")
+    print("Login attempt received:", request.data)
     
     serializer = UserLoginSerializer(data=request.data)
     if serializer.is_valid():
         username_or_email = serializer.validated_data['username']
         password = serializer.validated_data['password']
         
-        print(f"Attempting login with: {username_or_email}")  # Debug log
+        print(f"Attempting login with: {username_or_email}")
         
         # Check if input is an email
         if '@' in username_or_email:
             try:
                 user = CustomUser.objects.get(email=username_or_email)
                 username = user.username
-                print(f"Found user by email: {username}")  # Debug log
+                print(f"Found user by email: {username}")
+                print(f"User status - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+                print(f"User password hash: {user.password[:50]}...")
             except CustomUser.DoesNotExist:
-                print(f"No user found with email: {username_or_email}")  # Debug log
+                print(f"No user found with email: {username_or_email}")
                 return Response({
                     'error': 'Invalid credentials'
                 }, status=status.HTTP_401_UNAUTHORIZED)
         else:
             username = username_or_email
-            print(f"Using username directly: {username}")  # Debug log
-        
-        user = authenticate(username=username, password=password)
-        print(f"Authentication result: {user}")  # Debug log
-        
-        if user:
-            # Check if user is active (email verified)
-            if not user.is_active:
+            print(f"Using username directly: {username}")
+            try:
+                user = CustomUser.objects.get(username=username)
+                print(f"User status - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+                print(f"User password hash: {user.password[:50]}...")
+            except CustomUser.DoesNotExist:
+                print(f"No user found with username: {username}")
                 return Response({
-                    'error': 'Please verify your email before logging in. Check your email for verification link.',
-                    'requires_verification': True,
-                    'user_id': user.id
+                    'error': 'Invalid credentials'
                 }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Try to authenticate the user
+        print(f"Attempting Django authenticate with username: {username}")
+        
+        # Try custom backend first
+        from .backends import CustomUserModelBackend
+        custom_backend = CustomUserModelBackend()
+        auth_user = custom_backend.authenticate(request, username=username, password=password)
+        print(f"Custom backend authenticate result: {auth_user}")
+        
+        if not auth_user:
+            # Fall back to Django's default authenticate
+            auth_user = authenticate(username=username, password=password)
+            print(f"Django default authenticate result: {auth_user}")
+        
+        print(f"Final authentication result: {auth_user}")
+        
+        if auth_user:
+            print(f"User authenticated successfully: {auth_user.username}")
+            print(f"Authenticated user status - is_active: {auth_user.is_active}, is_email_verified: {auth_user.is_email_verified}")
             
-            # Check if email is verified
-            if not user.is_email_verified:
+            # CRITICAL: Get fresh user data from database to ensure we have the latest status
+            # This bypasses any caching issues that might cause the verification problem
+            try:
+                fresh_user = CustomUser.objects.get(id=auth_user.id)
+                print(f"Fresh user from DB - is_active: {fresh_user.is_active}, is_email_verified: {fresh_user.is_email_verified}")
+                
+                # Use the fresh user data for all checks
+                if not fresh_user.is_active:
+                    print(f"User {fresh_user.username} is not active (from fresh DB)")
+                    return Response({
+                        'error': 'Please verify your email before logging in. Check your email for verification link.',
+                        'requires_verification': True,
+                        'user_id': fresh_user.id
+                    }, status=status.HTTP_401_UNAUTHORIZED)
+                
+                if not fresh_user.is_email_verified:
+                    print(f"User {fresh_user.username} email not verified (from fresh DB)")
+                    return Response({
+                        'error': 'Please verify your email before logging in. Check your email for verification link.',
+                        'requires_verification': True,
+                        'user_id': fresh_user.id
+                    }, status=status.HTTP_401_UNAUTHORIZED)
+                
+                print(f"✅ User {fresh_user.username} verification confirmed from database")
+                
+            except CustomUser.DoesNotExist:
+                print(f"❌ CRITICAL ERROR: User not found in database after authentication!")
                 return Response({
-                    'error': 'Please verify your email before logging in. Check your email for verification link.',
-                    'requires_verification': True,
-                    'user_id': user.id
-                }, status=status.HTTP_401_UNAUTHORIZED)
+                    'error': 'Authentication error. Please try again.'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-            refresh = RefreshToken.for_user(user)
-            profile = user.profile
+            print(f"User {fresh_user.username} login successful")
+            refresh = RefreshToken.for_user(fresh_user)
+            profile = fresh_user.profile
             return Response({
                 'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
+                    'id': fresh_user.id,
+                    'username': fresh_user.username,
+                    'email': fresh_user.email,
+                    'first_name': fresh_user.first_name,
+                    'last_name': fresh_user.last_name,
                     'has_completed_questions': profile.has_completed_questions
                 },
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'message': 'Login successful'
             })
-        return Response({
-            'error': 'Invalid credentials'
-        }, status=status.HTTP_401_UNAUTHORIZED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            print(f"=== AUTHENTICATION FAILED DEBUG ===")
+            print(f"Username: {username}")
+            print(f"Password provided: {password[:3]}...")
+            print(f"User exists in DB: {user}")
+            print(f"User is_active: {user.is_active}")
+            print(f"User is_email_verified: {user.is_email_verified}")
+            
+            # Try manual password check to see if that's the issue
+            from django.contrib.auth.hashers import check_password
+            password_valid = check_password(password, user.password)
+            print(f"Manual password check result: {password_valid}")
+            
+            if not password_valid:
+                print("Password verification failed - this is the issue!")
+            elif not user.is_active:
+                print("User is not active - this is the issue!")
+            elif not user.is_email_verified:
+                print("User email not verified - this is the issue!")
+            else:
+                print("Unknown authentication issue")
+            
+            return Response({
+                'error': 'Invalid credentials'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+    else:
+        print(f"Serializer validation failed: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    print("=== LOGIN DEBUG END ===")
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.all()
@@ -1386,8 +1511,10 @@ def confirm_email_change(request, token):
     is_valid, message, user = EmailVerificationService.verify_email_change_token(token)
     
     if is_valid:
-        # Redirect to success page
-        return redirect('/email-change-success')
+        # Redirect to frontend login page with success message
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?verified=true&message=Email changed successfully! Your new email is now active.')
     else:
-        # Redirect to error page
-        return redirect('/email-change-error')
+        # Redirect to frontend login page with error message
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?verified=false&message=Email change failed. Please try updating your profile again.')

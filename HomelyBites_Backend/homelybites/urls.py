@@ -30,13 +30,8 @@ urlpatterns = [
     path('api/', include('recipes.urls')),
     path('api/', include(router.urls)),
     
-    # Simple activation result pages
-    path('activation-success/', lambda request: HttpResponse('Email verified successfully! You can now log in. <a href="/login">Go to Login</a>')),
-    path('activation-error/', lambda request: HttpResponse('Activation failed. Please check your email or try registering again. <a href="/register">Register Again</a>')),
-    
-    # Email change result pages
-    path('email-change-success/', lambda request: HttpResponse('Email changed successfully! Your new email is now active. <a href="/login">Go to Login</a>')),
-    path('email-change-error/', lambda request: HttpResponse('Email change failed. Please try updating your profile again. <a href="/profile">Update Profile</a>')),
+    # Note: Email verification now redirects directly to frontend login page
+    # with success/error messages as URL parameters
 ]
 
 if settings.DEBUG:

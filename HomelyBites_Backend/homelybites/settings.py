@@ -138,6 +138,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom User Model
 AUTH_USER_MODEL = 'recipes.CustomUser'
 
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    'recipes.backends.CustomUserModelBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
 # REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -195,12 +201,12 @@ SPOONACULAR_API_KEY = 'b4b8be0a733f497789c7bcd463aa556e'
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 465
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = True
-EMAIL_HOST_USER = 'stharitika0@gmail.com'
-EMAIL_HOST_PASSWORD = 'jyqazaljbbkirvwb'
-DEFAULT_FROM_EMAIL = 'stharitika0@gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = 'homelybites05@gmail.com'
+EMAIL_HOST_PASSWORD = 'uoxoyvirbirkdggu'
+DEFAULT_FROM_EMAIL = 'homelybites05@gmail.com'
 
 # Frontend URL for password reset
 FRONTEND_URL = 'http://localhost:5173'  

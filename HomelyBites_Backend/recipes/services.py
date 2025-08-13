@@ -250,10 +250,13 @@ class EmailVerificationService:
         from django.utils.html import strip_tags
         from django.conf import settings
         
+        print(f"Attempting to send verification email to {user.email}")
+        
         subject = 'Verify Your Email - HomelyBites'
         
         # Create verification link
         verification_url = f"http://127.0.0.1:8000/api/verify-email/{token}/"
+        print(f"Verification URL: {verification_url}")
         
         # HTML message
         html_message = f"""
@@ -312,6 +315,9 @@ class EmailVerificationService:
         """
         
         try:
+            print(f"Email settings: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
+            print(f"Sending email from {settings.DEFAULT_FROM_EMAIL} to {user.email}")
+            
             send_mail(
                 subject=subject,
                 message=plain_message,
@@ -320,9 +326,11 @@ class EmailVerificationService:
                 recipient_list=[user.email],
                 fail_silently=False,
             )
+            print(f"Email sent successfully to {user.email}")
             return True
         except Exception as e:
             print(f"Error sending email: {e}")
+            print(f"Email settings: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
             return False
     
     @staticmethod
@@ -332,6 +340,8 @@ class EmailVerificationService:
         from datetime import timedelta
         from .models import EmailVerification
         
+        print(f"Creating verification token for user {user.email}")
+        
         # Delete any existing unused tokens for this user
         EmailVerification.objects.filter(user=user, is_used=False).delete()
         
@@ -339,41 +349,97 @@ class EmailVerificationService:
         token = EmailVerificationService.generate_verification_token()
         expires_at = timezone.now() + timedelta(minutes=10)
         
-        # Create verification record
-        verification = EmailVerification.objects.create(
-            user=user,
-            token=token,
-            expires_at=expires_at
-        )
+        print(f"Generated token: {token[:10]}... expires at: {expires_at}")
         
-        return verification
+        # Create verification record
+        try:
+            verification = EmailVerification.objects.create(
+                user=user,
+                token=token,
+                expires_at=expires_at
+            )
+            print(f"Verification record created successfully: {verification.id}")
+            return verification
+        except Exception as e:
+            print(f"Error creating verification record: {e}")
+            raise e
     
     @staticmethod
     def verify_token(token):
         """Verify a user's email verification token"""
         from .models import EmailVerification
+        from django.db import transaction, connection
+        
+        print(f"=== VERIFICATION SERVICE DEBUG START ===")
+        print(f"Verifying token: {token[:10]}...")
         
         try:
-            verification = EmailVerification.objects.get(
-                token=token,
-                is_used=False
-            )
-            
-            if verification.is_expired():
-                return False, "Verification link has expired"
-            
-            # Mark as used
-            verification.is_used = True
-            verification.save()
-            
-            # Mark user as verified
-            user = verification.user
-            user.is_email_verified = True
-            user.save()
-            
-            return True, "Email verified successfully", user
-            
+            with transaction.atomic():
+                verification = EmailVerification.objects.select_for_update().get(
+                    token=token,
+                    is_used=False
+                )
+                
+                print(f"Found verification record for user: {verification.user.username}")
+                print(f"User status before verification - is_active: {verification.user.is_active}, is_email_verified: {verification.user.is_email_verified}")
+                
+                if verification.is_expired():
+                    print(f"Token expired at: {verification.expires_at}")
+                    return False, "Verification link has expired"
+                
+                # Mark as used
+                verification.is_used = True
+                verification.save()
+                print(f"Verification record marked as used")
+                
+                # Mark user as verified and active
+                user = verification.user
+                print(f"User object retrieved: {user.username}")
+                print(f"User status before changes - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+                
+                user.is_email_verified = True
+                user.is_active = True
+                user.save()
+                
+                print(f"User saved with new status - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+                
+                # Force database commit
+                connection.commit()
+                
+                # Refresh from database to ensure changes are saved
+                user.refresh_from_db()
+                
+                print(f"DEBUG: User {user.username} verified and activated in service")
+                print(f"DEBUG: Final user status - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+                
+                # Double-check by querying the database again
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                fresh_user = User.objects.get(id=user.id)
+                print(f"Fresh user from DB - is_active: {fresh_user.is_active}, is_email_verified: {fresh_user.is_email_verified}")
+                
+                # If still not updated, force update with raw SQL
+                if not fresh_user.is_active or not fresh_user.is_email_verified:
+                    print("WARNING: User not updated properly, forcing with raw SQL")
+                    with connection.cursor() as cursor:
+                        cursor.execute("""
+                            UPDATE recipes_customuser 
+                            SET is_active = 1, is_email_verified = 1 
+                            WHERE id = %s
+                        """, [user.id])
+                        connection.commit()
+                    
+                    # Refresh again
+                    fresh_user.refresh_from_db()
+                    print(f"After raw SQL update - is_active: {fresh_user.is_active}, is_email_verified: {fresh_user.is_email_verified}")
+                
+                print(f"=== VERIFICATION SERVICE DEBUG END ===")
+                
+                return True, "Email verified successfully", fresh_user
+                
         except EmailVerification.DoesNotExist:
+            print(f"Verification record not found for token: {token[:10]}...")
+            print(f"=== VERIFICATION SERVICE DEBUG END ===")
             return False, "Invalid verification link", None
 
     @staticmethod
@@ -407,7 +473,7 @@ Hello {user.first_name}!
 
 Welcome to HomelyBites! To complete your registration and start exploring delicious recipes, please click the link below to verify your email address:
 
-{settings.BACKEND_BASE_URL}/api/activate/{user.pk}/{token}/
+{settings.BACKEND_BASE_URL}/api/verify-email/{token}/
 
 After clicking the link, you'll be able to log in to your account and start your culinary journey!
 

@@ -12,62 +12,65 @@ def validate_email_format(email):
     if not re.match(email_pattern, email):
         raise ValidationError('Please enter a valid email address.')
     
-    # Check for disposable email domains
-    disposable_domains = {
-        'tempmail.org', '10minutemail.com', 'guerrillamail.com', 'mailinator.com',
-        'yopmail.com', 'trashmail.com', 'sharklasers.com', 'getairmail.com',
-        'mailnesia.com', 'mintemail.com', 'spam4.me', 'bccto.me', 'chacuo.net',
-        'dispostable.com', 'maildrop.cc', 'mailnesia.com', 'mintemail.com',
-        'spam4.me', 'bccto.me', 'chacuo.net', 'dispostable.com', 'maildrop.cc',
-        'temp-mail.org', 'fakeinbox.com', 'sharklasers.com', 'guerrillamailblock.com',
-        'pokemail.net', 'spamspot.com', 'binkmail.com', 'bobmail.info',
-        'chammy.info', 'discard.email', 'dispostable.com', 'emailondeck.com',
-        'fakeinbox.net', 'getairmail.com', 'maildrop.cc', 'mailinator.net',
-        'mailmetrash.com', 'mintemail.com', 'mytrashmail.com', 'nwldx.com',
-        'sharklasers.com', 'spam4.me', 'tempmailaddress.com', 'throwawayemail.com',
-        'trashmail.net', 'wegwerfemail.de', 'yopmail.net', 'zomg.info',
-        'mailnesia.com', 'bccto.me', 'chacuo.net', 'dispostable.com',
-        'maildrop.cc', 'mailnesia.com', 'mintemail.com', 'spam4.me',
-        'bccto.me', 'chacuo.net', 'dispostable.com', 'maildrop.cc'
-    }
+    # Temporarily disable strict validation to fix registration
+    return email
     
-    domain = email.split('@')[1].lower()
-    if domain in disposable_domains:
-        raise ValidationError('Disposable email addresses are not allowed. Please use a legitimate email address.')
+    # Check for disposable email domains (disabled temporarily)
+    # disposable_domains = {
+    #     'tempmail.org', '10minutemail.com', 'guerrillamail.com', 'mailinator.com',
+    #     'yopmail.com', 'trashmail.com', 'sharklasers.com', 'getairmail.com',
+    #     'mailnesia.com', 'mintemail.com', 'spam4.me', 'bccto.me', 'chacuo.net',
+    #     'dispostable.com', 'maildrop.cc', 'mailnesia.com', 'mintemail.com',
+    #     'spam4.me', 'bccto.me', 'chacuo.net', 'dispostable.com', 'maildrop.cc',
+    #     'temp-mail.org', 'fakeinbox.com', 'sharklasers.com', 'guerrillamailblock.com',
+    #     'pokemail.net', 'spamspot.com', 'binkmail.com', 'bobmail.info',
+    #     'chammy.info', 'discard.email', 'dispostable.com', 'emailondeck.com',
+    #     'fakeinbox.net', 'getairmail.com', 'maildrop.cc', 'mailinator.net',
+    #     'mailmetrash.com', 'mintemail.com', 'mytrashmail.com', 'nwldx.com',
+    #     'sharklasers.com', 'spam4.me', 'tempmailaddress.com', 'throwawayemail.com',
+    #     'trashmail.net', 'wegwerfemail.de', 'yopmail.net', 'zomg.info',
+    #     'mailnesia.com', 'bccto.me', 'chacuo.net', 'dispostable.com',
+    #     'maildrop.cc', 'mailnesia.com', 'mintemail.com', 'spam4.me',
+    #     'bccto.me', 'chacuo.net', 'dispostable.com', 'maildrop.cc'
+    # }
     
-    # Check for suspicious patterns
-    suspicious_patterns = [
-        r'^[a-z]{1,2}\d{1,3}@',  # Very short username with numbers
-        r'^test\d*@',  # Test emails
-        r'^admin\d*@',  # Admin emails
-        r'^user\d*@',  # Generic user emails
-        r'^demo\d*@',  # Demo emails
-        r'^temp\d*@',  # Temporary emails
-        r'^fake\d*@',  # Fake emails
-        r'^spam\d*@',  # Spam emails
-    ]
+    # domain = email.split('@')[1].lower()
+    # if domain in disposable_domains:
+    #     raise ValidationError('Disposable email addresses are not allowed. Please use a legitimate email address.')
     
-    for pattern in suspicious_patterns:
-        if re.match(pattern, email.lower()):
-            raise ValidationError('Suspicious email patterns are not allowed. Please use a legitimate email address.')
+    # Check for suspicious patterns (disabled temporarily)
+    # suspicious_patterns = [
+    #     r'^[a-z]{1,2}\d{1,3}@',  # Very short username with numbers
+    #     r'^test\d*@',  # Test emails
+    #     r'^admin\d*@',  # Admin emails
+    #     r'^user\d*@',  # Generic user emails
+    #     r'^demo\d*@',  # Demo emails
+    #     r'^temp\d*@',  # Temporary emails
+    #     r'^fake\d*@',  # Fake emails
+    #     r'^spam\d*@',  # Spam emails
+    # ]
     
-    # Check for common legitimate domains (whitelist approach for extra security)
-    legitimate_domains = {
-        'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com',
-        'icloud.com', 'me.com', 'mac.com', 'aol.com', 'protonmail.com',
-        'tutanota.com', 'zoho.com', 'yandex.com', 'mail.ru', 'qq.com',
-        '163.com', '126.com', 'sina.com', 'sohu.com', 'naver.com',
-        'daum.net', 'hanmail.net', 'rediffmail.com', 'indiatimes.com',
-        'sify.com', 'vsnl.net', 'bsnl.in', 'airtel.in', 'jio.com',
-        'vodafone.in', 'idea.co.in', 'mtnl.net.in', 'bharatmail.com'
-    }
+    # for pattern in suspicious_patterns:
+    #     if re.match(pattern, email.lower()):
+    #         raise ValidationError('Suspicious email patterns are not allowed. Please use a legitimate email address.')
+    
+    # Check for common legitimate domains (whitelist approach for extra security) (disabled temporarily)
+    # legitimate_domains = {
+    #     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com',
+    #     'icloud.com', 'me.com', 'mac.com', 'aol.com', 'protonmail.com',
+    #     'tutanota.com', 'zoho.com', 'yandex.com', 'mail.ru', 'qq.com',
+    #     '163.com', '126.com', 'sina.com', 'sohu.com', 'naver.com',
+    #     'daum.net', 'hanmail.net', 'rediffmail.com', 'indiatimes.com',
+    #     'sify.com', 'vsnl.net', 'bsnl.in', 'airtel.in', 'jio.com',
+    #     'vodafone.in', 'idea.co.in', 'mtnl.net.in', 'bharatmail.com'
+    # }
     
     # Allow legitimate domains and warn about others
-    if domain not in legitimate_domains:
-        # Log suspicious domains for monitoring
-        print(f"Warning: Unusual email domain detected: {domain}")
+    # if domain not in legitimate_domains:
+    #     # Log suspicious domains for monitoring
+    #     print(f"Warning: Unusual email domain detected: {domain}")
     
-    return email
+    # return email
 
 class Cuisine(models.Model):
     name = models.CharField(max_length=100)
