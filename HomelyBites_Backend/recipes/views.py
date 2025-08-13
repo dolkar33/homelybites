@@ -1487,23 +1487,12 @@ def confirm_email_change(request, token):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def forgot_password(request):
-    """Send password reset verification email to user with immediate password change."""
+    """Send password reset verification email to user."""
     email = request.data.get('email', '').strip()
-    new_password = request.data.get('new_password', '').strip()
     
     if not email:
         return Response({
             'error': 'Email address is required'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    if not new_password:
-        return Response({
-            'error': 'New password is required'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    if len(new_password) < 8:
-        return Response({
-            'error': 'Password must be at least 8 characters long'
         }, status=status.HTTP_400_BAD_REQUEST)
     
     try:
@@ -1516,10 +1505,6 @@ def forgot_password(request):
                 'error': 'Account not found or email not verified'
             }, status=status.HTTP_404_NOT_FOUND)
         
-        # Set the new password immediately
-        user.set_password(new_password)
-        user.save()
-        
         # Create password reset token for verification email
         from .services import EmailVerificationService
         reset_request = EmailVerificationService.create_password_reset_request(user)
@@ -1527,13 +1512,12 @@ def forgot_password(request):
         # Send password reset email
         if EmailVerificationService.send_password_reset_email(user, reset_request):
             return Response({
-                'message': 'Password changed successfully! Please check your email for verification link.',
-                'password_changed': True,
+                'message': 'Password reset link sent to your email address. Please check your inbox.',
                 'email_sent': True
             }, status=status.HTTP_200_OK)
         else:
             return Response({
-                'error': 'Password changed but failed to send verification email. Please try again.'
+                'error': 'Failed to send password reset email. Please try again.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
     except CustomUser.DoesNotExist:
@@ -1576,12 +1560,23 @@ def verify_password_reset(request, token):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password(request, token):
-    """Reset user password using verification token."""
+    """Reset user password using verification token with password confirmation."""
     new_password = request.data.get('new_password', '')
+    confirm_password = request.data.get('confirm_password', '')
     
     if not new_password:
         return Response({
             'error': 'New password is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not confirm_password:
+        return Response({
+            'error': 'Password confirmation is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if new_password != confirm_password:
+        return Response({
+            'error': 'Passwords do not match'
         }, status=status.HTTP_400_BAD_REQUEST)
     
     if len(new_password) < 8:
