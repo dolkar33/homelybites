@@ -5,6 +5,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { Toaster } from "react-hot-toast";
 import { customToast } from "./toast";
+import axiosInstance from "../config/axiosInstance";
 
 // Yup validation schema
 const validationSchema = yup.object({
@@ -12,19 +13,9 @@ const validationSchema = yup.object({
     .string()
     .required("Email is required")
     .email("Enter a valid email address"),
-
-  newPassword: yup
-    .string()
-    .required("New password is required")
-    .min(8, "New password must be at least 8 characters")
-    .matches(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-      "New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
-    ),
 });
 
 const ForgotPassword = () => {
-  const [showNewPassword, setShowNewPassword] = useState(false);
   const [generalError, setGeneralError] = useState("");
   const navigate = useNavigate();
 
@@ -38,7 +29,6 @@ const ForgotPassword = () => {
     resolver: yupResolver(validationSchema),
     defaultValues: {
       email: "",
-      newPassword: "",
     },
   });
 
@@ -49,29 +39,38 @@ const ForgotPassword = () => {
     clearErrors();
   };
 
-  const togglePasswordVisibility = () => {
-    setShowNewPassword(!showNewPassword);
-  };
+  // No password field in forgot password form
 
   const onSubmit = async (data) => {
     setGeneralError("");
 
     try {
-      // Here you would typically make an API call to change the password
-      // For now, we'll just show a success message
-      customToast.success("Password changed successfully!");
-      
-      // Reset form
+      // Request backend to send password reset email/link
+      const res = await axiosInstance.post("/api/password-reset/", {
+        email: data.email,
+      });
+
+      if (res?.status === 200) {
+        customToast.success(
+          "If an account with this email exists, a password reset link has been sent."
+        );
+      } else {
+        customToast.success(
+          "If an account with this email exists, a password reset link has been sent."
+        );
+      }
+
+      // Reset form and go to login
       reset();
-      
-      // Redirect back to login after a short delay
-      setTimeout(() => {
-        navigate("/login");
-      }, 1500);
+      setTimeout(() => navigate("/login"), 1200);
       
     } catch (error) {
-      console.error("Password change error:", error);
-      customToast.error("Failed to change password. Please try again.");
+      console.error("Password reset request error:", error);
+      const msg =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to request password reset. Please try again.";
+      customToast.error(msg);
     }
   };
 
@@ -97,7 +96,7 @@ const ForgotPassword = () => {
               Reset Password
             </h2>
             <p className="text-sm text-gray-600 text-center mt-2">
-              Enter your email and a new password
+              Enter your email to receive a password reset link
             </p>
           </div>
 
@@ -126,64 +125,7 @@ const ForgotPassword = () => {
               )}
             </div>
 
-            <div className="mb-[3vh] relative">
-              <input
-                type={showNewPassword ? "text" : "password"}
-                placeholder="New Password"
-                {...register("newPassword", {
-                  onChange: handleInputChange,
-                })}
-                className={`w-full px-3 sm:px-4 py-[1.5vh] sm:py-[2vh] pr-12 text-sm sm:text-base border border-gray-400 rounded-lg focus:outline-none focus:ring-1 focus:ring-accent ${
-                  errors.newPassword ? "border-red-400" : "border-gray-400"
-                }`}
-              />
-              <button
-                type="button"
-                onClick={togglePasswordVisibility}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-              >
-                {showNewPassword ? (
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
-                  </svg>
-                )}
-              </button>
-              {errors.newPassword && (
-                <p className="mt-1 text-xs text-red-600">
-                  {errors.newPassword.message}
-                </p>
-              )}
-            </div>
+            {/* No password input in forgot password form */}
 
             {/* No confirm password for forgot password flow */}
 
@@ -192,7 +134,7 @@ const ForgotPassword = () => {
               disabled={isSubmitting}
               className="w-full py-[1.5vh] sm:py-[2vh] text-sm sm:text-base text-white rounded-full hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-accent hover:opacity-80 bg-accent"
             >
-              {isSubmitting ? "Resetting Password..." : "Reset Password"}
+              {isSubmitting ? "Sending Link..." : "Send Reset Link"}
             </button>
 
             <div className="mt-[3vh] text-center text-xs sm:text-sm text-greyy">

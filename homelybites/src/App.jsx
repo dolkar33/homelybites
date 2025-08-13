@@ -19,6 +19,7 @@ import FavPage from "./pages/FavPage";
 import RecipeDetailPage from "./pages/RecipeDetailPage";
 import RecentRecipes from "./pages/RecentRecipes";
 import UserPage from "./pages/UserPage";
+import ResetPassword from "./pages/ResetPassword";
 
 // Custom hook to check authentication status
 const useAuth = () => {
@@ -120,6 +121,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/userquestion" element={<UserQuestion />} />
         <Route path="/Home" element={<MainPage />} />
         <Route path="/" element={<RootRoute />} />
@@ -127,16 +130,16 @@ function App() {
         <Route path="/userprofile" element={<UserProfile />} />
         <Route path="/aboutus" element={<AboutUs />} />
         <Route path="/community" element={<CommunityPage />} />
-        <Route path="/MyPost" element={<MyPost />} />
+        <Route path="/MyPost" element={<Navigate to="/community?view=mypost" replace />} />
         <Route path="/post" element={<Post />} />
         <Route path="/recipe" element={<RecipeSearchPage />} />
         <Route path="/recipepage" element={<RecipePage />} />
         <Route path="/recipes/:slug" element={<RecipeDetailPage />} />
         <Route path="/recent" element={<RecentRecipes />} />
         <Route path="/FavPage" element={<FavPage />} />
-        <Route path="/saved-posts" element={<FavPage />} />
+        <Route path="/saved-posts" element={<Navigate to="/community?view=saved" replace />} />
         <Route path="/userpage" element={<UserPage />} />
-        <Route path="" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );

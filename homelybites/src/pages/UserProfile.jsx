@@ -812,11 +812,14 @@ const UserProfile = () => {
                     <input
                       type="text"
                       value={userInfo.username}
-                      onChange={(e) => handleInputChange('username', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none ${
+                      readOnly
+                      disabled
+                      aria-readonly="true"
+                      title="Username is fixed and cannot be changed"
+                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none bg-gray-100 text-gray-600 cursor-not-allowed ${
                         errors.username ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="Enter your username"
+                      placeholder="Username cannot be changed"
                     />
                     {errors.username && (
                       <p className="text-red-500 text-sm mt-1">{errors.username}</p>
@@ -829,11 +832,14 @@ const UserProfile = () => {
                     <input
                       type="email"
                       value={userInfo.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none ${
+                      readOnly
+                      disabled
+                      aria-readonly="true"
+                      title="Email is fixed and cannot be changed"
+                      className={`w-full px-3 py-2.5 border rounded-lg text-base focus:outline-none bg-gray-100 text-gray-600 cursor-not-allowed ${
                         errors.email ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="Enter your email"
+                      placeholder="Email cannot be changed"
                     />
                     {errors.email && (
                       <p className="text-red-500 text-sm mt-1">{errors.email}</p>
