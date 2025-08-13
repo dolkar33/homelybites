@@ -50,29 +50,47 @@ const RecipeSearchPage = () => {
     setRecipes([]);
   }, []);
 
-  // Load favorites from backend on mount (if authenticated)
+  // Prefill favorites from localStorage immediately to avoid UI flicker on refresh
   useEffect(() => {
-    const token = localStorage.getItem("access");
+    try {
+      const saved = localStorage.getItem("favoriteRecipeDetails");
+      if (saved) {
+        const items = JSON.parse(saved) || [];
+        const ids = new Set(items.map((r) => String(r.id)));
+        if (ids.size > 0) setFavorites(ids);
+      }
+    } catch {}
+  }, []);
+
+  // Load ALL favorites from backend on mount (if authenticated), across pages
+  useEffect(() => {
+    const token = localStorage.getItem("access") || localStorage.getItem("authToken");
     if (!token) return; // unauthenticated: keep local behavior
-    const fetchFavorites = async () => {
+    const fetchAllFavorites = async () => {
       try {
-        const res = await api.get("api/recipes/favorites/");
-        const items = Array.isArray(res.data)
-          ? res.data
-          : res.data?.results || [];
-        const ids = new Set(items.map((r) => r.id));
+        let nextUrl = "api/recipes/favorites/?page_size=200";
+        const allItems = [];
+        while (nextUrl) {
+          const res = await api.get(nextUrl);
+          const data = res?.data;
+          const items = Array.isArray(data) ? data : data?.results || [];
+          allItems.push(...items);
+          nextUrl = Array.isArray(data) ? null : data?.next || null;
+        }
+        // Normalize to string IDs to avoid type mismatch ("1" vs 1)
+        const ids = new Set(allItems.map((r) => String(r.id)));
         setFavorites(ids);
         // Persist details locally for quick UI access
         localStorage.setItem(
           "favoriteRecipeDetails",
-          JSON.stringify(items)
+          JSON.stringify(allItems)
         );
       } catch (err) {
         // Silently ignore; user may not be authenticated or server unavailable
         // console.error("Failed to load favorites", err);
       }
     };
-    fetchFavorites();
+    fetchAllFavorites();
   }, []);
 
   // Function to add ingredient
@@ -147,7 +165,7 @@ const RecipeSearchPage = () => {
 
   // Function to toggle favorites
   const toggleFavorite = async (recipeId) => {
-    const isAuthed = !!localStorage.getItem("access");
+    const isAuthed = !!(localStorage.getItem("access") || localStorage.getItem("authToken"));
     const recipeToToggle = recipes.find((r) => r.id === recipeId);
     const slug = recipeToToggle?.slug;
 
@@ -158,42 +176,53 @@ const RecipeSearchPage = () => {
       try { updatedFavoriteRecipes = JSON.parse(savedFavorites) || []; } catch {}
     }
 
+    const idStr = String(recipeId);
     const newFavorites = new Set(favorites);
 
-    // If authenticated, hit backend endpoints
-    if (isAuthed && slug) {
+    // If we have a slug, hit backend endpoints (will return 401 if not authed)
+    if (slug) {
       try {
-        if (newFavorites.has(recipeId)) {
+        if (newFavorites.has(idStr)) {
+          console.debug('Unfavoriting via API', { slug });
           await api.delete(`api/recipes/${slug}/favorite/`);
-          newFavorites.delete(recipeId);
-          updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => r.id !== recipeId);
+          newFavorites.delete(idStr);
+          updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => String(r.id) !== idStr);
+          // Notify other pages (e.g., FavPage) to refresh
+          window.dispatchEvent(new CustomEvent('favorites:updated'));
         } else {
+          console.debug('Favoriting via API', { slug });
           await api.post(`api/recipes/${slug}/favorite/`);
-          newFavorites.add(recipeId);
-          if (recipeToToggle && !updatedFavoriteRecipes.some((r) => r.id === recipeId)) {
+          newFavorites.add(idStr);
+          if (recipeToToggle && !updatedFavoriteRecipes.some((r) => String(r.id) === idStr)) {
             updatedFavoriteRecipes.push(recipeToToggle);
           }
+          // Notify other pages (e.g., FavPage) to refresh
+          window.dispatchEvent(new CustomEvent('favorites:updated'));
         }
-      } catch (err) {
-        // If network/auth error, fallback to local behavior for this session
-        if (newFavorites.has(recipeId)) {
-          newFavorites.delete(recipeId);
-          updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => r.id !== recipeId);
+      } catch (error) {
+        console.error('Failed to toggle favorite via API', error);
+        // Fallback to local behavior if API fails
+        if (newFavorites.has(idStr)) {
+          newFavorites.delete(idStr);
+          updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => String(r.id) !== idStr);
         } else {
-          newFavorites.add(recipeId);
-          if (recipeToToggle && !updatedFavoriteRecipes.some((r) => r.id === recipeId)) {
+          newFavorites.add(idStr);
+          if (recipeToToggle && !updatedFavoriteRecipes.some((r) => String(r.id) === idStr)) {
             updatedFavoriteRecipes.push(recipeToToggle);
           }
         }
       }
     } else {
       // Unauthenticated: local-only behavior
-      if (newFavorites.has(recipeId)) {
-        newFavorites.delete(recipeId);
-        updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => r.id !== recipeId);
+      if (!slug) {
+        console.warn('Missing slug for recipe, cannot call favorite API');
+      }
+      if (newFavorites.has(idStr)) {
+        newFavorites.delete(idStr);
+        updatedFavoriteRecipes = updatedFavoriteRecipes.filter((r) => String(r.id) !== idStr);
       } else {
-        newFavorites.add(recipeId);
-        if (recipeToToggle && !updatedFavoriteRecipes.some((r) => r.id === recipeId)) {
+        newFavorites.add(idStr);
+        if (recipeToToggle && !updatedFavoriteRecipes.some((r) => String(r.id) === idStr)) {
           updatedFavoriteRecipes.push(recipeToToggle);
         }
       }
@@ -667,7 +696,7 @@ const RecipeSearchPage = () => {
                                 <Heart
                                   size={20}
                                   className={`sm:w-6 sm:h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 ${
-                                    favorites.has(recipe.id)
+                                    favorites.has(String(recipe.id))
                                       ? "fill-red-500 text-red-500"
                                       : "text-gray-400"
                                   }`}
