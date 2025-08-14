@@ -143,24 +143,12 @@ const MyPost = () => {
                         {currentUser?.name || "My Profile"}
                       </h3>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="grid grid-cols-1 gap-2 text-center">
                       <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
                         <div className="text-base sm:text-lg font-bold text-gray-800">
                           {currentUser?.posts || 0}
                         </div>
                         <div className="text-xs text-gray-600 leading-tight">Posts</div>
-                      </div>
-                      <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                        <div className="text-base sm:text-lg font-bold text-gray-800">
-                          {currentUser?.following || 0}
-                        </div>
-                        <div className="text-xs text-gray-600 leading-tight">Following</div>
-                      </div>
-                      <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                        <div className="text-base sm:text-lg font-bold text-gray-800">
-                          {currentUser?.followers || 0}
-                        </div>
-                        <div className="text-xs text-gray-600 leading-tight">Followers</div>
                       </div>
                     </div>
                   </div>
