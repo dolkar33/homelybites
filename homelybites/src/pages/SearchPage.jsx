@@ -118,34 +118,52 @@ const RecipeSearchPage = () => {
     handleSearch(newIngredients);
   };
 
-  // Function to handle filter changes
+  // Function to handle filter changes - simplified without setTimeout
   const handleFilterChange = (category, item) => {
-    const newFilters = {
-      ...filters,
-      [category]: {
-        ...filters[category],
-        [item]: !filters[category][item],
-      },
-    };
+    let newFilters;
+    if (category === "cuisineType") {
+      const isCurrentlySelected = filters.cuisineType[item];
+      if (isCurrentlySelected) {
+        const updatedCuisine = Object.keys(filters.cuisineType).reduce(
+          (acc, key) => {
+            acc[key] = false;
+            return acc;
+          },
+          {}
+        );
+        newFilters = { ...filters, cuisineType: updatedCuisine };
+      } else {
+        const updatedCuisine = Object.keys(filters.cuisineType).reduce(
+          (acc, key) => {
+            acc[key] = key === item;
+            return acc;
+          },
+          {}
+        );
+        newFilters = { ...filters, cuisineType: updatedCuisine };
+      }
+    } else {
+      newFilters = {
+        ...filters,
+        [category]: {
+          ...filters[category],
+          [item]: !filters[category][item],
+        },
+      };
+    }
     setFilters(newFilters);
-
-    // Use setTimeout to ensure state is updated before search
-    setTimeout(() => {
-      handleSearch(selectedIngredients, 1, newFilters);
-    }, 0);
+    // Trigger search immediately with new filters
+    handleSearch(selectedIngredients, 1, newFilters);
   };
 
   // Function to clear all filters
   const clearFilters = () => {
+    const clearedCuisine = Object.keys(filters.cuisineType).reduce((acc, k) => {
+      acc[k] = false;
+      return acc;
+    }, {});
     const clearedFilters = {
-      cuisineType: {
-        Italian: false,
-        Indian: false,
-        Thai: false,
-        Turkish: false,
-        Caribbean: false,
-        "Central American": false,
-      },
+      cuisineType: clearedCuisine,
       calories: {
         lowCal: false,
         midCal: false,
@@ -158,11 +176,45 @@ const RecipeSearchPage = () => {
       },
     };
     setFilters(clearedFilters);
+    // Trigger search immediately
+    handleSearch(selectedIngredients, 1, clearedFilters);
+  };
 
-    // Use setTimeout to ensure state is updated before search
-    setTimeout(() => {
-      handleSearch(selectedIngredients, 1, clearedFilters);
-    }, 0);
+  // Custom Radio Button Component
+  const CustomRadioButton = ({ checked, onClick, label, size = "default" }) => {
+    const sizeClasses = {
+      small: "w-3.5 h-3.5",
+      default: "w-4 h-4",
+      large: "w-5 h-5",
+    };
+    const dotSizeClasses = {
+      small: "w-1.5 h-1.5",
+      default: "w-2 h-2",
+      large: "w-2.5 h-2.5",
+    };
+    return (
+      <div
+        className="flex items-center cursor-pointer hover:bg-gray-50 p-1.5 rounded-md transition-colors group"
+        onClick={onClick}
+      >
+        <div
+          className={`${sizeClasses[size]} border-2 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 ${
+            checked
+              ? "border-red-400 bg-red-400 shadow-sm"
+              : "border-gray-300 bg-white group-hover:border-red-300 group-hover:shadow-sm"
+          }`}
+        >
+          {checked && (
+            <div
+              className={`${dotSizeClasses[size]} bg-white rounded-full transition-all duration-200`}
+            ></div>
+          )}
+        </div>
+        <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700 select-none group-hover:text-gray-900 transition-colors">
+          {label}
+        </span>
+      </div>
+    );
   };
 
   // Function to toggle favorites
@@ -304,13 +356,7 @@ const RecipeSearchPage = () => {
       }
     }
 
-    // Add difficulty filters
-    const selectedDifficulties = Object.keys(filtersToUse.difficulty).filter(
-      (key) => filtersToUse.difficulty[key]
-    );
-    selectedDifficulties.forEach((difficulty) => {
-      params.append("difficulty", difficulty);
-    });
+    // Difficulty processing removed (UI removed)
 
     // Add cuisine filters - check if your API supports this parameter
     const selectedCuisines = Object.keys(filtersToUse.cuisineType).filter(
@@ -338,8 +384,7 @@ const RecipeSearchPage = () => {
     // If no ingredients are selected and no filters are applied, clear the recipes
     const hasFilters =
       Object.values(filtersToUse.cuisineType).some(Boolean) ||
-      Object.values(filtersToUse.calories).some(Boolean) ||
-      Object.values(filtersToUse.difficulty).some(Boolean);
+      Object.values(filtersToUse.calories).some(Boolean);
 
     if (ingredients.length === 0 && !hasFilters) {
       setRecipes([]);
@@ -468,21 +513,15 @@ const RecipeSearchPage = () => {
                   <h3 className="font-semibold text-sm sm:text-base lg:text-lg mb-2 sm:mb-3">
                     Cuisine Type
                   </h3>
-                  <div className="space-y-1.5 sm:space-y-2 lg:space-y-3">
+                  <div className="space-y-1 sm:space-y-1.5 lg:space-y-2">
                     {Object.keys(filters.cuisineType).map((cuisine) => (
-                      <label key={cuisine} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={filters.cuisineType[cuisine]}
-                          onChange={() =>
-                            handleFilterChange("cuisineType", cuisine)
-                          }
-                          className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400 border-gray-300 rounded focus:ring-red-400"
-                        />
-                        <span className="ml-2 sm:ml-3 text-xs sm:text-sm lg:text-base text-gray-700">
-                          {cuisine}
-                        </span>
-                      </label>
+                      <CustomRadioButton
+                        key={cuisine}
+                        checked={filters.cuisineType[cuisine]}
+                        onClick={() => handleFilterChange("cuisineType", cuisine)}
+                        label={cuisine}
+                        size="default"
+                      />
                     ))}
                   </div>
                 </div>
