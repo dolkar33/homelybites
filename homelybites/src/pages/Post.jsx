@@ -23,10 +23,16 @@ const categoriesList = [
 import { useNavigate } from 'react-router-dom';
 
 const schema = yup.object().shape({
-  title: yup.string().required('Title is required'),
-  description: yup.string().required('Description is required').max(255, 'Description must be at most 255 characters'),
+  title: yup
+    .string()
+    .required('Title is required')
+    .test('max-words', 'Title must be at most 15 words', (value) => {
+      if (!value) return true;
+      const words = value.trim().split(/\s+/).filter(Boolean);
+      return words.length <= 15;
+    }),
+  description: yup.string().required('Description is required'),
   category: yup.string().required('Category is required'),
-  image: yup.mixed().required('Image is required'),
 });
 
 const PostPage = () => {
@@ -98,7 +104,7 @@ const PostPage = () => {
   };
 
   const handleCreatePost = async () => {
-    if (!newPost.title.trim() || !newPost.description.trim() || !newPost.category || !newPost.image) return;
+    if (!newPost.title.trim() || !newPost.description.trim() || !newPost.category) return;
 
     try {
       const formData = new FormData();
@@ -210,14 +216,21 @@ const PostPage = () => {
                         {...register('title')}
                         value={newPost.title}
                         onChange={e => {
-                          setNewPost(prev => ({ ...prev, title: e.target.value }));
-                          setValue('title', e.target.value);
+                          const raw = e.target.value;
+                          const words = raw.trim().split(/\s+/).filter(Boolean);
+                          let limited = raw;
+                          if (words.length > 15) {
+                            const limitedWords = words.slice(0, 15);
+                            limited = limitedWords.join(' ');
+                          }
+                          setNewPost(prev => ({ ...prev, title: limited }));
+                          setValue('title', limited, { shouldValidate: true });
                         }}
                         placeholder="Title"
                         className="text-xl font-normal text-gray-800 w-full outline-none bg-transparent"
-                        maxLength={100}
                       />
                       {errors.title && <div className="text-red-500 text-xs mt-1">{errors.title.message}</div>}
+                      <div className="text-xs text-gray-400 ml-auto">{Math.min(newPost.title.trim().split(/\s+/).filter(Boolean).length, 15)}/15 words</div>
                   <div className="w-full border-b border-dashed border-gray-400"></div>
                   <input
                     type="text"
@@ -229,12 +242,8 @@ const PostPage = () => {
                     }}
                     placeholder="What is in your mind?"
                     className="outline-none text-lg text-gray-600 w-full"
-                    maxLength={255}
                   />
-                  <div className="flex justify-between w-full">
-                    {errors.description && <div className="text-red-500 text-xs mt-1">{errors.description.message}</div>}
-                    <div className="text-xs text-gray-400 ml-auto">{newPost.description.length}/255</div>
-                  </div>
+                  {errors.description && <div className="text-red-500 text-xs mt-1">{errors.description.message}</div>}
                   
                 </div>
                 <div className="w-full flex justify-end mt-4">
@@ -290,7 +299,7 @@ const PostPage = () => {
                           <Image className="w-8 h-8 text-red-400" />
                         </div>
                       </div>
-                      <p className="text-gray-500 font-semibold">Add Photos/Video</p>
+                      <p className="text-gray-500 font-semibold">Add Photo (optional)</p>
                       <p className="text-xs text-gray-400 mt-2">Only 1 image allowed</p>
                     </>
                   )}
@@ -315,7 +324,7 @@ const PostPage = () => {
             <div className="p-6 border-t border-gray-100 flex justify-end items-center">
               <button
                 onClick={handleCreatePost}
-                disabled={!newPost.title.trim() || !newPost.description.trim() || !newPost.category || !newPost.image}
+                disabled={!newPost.title.trim() || !newPost.description.trim() || !newPost.category}
                 className="px-6 py-2 bg-red-400 text-white rounded-xl hover:bg-red-500 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed font-bold text-lg"
               >
                 Create Post

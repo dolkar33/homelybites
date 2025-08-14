@@ -1,6 +1,14 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from django.core.validators import EmailValidator
+from django.conf import settings
+from django.core.mail import send_mail
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
 from .models import Recipe, Category, UserProfile, CustomUser, UserRecipeInteraction, ContactMessage, Cuisine
+import re
+import requests
 
 # Spoonacular-compatible intolerance keys
 SPOONACULAR_ALLERGY_SLUGS = {
@@ -179,8 +187,12 @@ class UserRecipeInteractionSerializer(serializers.ModelSerializer):
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    password = serializers.CharField(write_only=True, required=True)
     password2 = serializers.CharField(write_only=True, required=True)
+    email = serializers.EmailField(
+        required=True, 
+        validators=[EmailValidator(message="Please enter a valid email address.")]
+    )
 
     class Meta:
         model = CustomUser
@@ -191,16 +203,127 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             'email': {'required': True}
         }
 
+    def validate_email(self, value):
+        print(f"DEBUG: Validating email: {value}")
+        
+        # Normalize email to avoid duplicates due to case/whitespace
+        value = value.strip().lower()
+        print(f"DEBUG: Normalized email: {value}")
+        
+        # Check if email already exists
+        if CustomUser.objects.filter(email=value).exists():
+            print(f"DEBUG: Email already exists: {value}")
+            raise serializers.ValidationError("This email address is already in use.")
+        
+        # Basic email format validation
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, value):
+            print(f"DEBUG: Invalid email format: {value}")
+            raise serializers.ValidationError("Please provide a valid email address format.")
+        
+        # Extract domain
+        domain = value.split('@')[1].lower()
+        print(f"DEBUG: Email domain: {domain}")
+        
+        # Comprehensive legitimate domain whitelist
+        legitimate_domains = {
+            'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com',
+            'icloud.com', 'me.com', 'mac.com', 'aol.com', 'protonmail.com',
+            'tutanota.com', 'zoho.com', 'yandex.com', 'mail.ru', 'qq.com',
+            '163.com', '126.com', 'sina.com', 'sohu.com', 'naver.com',
+            'daum.net', 'hanmail.net', 'rediffmail.com', 'indiatimes.com',
+            'sify.com', 'vsnl.net', 'bsnl.in', 'airtel.in', 'jio.com',
+            'vodafone.in', 'idea.co.in', 'mtnl.net.in', 'bharatmail.com',
+            'fastmail.com', 'gmx.com', 'web.de', 't-online.de', 'freenet.de',
+            'arcor.de', 'gmx.de', 'web.de', 't-online.de', 'freenet.de',
+            'arcor.de', 'gmx.de', 'web.de', 't-online.de', 'freenet.de',
+            'arcor.de', 'gmx.de', 'web.de', 't-online.de', 'freenet.de'
+        }
+        
+        # Check if domain is legitimate
+        if domain not in legitimate_domains:
+            print(f"DEBUG: Domain not legitimate: {domain}")
+            raise serializers.ValidationError("Please provide a valid email address from a legitimate email provider.")
+        
+        # Check for suspicious patterns
+        suspicious_patterns = [
+            r'^[a-z]{1,2}\d{1,3}@',  # Very short username with numbers
+            r'^test\d*@',  # Test emails
+            r'^admin\d*@',  # Admin emails
+            r'^user\d*@',  # Generic user emails
+            r'^demo\d*@',  # Demo emails
+            r'^temp\d*@',  # Temporary emails
+            r'^fake\d*@',  # Fake emails
+            r'^spam\d*@',  # Spam emails
+            r'^123@',  # Number-only usernames
+            r'^abc@',  # Generic usernames
+            r'^xyz@',  # Generic usernames
+        ]
+        
+        for pattern in suspicious_patterns:
+            if re.match(pattern, value):
+                print(f"DEBUG: Suspicious pattern matched: {pattern} for {value}")
+                raise serializers.ValidationError("Please provide a legitimate email address.")
+        
+        print(f"DEBUG: Email validation passed: {value}")
+        return value
+
     def validate(self, attrs):
+        print(f"DEBUG: Main validation called with attrs: {attrs}")
+        
         if attrs['password'] != attrs['password2']:
+            print(f"DEBUG: Password mismatch")
             raise serializers.ValidationError({"password": "Password fields didn't match."})
+        
+        # Basic password validation
+        password = attrs['password']
+        if len(password) < 8:
+            print(f"DEBUG: Password too short: {len(password)}")
+            raise serializers.ValidationError({"password": "Password must be at least 8 characters long."})
+        
+        print(f"DEBUG: Main validation passed")
         return attrs
 
     def create(self, validated_data):
         validated_data.pop('password2')
+        
+        # Create user with is_active=False from the start
+        validated_data['is_active'] = False
         user = CustomUser.objects.create_user(**validated_data)
+        
+        print(f"DEBUG: User created with is_active={user.is_active}, is_email_verified={user.is_email_verified}")
+        
         UserProfile.objects.create(user=user)
+        
+        # Attempt to send verification email; rollback user on failure
+        try:
+            self.send_verification_email(user)
+        except Exception as exc:
+            # Delete the user to prevent inactive accounts without a verification email
+            try:
+                user.delete()
+            finally:
+                raise serializers.ValidationError({"email": "Failed to send verification email. Please try again later."})
+        
         return user
+
+    def send_verification_email(self, user):
+        from .services import EmailVerificationService
+        
+        try:
+            # Create verification token using EmailVerificationService
+            verification = EmailVerificationService.create_verification_token(user)
+            
+            # Send verification email
+            if not EmailVerificationService.send_verification_email(user, verification.token):
+                print(f"EmailVerificationService.send_verification_email returned False for user {user.email}")
+                raise Exception("EmailVerificationService failed to send email")
+                
+            print(f"Verification email sent successfully to {user.email}")
+            
+        except Exception as exc:
+            print(f"Error in send_verification_email: {exc}")
+            raise exc
 
 
 class UserLoginSerializer(serializers.Serializer):

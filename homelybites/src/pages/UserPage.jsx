@@ -8,8 +8,17 @@ import {
 } from "lucide-react";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import { useNavigate } from "react-router-dom";
 
 const UserPage = () => {
+  const navigate = useNavigate();
+  // Dietary plan: mutually exclusive selection
+  const [dietaryPlan, setDietaryPlan] = useState(""); // "veg" | "nonveg" | ""
+  const handleSelectDiet = (plan) => {
+    // Radio-like exclusivity: selecting one deselects the other
+    setDietaryPlan(plan);
+  };
+
   // Mock data - easy to replace with API calls later
   const [posts, setPosts] = useState([
     {
@@ -156,20 +165,15 @@ const UserPage = () => {
   };
 
   const handleCreatePost = () => {
-    window.location.href = "/post";
+    navigate('/post');
   };
 
   // Enhanced user profile navigation - you can pass user data or just the ID
   const handleUserProfileClick = (user) => {
     // Option 1: Navigate with user ID in URL params
-    window.location.href = `/UserPage?userId=${user.id}&username=${user.username}`;
-    
-    // Option 2: Store user data in sessionStorage for the UserPage to access
-    // sessionStorage.setItem('selectedUser', JSON.stringify(user));
-    // window.location.href = "/UserPage";
-    
-    // Option 3: If using React Router, you would use navigate with state
-    // navigate('/UserPage', { state: { user } });
+    navigate(`/UserPage?userId=${user.id}&username=${user.username}`);
+    // Option 2: Navigate to a route like /user/:id (requires route setup)
+    // navigate(`/user/${user.id}`);
   };
 
   // Handle clicking on post author profile
@@ -240,6 +244,52 @@ const UserPage = () => {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Dietary Plan */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
+                    Dietary Plan
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label
+                      className={`p-3 rounded-xl border transition-all text-sm font-medium cursor-pointer flex items-center justify-center ${
+                        dietaryPlan === "veg"
+                          ? "border-green-500 bg-green-50 text-green-700"
+                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="diet"
+                        value="veg"
+                        checked={dietaryPlan === "veg"}
+                        onChange={() => handleSelectDiet("veg")}
+                        className="hidden"
+                      />
+                      Veg
+                    </label>
+                    <label
+                      className={`p-3 rounded-xl border transition-all text-sm font-medium cursor-pointer flex items-center justify-center ${
+                        dietaryPlan === "nonveg"
+                          ? "border-red-500 bg-red-50 text-red-700"
+                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="diet"
+                        value="nonveg"
+                        checked={dietaryPlan === "nonveg"}
+                        onChange={() => handleSelectDiet("nonveg")}
+                        className="hidden"
+                      />
+                      Non-Veg
+                    </label>
+                  </div>
+                  <p className="mt-3 text-xs text-gray-500">
+                    Select one. Choosing Veg disables Non-Veg, and vice-versa.
+                  </p>
                 </div>
 
                 {/* Navigation */}

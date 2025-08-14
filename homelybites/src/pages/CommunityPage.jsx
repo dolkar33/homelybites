@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import PersonIcon from "@mui/icons-material/Person";
 import axiosInstance from "../config/axiosInstance";
 import {
@@ -14,54 +14,60 @@ import Navbar from "../components/Navbar";
 import { useNavigate, useLocation } from "react-router-dom";
 import PostFeed from "../components/PostFeed";
 
-const mockSuggestedUsers = [
-  {
-    id: 1,
-    name: "Lisa Manoban",
-    username: "@lisam",
-    avatar: "/Images/CommunityPage/lisa.jpg",
-    isFollowing: false,
-  },
-  {
-    id: 2,
-    name: "Kim Jisoo",
-    username: "@jisoo",
-    avatar: "/Images/CommunityPage/jisoo.jpg",
-    isFollowing: false,
-  },
-  {
-    id: 3,
-    name: "Park Chaeyoung",
-    username: "@roses",
-    avatar: "/Images/CommunityPage/rose.jpg",
-    isFollowing: false,
-  },
-  {
-    id: 4,
-    name: "Choi Soobin",
-    username: "@soobin",
-    avatar: "/Images/CommunityPage/soobin.jpg",
-    isFollowing: false,
-  },
-];
-
 const CommunityPage = () => {
+  // Ensure consistent fields across backend payloads
+  const normalizePost = (p) => {
+    const likeCount =
+      (typeof p.likes === 'number' && p.likes) ??
+      p.like_count ??
+      p.likes_count ??
+      p.total_likes ??
+      0;
+    const isLiked =
+      (typeof p.isLiked === 'boolean' && p.isLiked) ??
+      p.is_liked ??
+      p.liked ??
+      false;
+    const isSaved =
+      (typeof p.isSaved === 'boolean' && p.isSaved) ??
+      p.is_saved ??
+      p.saved ??
+      false;
+    return { ...p, likes: likeCount, isLiked, isSaved };
+  };
+  // Backend categories map (labels shown in UI, values sent to API)
+  const CATEGORY_CHOICES = [
+    { label: "Recipe", value: "recipe" },
+    { label: "Cooking Tip", value: "tip" },
+    { label: "Restaurant Review", value: "review" },
+    { label: "General Discussion", value: "general" },
+    { label: "Question", value: "question" },
+  ];
   const [showLeftSidebar, setShowLeftSidebar] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("");
-  const [currentUser, setCurrentUser] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const guestUser = {
+    name: "Guest User",
+    profile_image: "",
+    avatar: "/Images/CommunityPage/jennie.jpg",
+    posts: 0,
+  };
+  const [currentUser, setCurrentUser] = useState(guestUser);
+  const [categories, setCategories] = useState(CATEGORY_CHOICES);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const hasLoaded = useRef(false);
   const [error, setError] = useState("");
   const [posts, setPosts] = useState([]);
-  const [suggestedUsers, setSuggestedUsers] = useState(mockSuggestedUsers);
+  // Smooth transition state for mid content (avoid flashing to 0 opacity)
+  const [dimFade, setDimFade] = useState(false);
+
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const currentView = (params.get("view") || "feed").toLowerCase(); 
   const urlCategory = params.get("category") || "";
 
-  
   useEffect(() => {
     const allowed = new Set(["feed", "mypost", "saved"]);
     if (!allowed.has(currentView)) {
@@ -69,24 +75,19 @@ const CommunityPage = () => {
     }
   }, [currentView, navigate]);
 
-  
   useEffect(() => {
     setActiveCategory(urlCategory);
   }, [urlCategory]);
-
-  const handleFollow = (idx) => {
-    setSuggestedUsers((prev) =>
-      prev.map((user, i) =>
-        i === idx ? { ...user, isFollowing: !user.isFollowing } : user
-      )
-    );
-  };
 
   const isReady = !loading && !error && currentUser && categories.length > 0 && posts.length >= 0;
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      if (hasLoaded.current) {
+        setIsFetching(true);
+      } else {
+        setLoading(true);
+      }
       setError("");
       try {
        
@@ -97,21 +98,22 @@ const CommunityPage = () => {
         // Fetch mid content by view
         if (currentView === "saved") {
           const savedRes = await axiosInstance.get(`/api/saved-posts/${qs}`);
-          setPosts(savedRes.data?.results || savedRes.data || []);
+          const data = savedRes.data?.results || savedRes.data || [];
+          setPosts(Array.isArray(data) ? data.map(normalizePost) : []);
         } else if (currentView === "mypost") {
           // Use dedicated endpoint for current user's posts
           const mineRes = await axiosInstance.get(`/api/posts/my-posts/${qs}`);
-          setPosts(mineRes.data?.results || mineRes.data || []);
+          const data = mineRes.data?.results || mineRes.data || [];
+          setPosts(Array.isArray(data) ? data.map(normalizePost) : []);
         } else {
           const postsRes = await axiosInstance.get(`/api/posts/${qs}`);
-          setPosts(postsRes.data?.results || postsRes.data || []);
+          const data = postsRes.data?.results || postsRes.data || [];
+          setPosts(Array.isArray(data) ? data.map(normalizePost) : []);
         }
 
         
-        try {
-          const catRes = await axiosInstance.get("/api/community-categories/");
-          setCategories(catRes.data.results || []);
-        } catch {}
+        // Force categories to backend post categories (not recipe categories)
+        setCategories(CATEGORY_CHOICES);
 
         try {
           const userRes = await axiosInstance.get("/api/user-profiles/my_profile/");
@@ -119,38 +121,72 @@ const CommunityPage = () => {
             name: userRes.data.user.first_name + " " + userRes.data.user.last_name,
             profile_image: userRes.data.profile_image,
             posts: userRes.data.posts || 0,
-            following: userRes.data.following || 0,
-            followers: userRes.data.followers || 0,
           });
         } catch (e) {
-          setCurrentUser({
-            name: "Guest User",
-            profile_image: "",
-            avatar: "/Images/CommunityPage/jennie.jpg",
-            posts: 0,
-            following: 0,
-            followers: 0,
-          });
+          setCurrentUser(guestUser);
         }
       } catch (err) {
         setError("Failed to load community data");
+        // Ensure we still have a usable user object so UI can render
+        setCurrentUser(guestUser);
       }
-      setLoading(false);
+      if (hasLoaded.current) {
+        setIsFetching(false);
+      } else {
+        setLoading(false);
+        hasLoaded.current = true;
+      }
     };
     fetchData();
   }, [currentView, activeCategory]);
 
+  // Trigger a subtle fade when view or category changes (0.95 -> 1)
+  useEffect(() => {
+    setDimFade(true);
+    const t = setTimeout(() => setDimFade(false), 120);
+    return () => clearTimeout(t);
+  }, [currentView, activeCategory]);
+
   const handleLike = async (postId) => {
+    // Optimistic update
+    setPosts((prev) =>
+      prev.map((post) => {
+        if (post.id !== postId) return post;
+        const wasLiked = !!post.isLiked;
+        const currentLikes = typeof post.likes === 'number' ? post.likes : 0;
+        const newLikes = Math.max(0, currentLikes + (wasLiked ? -1 : 1));
+        return { ...post, isLiked: !wasLiked, likes: newLikes };
+      })
+    );
     try {
-      await axiosInstance.post(`/api/posts/${postId}/like/`);
-      setPosts((posts) =>
-        posts.map((post) =>
-          post.id === postId
-            ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
-            : post
-        )
-      );
+      const res = await axiosInstance.post(`/api/posts/${postId}/like/`);
+      // If backend returns authoritative fields, reconcile
+      const serverLiked = res?.data?.liked ?? res?.data?.is_liked;
+      const serverLikes = res?.data?.likes ?? res?.data?.like_count ?? res?.data?.likes_count;
+      if (serverLiked !== undefined || serverLikes !== undefined) {
+        setPosts((prev) =>
+          prev.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  isLiked: serverLiked !== undefined ? serverLiked : post.isLiked,
+                  likes: typeof serverLikes === 'number' ? serverLikes : post.likes,
+                }
+              : post
+          )
+        );
+      }
     } catch (e) {
+      // Revert if request fails
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id !== postId) return post;
+          const wasLiked = !post.isLiked; // it was toggled
+          const currentLikes = typeof post.likes === 'number' ? post.likes : 0;
+          const newLikes = Math.max(0, currentLikes + (wasLiked ? -1 : 1));
+          return { ...post, isLiked: !post.isLiked, likes: newLikes };
+        })
+      );
       setError("Failed to like/unlike post");
     }
   };
@@ -171,22 +207,35 @@ const CommunityPage = () => {
     }
   };
 
- 
+  // Delete a post (used in My Post view)
+  const handleDelete = async (postId) => {
+    const prevPosts = posts;
+    // Optimistically remove
+    setPosts((p) => p.filter((post) => post.id !== postId));
+    try {
+      await axiosInstance.delete(`/api/posts/${postId}/`);
+    } catch (e) {
+      // Revert and show error
+      setPosts(prevPosts);
+      setError("Failed to delete post");
+      console.error(e);
+    }
+  };
 
-  const handleCategoryChange = (category) => {
+  const handleCategoryChange = (categoryValue) => {
     // Toggle behavior: clicking the same category clears the filter
-    const nextCategory = activeCategory === category ? "" : category;
+    const nextCategory = activeCategory === categoryValue ? "" : categoryValue;
     setActiveCategory(nextCategory);
     const categoryQS = nextCategory ? `&category=${encodeURIComponent(nextCategory)}` : "";
     navigate(`/community?view=${currentView}${categoryQS}`);
   };
 
   const handleCreatePost = () => {
-    window.location.href = "/post";
+    navigate('/post');
   };
 
   const handleUserProfileClick = (user) => {
-    window.location.href = `/UserPage?userId=${user.id}&username=${user.username}`;
+    navigate(`/UserPage?userId=${user.id}&username=${user.username}`);
   };
 
   const handlePostAuthorClick = (author) => {
@@ -196,8 +245,7 @@ const CommunityPage = () => {
       username: `@${author.name.replace(/\s+/g, "").toLowerCase()}`,
       avatar: author.avatar,
       posts: author.posts,
-      following: author.following,
-      followers: author.followers,
+      
     };
     handleUserProfileClick(userProfile);
   };
@@ -205,10 +253,6 @@ const CommunityPage = () => {
   console.log("Render state:", { loading, error, currentUser, categoriesLength: categories.length, postsLength: posts.length });
 
   if (loading) return <div className="flex items-center justify-center h-screen text-xl">Loading...</div>;
-  if (!currentUser) {
-    console.log("No current user, showing fallback");
-    return <div className="flex items-center justify-center h-screen text-xl text-gray-500">Loading user profile...</div>;
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -286,24 +330,12 @@ const CommunityPage = () => {
       {currentUser?.name}
     </h3>
   </div>
-  <div className="grid grid-cols-3 gap-2 text-center">
+  <div className="grid grid-cols-1 gap-2 text-center">
     <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
       <div className="text-base sm:text-lg font-bold text-gray-800">
         {currentUser.posts}
       </div>
       <div className="text-xs text-gray-600 leading-tight">Posts</div>
-    </div>
-    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-      <div className="text-base sm:text-lg font-bold text-gray-800">
-        {currentUser.following}
-      </div>
-      <div className="text-xs text-gray-600 leading-tight">Following</div>
-    </div>
-    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-      <div className="text-base sm:text-lg font-bold text-gray-800">
-        {currentUser.followers}
-      </div>
-      <div className="text-xs text-gray-600 leading-tight">Followers</div>
     </div>
   </div>
 </div>
@@ -313,25 +345,20 @@ const CommunityPage = () => {
             <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
   <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">Categories</h3>
   <nav className="space-y-2 sm:space-y-3">
-    {(Array.isArray(categories) && categories.length > 0 ? categories : [
-      "Recipe",
-      "Cooking Tip",
-      "Restaurant Review",
-      "General Discussion",
-      "Question"
-    ]).map((category, idx) => {
-      const catName = category.name || category;
+    {(Array.isArray(categories) && categories.length > 0 ? categories : CATEGORY_CHOICES).map((category, idx) => {
+      const catLabel = category.label || category.name || category;
+      const catValue = category.value || (category.name ? category.name.toLowerCase() : String(category).toLowerCase());
       return (
         <button
-          key={category.id || catName || idx}
-          onClick={() => handleCategoryChange(catName)}
+          key={category.id || catValue || idx}
+          onClick={() => handleCategoryChange(catValue)}
           className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
-            activeCategory === catName
+            activeCategory === catValue
               ? "text-red-500 bg-red-50"
               : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
           }`}
         >
-          • {catName}
+          • {catLabel}
         </button>
       );
     })}
@@ -427,63 +454,29 @@ const CommunityPage = () => {
                     <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
                       {currentUser?.name}
                     </h3>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                      <div className="text-base sm:text-lg font-bold text-gray-800">
-                        {currentUser.posts}
-                      </div>
-                      <div className="text-xs text-gray-600 leading-tight">
-                        Posts
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                      <div className="text-base sm:text-lg font-bold text-gray-800">
-                        {currentUser.following}
-                      </div>
-                      <div className="text-xs text-gray-600 leading-tight">
-                        Following
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                      <div className="text-base sm:text-lg font-bold text-gray-800">
-                        {currentUser.followers}
-                      </div>
-                      <div className="text-xs text-gray-600 leading-tight">
-                        Followers
-                      </div>
-                    </div>
+                    <div className="text-center mt-2 text-base sm:text-lg font-normal text-gray-800">Posts: {currentUser.posts}</div>
                   </div>
                 </div>
-
-
                 {/* Categories */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                   <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
                     Categories
                   </h3>
                   <nav className="space-y-2 sm:space-y-3">
-                    {(Array.isArray(categories) && categories.length > 0 ? categories : [
-                      "Recipe",
-                      "Cooking Tip",
-                      "Restaurant Review",
-                      "General Discussion",
-                      "Question"
-                    ]).map((category, idx) => {
-                      // Support both backend and static category objects/strings
-                      const catName = category.name || category;
+                    {(Array.isArray(categories) && categories.length > 0 ? categories : CATEGORY_CHOICES).map((category, idx) => {
+                      const catLabel = category.label || category.name || category;
+                      const catValue = category.value || (category.name ? category.name.toLowerCase() : String(category).toLowerCase());
                       return (
                         <button
-                          key={category.id || catName || idx}
-                          onClick={() => handleCategoryChange(catName)}
+                          key={category.id || catValue || idx}
+                          onClick={() => handleCategoryChange(catValue)}
                           className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
-                            activeCategory === catName
+                            activeCategory === catValue
                               ? "text-red-500 bg-red-50"
                               : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
                           }`}
                         >
-                          • {catName}
+                          • {catLabel}
                         </button>
                       );
                     })}
@@ -494,7 +487,7 @@ const CommunityPage = () => {
 
             {/* Main Content - Natural height without fixed height constraint */}
             <div className="col-span-12 md:col-span-6">
-              <div className="space-y-4 sm:space-y-6">
+              <div className={`space-y-4 sm:space-y-6 transition-opacity duration-200 ${dimFade || isFetching ? 'opacity-95' : 'opacity-100'}`}>
                 {/* Header Section (varies by view) */}
                 {currentView === "mypost" ? (
                   <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
@@ -551,6 +544,8 @@ const CommunityPage = () => {
                   onLike={handleLike}
                   onSave={handleSave}
                   onAuthorClick={handlePostAuthorClick}
+                  onDelete={handleDelete}
+                  showDelete={currentView === "mypost"}
                   icons={{ Heart, Bookmark }}
                 />
               </div>
