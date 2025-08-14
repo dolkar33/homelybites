@@ -40,6 +40,7 @@ const validationSchema = yup.object({
 
 const ContactPage = () => {
   const [status, setStatus] = useState({ type: "", message: "" });
+  const [isEmailAutoPopulated, setIsEmailAutoPopulated] = useState(false);
   const location = useLocation();
 
   const {
@@ -60,20 +61,65 @@ const ContactPage = () => {
     mode: "onBlur", // Validate on blur for better UX
   });
 
-  // Auto-populate email from navigation state or localStorage
+  // Auto-populate email from various sources
   useEffect(() => {
-    // Try to get email from navigation state first
-    const emailFromState = location.state?.userEmail;
-    
-    // If not in state, try to get from localStorage (for persistence)
-    const emailFromStorage = localStorage.getItem('userEmail');
-    
-    const emailToUse = emailFromState || emailFromStorage;
+    let emailToUse = "";
+    let isAutoPopulated = false;
+
+    // Priority 1: Email from navigation state (passed explicitly)
+    if (location.state?.userEmail) {
+      emailToUse = location.state.userEmail;
+      isAutoPopulated = true;
+    } 
+    // Priority 2: Get email from current user data (from login)
+    else {
+      try {
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+          const userData = JSON.parse(currentUser);
+          if (userData.email) {
+            emailToUse = userData.email;
+            isAutoPopulated = true;
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    // Priority 3: Fallback to stored userEmail (if exists)
+    if (!emailToUse) {
+      const emailFromStorage = localStorage.getItem('userEmail');
+      if (emailFromStorage) {
+        emailToUse = emailFromStorage;
+        isAutoPopulated = true;
+      }
+    }
     
     if (emailToUse) {
       setValue('email', emailToUse);
+      setIsEmailAutoPopulated(isAutoPopulated);
     }
   }, [location.state, setValue]);
+
+  // Auto-populate name from user data if available
+  useEffect(() => {
+    try {
+      const currentUser = localStorage.getItem('currentUser');
+      if (currentUser) {
+        const userData = JSON.parse(currentUser);
+        if (userData.first_name && userData.last_name) {
+          const fullName = `${userData.first_name} ${userData.last_name}`.trim();
+          setValue('name', fullName);
+        } else if (userData.username) {
+          // Fallback to username if no first/last name
+          setValue('name', userData.username);
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing user data for name:', error);
+    }
+  }, [setValue]);
 
   // Watch message field for character count
   const messageValue = watch("message", "");
@@ -115,10 +161,32 @@ const ContactPage = () => {
         message: "Message sent successfully! We'll get back to you soon.",
       });
 
-      // Reset form but keep email
+      // Reset form but keep email and name if they were auto-populated
       const currentEmail = emailValue;
+      const currentName = watch("name");
       reset();
-      setValue('email', currentEmail);
+      
+      // Restore auto-populated fields
+      if (isEmailAutoPopulated) {
+        setValue('email', currentEmail);
+      }
+      
+      // Restore name if it was auto-populated from user data
+      try {
+        const currentUser = localStorage.getItem('currentUser');
+        if (currentUser) {
+          const userData = JSON.parse(currentUser);
+          if (userData.first_name && userData.last_name) {
+            const fullName = `${userData.first_name} ${userData.last_name}`.trim();
+            setValue('name', fullName);
+          } else if (userData.username) {
+            setValue('name', userData.username);
+          }
+        }
+      } catch (error) {
+        // If error, just keep the current name
+        setValue('name', currentName);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       setStatus({
@@ -136,7 +204,7 @@ const ContactPage = () => {
   const getInputClassName = (fieldName, isReadOnly = false) => {
     const status = getFieldStatus(fieldName);
     const baseClass = `w-full border-b-2 border-gray-300 bg-transparent pb-2 sm:pb-3 text-sm sm:text-md focus:outline-none focus:border-red-400 transition-colors ${
-      isReadOnly ? "cursor-not-allowed bg-gray-50 text-gray-600" : ""
+      isReadOnly ? "cursor-not-allowed bg-gray-50/30 text-gray-700 font-medium" : ""
     }`;
 
     if (status === "error") {
@@ -167,9 +235,6 @@ const ContactPage = () => {
     }
     return baseClass;
   };
-
-  // Check if email is auto-populated (read-only)
-  const isEmailAutoPopulated = Boolean(location.state?.userEmail || localStorage.getItem('userEmail'));
 
   return (
     <div className="min-h-screen bg-gradient-to-t from-red-50 from-60% to-white flex flex-col">
@@ -286,7 +351,7 @@ const ContactPage = () => {
                         })}
                         readOnly={isEmailAutoPopulated}
                         className={getInputClassName("email", isEmailAutoPopulated)}
-                        title={isEmailAutoPopulated ? "Email from your account registration" : ""}
+                        title={isEmailAutoPopulated ? "Email from your verified account" : ""}
                       />
                       {getFieldStatus("email") === "success" && (
                         <CheckCircle className="absolute right-0 top-1 w-4 h-4 text-green-500" />
