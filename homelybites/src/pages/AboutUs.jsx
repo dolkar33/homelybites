@@ -71,10 +71,10 @@ const AboutUs = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 xl:gap-16 items-start">
             {/* Image */}
             <div className="order-1">
-              <div className="relative bg-gray-200 rounded-xl lg:rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[3/2] md:aspect-square lg:aspect-[4/3] shadow-lg hover:shadow-2xl transition-all duration-1000 transform hover:scale-[1.02] mt-[70px]">
+              <div className="relative bg-gray-200 rounded-xl lg:rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[3/2] md:aspect-square lg:aspect-[4/3] shadow-lg hover:shadow-2xl transition-all duration-1000 transform hover:scale-[1.02] mt-[9rem] ">
                 <div className="absolute inset-0">
                   {/* Community kitchen scene */}
-                  <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-full h-full flex items-center justify-center ">
                     <img
                       src="Images/aboutimg/gcook.png"
                       alt="Community Cooking"
@@ -118,24 +118,7 @@ const AboutUs = () => {
           </div>
 
           {/* Expanded text section that spans full width below the grid */}
-          <div className="mt-0 sm:mt-10 lg:mt-12 xl:mt-16">
-            <div className="text-[14px] md:text-[18px] lg:text-[19px] xl:text-[20px] text-gray-700 font-poppins leading-relaxed max-w-4xl mx-auto text-justify lg:text-left space-y-4">
-              <p>
-                Whether you're a total kitchen newbie, a midnight snacker, or a
-                meal-prepping pro there's a spot at the table for you. We're
-                here to laugh at our cooking fails, celebrate the wins, and turn
-                everyday meals into something magical.
-              </p>
-              <p className="m-0">
-                So grab your apron, hit that{" "}
-                <span className="text-accent font-medium text-lg">
-                  "Get Started"
-                </span>{" "}
-                button, and let's make this community the tastiest thing on the
-                internet.
-              </p>
-            </div>
-          </div>
+          
         </section>
 
         {/* Final Divider */}

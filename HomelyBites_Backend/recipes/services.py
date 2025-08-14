@@ -2,6 +2,7 @@ import requests
 import os
 from django.conf import settings
 from .models import Recipe, Category, Cuisine
+from .utils import auto_assign_cuisines_for_recipe
 from slugify import slugify
 
 class SpoonacularService:
@@ -181,7 +182,8 @@ class SpoonacularService:
                 )
                 recipe.categories.add(category)
 
-        # Link cuisines to recipe
+        # Link cuisines to recipe (from API)
+        attached = 0
         if 'cuisines' in details:
             for cuisine_name in details['cuisines']:
                 slug = slugify(cuisine_name)
@@ -189,7 +191,12 @@ class SpoonacularService:
                     slug=slug,
                     defaults={'name': cuisine_name}
                 )
-                recipe.cuisines.add(cuisine)
+                if not recipe.cuisines.filter(pk=cuisine.pk).exists():
+                    recipe.cuisines.add(cuisine)
+                    attached += 1
+        # If still no cuisines, auto-assign using TF-IDF similarity
+        if attached == 0 and recipe.cuisines.count() == 0:
+            auto_assign_cuisines_for_recipe(recipe)
         return recipe
 
     def import_random_recipes(self, number=10, tags=None):

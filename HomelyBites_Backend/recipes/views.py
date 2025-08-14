@@ -2,10 +2,12 @@ from django.shortcuts import render, get_object_or_404
 from django.db.models import Count, Avg, Q
 
 from rest_framework import viewsets, status, generics, filters, permissions
+
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
 from .services import SpoonacularService
+from .utils import auto_assign_cuisines_for_recipe
 
 # Spoonacular-compatible intolerance keys and mapper (keeps CSV model intact)
 SPOONACULAR_ALLERGY_SLUGS = {
@@ -310,6 +312,72 @@ class RecipeViewSet(viewsets.ModelViewSet):
             response["X-Diet-Safe"] = str(dcounts.get('safe', 0))
             response["X-Diet-Filtered"] = str(dcounts.get('filtered_out', 0))
         return response
+
+    def perform_create(self, serializer):
+        recipe = serializer.save()
+        # If no cuisines provided by client, auto-assign
+        if recipe.cuisines.count() == 0:
+            auto_assign_cuisines_for_recipe(recipe)
+
+    def perform_update(self, serializer):
+        recipe = serializer.save()
+        # If cuisines cleared or still empty after update, auto-assign
+        if recipe.cuisines.count() == 0:
+            auto_assign_cuisines_for_recipe(recipe)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser], url_path='retag')
+    def retag(self, request, slug=None, *args, **kwargs):
+        """Auto-assign cuisines to a single recipe using TF-IDF similarity.
+        Admin-only. Does not remove existing cuisines; only adds if missing.
+        Body params: top_k (int, default 2), threshold (float, default 0.2)
+        """
+        try:
+            recipe = self.get_object()
+        except Exception:
+            return Response({"detail": "Recipe not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            top_k = int(request.data.get('top_k', 2))
+        except Exception:
+            top_k = 2
+        try:
+            threshold = float(request.data.get('threshold', 0.2))
+        except Exception:
+            threshold = 0.2
+
+        assigned = auto_assign_cuisines_for_recipe(recipe, top_k=top_k, threshold=threshold)
+        serializer = RecipeSerializer(recipe, context={'request': request})
+        return Response({
+            'assigned': [c.slug for c in assigned],
+            'recipe': serializer.data
+        })
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], url_path='retag-missing')
+    def retag_missing(self, request, *args, **kwargs):
+        """Auto-assign cuisines for recipes that currently have none.
+        Admin-only. Body params: limit (int, default 100), top_k (int, default 2), threshold (float, default 0.2)
+        """
+        try:
+            limit = int(request.data.get('limit', 100))
+        except Exception:
+            limit = 100
+        try:
+            top_k = int(request.data.get('top_k', 2))
+        except Exception:
+            top_k = 2
+        try:
+            threshold = float(request.data.get('threshold', 0.2))
+        except Exception:
+            threshold = 0.2
+
+        qs = Recipe.objects.annotate(c_count=Count('cuisines')).filter(c_count=0)
+        results = []
+        processed = 0
+        for recipe in qs[:limit]:
+            assigned = auto_assign_cuisines_for_recipe(recipe, top_k=top_k, threshold=threshold)
+            results.append({'slug': recipe.slug, 'assigned': [c.slug for c in assigned]})
+            processed += 1
+        return Response({'processed': processed, 'results': results})
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticatedOrReadOnly])
     def favorite(self, request, slug=None, *args, **kwargs):
