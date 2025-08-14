@@ -168,8 +168,47 @@ const FavPage = () => {
                         </span>
                         <span className="text-xs sm:text-sm lg:text-base text-gray-400 mx-2">|</span>
                         <span className="text-xs sm:text-sm lg:text-base text-gray-600">
-                          {recipe.calories}
+                          {(() => {
+                            const c = recipe?.calories;
+                            if (c === null || c === undefined || String(c).trim() === "") return "";
+                            const s = String(c).toLowerCase();
+                            return s.includes("cal") ? String(c) : `${c} cal`;
+                          })()}
                         </span>
+                        {(() => {
+                          // Show Prep Time if available
+                          const t =
+                            recipe?.prepTime ??
+                            recipe?.prep_time ??
+                            recipe?.preparation_time ??
+                            recipe?.preptime;
+                          if (t === null || t === undefined || String(t).trim() === "") return null;
+                          const s = String(t).toLowerCase();
+                          const formatted = s.includes("min") ? String(t) : `${t} min`;
+                          return (
+                            <>
+                              <span className="text-xs sm:text-sm lg:text-base text-gray-400 mx-2">|</span>
+                              <span className="text-xs sm:text-sm lg:text-base text-gray-600">Prep: {formatted}</span>
+                            </>
+                          );
+                        })()}
+                        {(() => {
+                          // Show Cook Time if available
+                          const t =
+                            recipe?.cookTime ??
+                            recipe?.cook_time ??
+                            recipe?.cooking_time ??
+                            recipe?.cooktime;
+                          if (t === null || t === undefined || String(t).trim() === "") return null;
+                          const s = String(t).toLowerCase();
+                          const formatted = s.includes("min") ? String(t) : `${t} min`;
+                          return (
+                            <>
+                              <span className="text-xs sm:text-sm lg:text-base text-gray-400 mx-2">|</span>
+                              <span className="text-xs sm:text-sm lg:text-base text-gray-600">Cook: {formatted}</span>
+                            </>
+                          );
+                        })()}
                       </div>
 
                       <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-2 sm:mb-2 lg:mb-3">
