@@ -52,7 +52,7 @@ function ExpandableDescription({ description }) {
   );
 }
 
-const PostFeed = ({ posts, onLike, onSave, onAuthorClick, icons }) => {
+const PostFeed = ({ posts, onLike, onSave, onAuthorClick, onDelete, showDelete, icons }) => {
   const { Heart, Bookmark } = icons || {};
   if (!Array.isArray(posts) || posts.length === 0) {
     return (
@@ -101,12 +101,14 @@ const PostFeed = ({ posts, onLike, onSave, onAuthorClick, icons }) => {
             </div>
           </div>
 
-          {/* Post Image */}
-          <div className="px-6 pb-6">
-            <div className="relative rounded-2xl overflow-hidden shadow-lg">
-              <img src={post.image || "/Images/placeholder.jpg"} alt={post.title} className="w-full h-80 object-cover" />
+          {/* Post Image (render only if image exists) */}
+          {(post.image || post.image_url) && (
+            <div className="px-6 pb-6">
+              <div className="relative rounded-2xl overflow-hidden shadow-lg">
+                <img src={post.image || post.image_url} alt={post.title} className="w-full h-80 object-cover" />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Post Description */}
           <div className="px-6 pb-6">
@@ -138,6 +140,16 @@ const PostFeed = ({ posts, onLike, onSave, onAuthorClick, icons }) => {
                     <Bookmark className={`w-5 h-5 ${post.isSaved ? "fill-current" : ""}`} />
                   </div>
                 </button>
+
+                {showDelete && onDelete && (
+                  <button
+                    onClick={() => onDelete(post.id)}
+                    className="ml-auto px-3 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+                    title="Delete post"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
 
               {post.likes > 0 && (

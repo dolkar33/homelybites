@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import PersonIcon from "@mui/icons-material/Person";
 import axiosInstance from "../config/axiosInstance";
 import {
@@ -15,6 +15,26 @@ import { useNavigate, useLocation } from "react-router-dom";
 import PostFeed from "../components/PostFeed";
 
 const CommunityPage = () => {
+  // Ensure consistent fields across backend payloads
+  const normalizePost = (p) => {
+    const likeCount =
+      (typeof p.likes === 'number' && p.likes) ??
+      p.like_count ??
+      p.likes_count ??
+      p.total_likes ??
+      0;
+    const isLiked =
+      (typeof p.isLiked === 'boolean' && p.isLiked) ??
+      p.is_liked ??
+      p.liked ??
+      false;
+    const isSaved =
+      (typeof p.isSaved === 'boolean' && p.isSaved) ??
+      p.is_saved ??
+      p.saved ??
+      false;
+    return { ...p, likes: likeCount, isLiked, isSaved };
+  };
   // Backend categories map (labels shown in UI, values sent to API)
   const CATEGORY_CHOICES = [
     { label: "Recipe", value: "recipe" },
@@ -36,15 +56,18 @@ const CommunityPage = () => {
   const [currentUser, setCurrentUser] = useState(guestUser);
   const [categories, setCategories] = useState(CATEGORY_CHOICES);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
+  const hasLoaded = useRef(false);
   const [error, setError] = useState("");
   const [posts, setPosts] = useState([]);
-  
+  // Smooth transition state for mid content (avoid flashing to 0 opacity)
+  const [dimFade, setDimFade] = useState(false);
+
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const currentView = (params.get("view") || "feed").toLowerCase(); 
   const urlCategory = params.get("category") || "";
 
-  
   useEffect(() => {
     const allowed = new Set(["feed", "mypost", "saved"]);
     if (!allowed.has(currentView)) {
@@ -52,7 +75,6 @@ const CommunityPage = () => {
     }
   }, [currentView, navigate]);
 
-  
   useEffect(() => {
     setActiveCategory(urlCategory);
   }, [urlCategory]);
@@ -61,7 +83,11 @@ const CommunityPage = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      if (hasLoaded.current) {
+        setIsFetching(true);
+      } else {
+        setLoading(true);
+      }
       setError("");
       try {
        
@@ -72,14 +98,17 @@ const CommunityPage = () => {
         // Fetch mid content by view
         if (currentView === "saved") {
           const savedRes = await axiosInstance.get(`/api/saved-posts/${qs}`);
-          setPosts(savedRes.data?.results || savedRes.data || []);
+          const data = savedRes.data?.results || savedRes.data || [];
+          setPosts(Array.isArray(data) ? data.map(normalizePost) : []);
         } else if (currentView === "mypost") {
           // Use dedicated endpoint for current user's posts
           const mineRes = await axiosInstance.get(`/api/posts/my-posts/${qs}`);
-          setPosts(mineRes.data?.results || mineRes.data || []);
+          const data = mineRes.data?.results || mineRes.data || [];
+          setPosts(Array.isArray(data) ? data.map(normalizePost) : []);
         } else {
           const postsRes = await axiosInstance.get(`/api/posts/${qs}`);
-          setPosts(postsRes.data?.results || postsRes.data || []);
+          const data = postsRes.data?.results || postsRes.data || [];
+          setPosts(Array.isArray(data) ? data.map(normalizePost) : []);
         }
 
         
@@ -101,22 +130,63 @@ const CommunityPage = () => {
         // Ensure we still have a usable user object so UI can render
         setCurrentUser(guestUser);
       }
-      setLoading(false);
+      if (hasLoaded.current) {
+        setIsFetching(false);
+      } else {
+        setLoading(false);
+        hasLoaded.current = true;
+      }
     };
     fetchData();
   }, [currentView, activeCategory]);
 
+  // Trigger a subtle fade when view or category changes (0.95 -> 1)
+  useEffect(() => {
+    setDimFade(true);
+    const t = setTimeout(() => setDimFade(false), 120);
+    return () => clearTimeout(t);
+  }, [currentView, activeCategory]);
+
   const handleLike = async (postId) => {
+    // Optimistic update
+    setPosts((prev) =>
+      prev.map((post) => {
+        if (post.id !== postId) return post;
+        const wasLiked = !!post.isLiked;
+        const currentLikes = typeof post.likes === 'number' ? post.likes : 0;
+        const newLikes = Math.max(0, currentLikes + (wasLiked ? -1 : 1));
+        return { ...post, isLiked: !wasLiked, likes: newLikes };
+      })
+    );
     try {
-      await axiosInstance.post(`/api/posts/${postId}/like/`);
-      setPosts((posts) =>
-        posts.map((post) =>
-          post.id === postId
-            ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
-            : post
-        )
-      );
+      const res = await axiosInstance.post(`/api/posts/${postId}/like/`);
+      // If backend returns authoritative fields, reconcile
+      const serverLiked = res?.data?.liked ?? res?.data?.is_liked;
+      const serverLikes = res?.data?.likes ?? res?.data?.like_count ?? res?.data?.likes_count;
+      if (serverLiked !== undefined || serverLikes !== undefined) {
+        setPosts((prev) =>
+          prev.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  isLiked: serverLiked !== undefined ? serverLiked : post.isLiked,
+                  likes: typeof serverLikes === 'number' ? serverLikes : post.likes,
+                }
+              : post
+          )
+        );
+      }
     } catch (e) {
+      // Revert if request fails
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id !== postId) return post;
+          const wasLiked = !post.isLiked; // it was toggled
+          const currentLikes = typeof post.likes === 'number' ? post.likes : 0;
+          const newLikes = Math.max(0, currentLikes + (wasLiked ? -1 : 1));
+          return { ...post, isLiked: !post.isLiked, likes: newLikes };
+        })
+      );
       setError("Failed to like/unlike post");
     }
   };
@@ -137,7 +207,20 @@ const CommunityPage = () => {
     }
   };
 
- 
+  // Delete a post (used in My Post view)
+  const handleDelete = async (postId) => {
+    const prevPosts = posts;
+    // Optimistically remove
+    setPosts((p) => p.filter((post) => post.id !== postId));
+    try {
+      await axiosInstance.delete(`/api/posts/${postId}/`);
+    } catch (e) {
+      // Revert and show error
+      setPosts(prevPosts);
+      setError("Failed to delete post");
+      console.error(e);
+    }
+  };
 
   const handleCategoryChange = (categoryValue) => {
     // Toggle behavior: clicking the same category clears the filter
@@ -148,11 +231,11 @@ const CommunityPage = () => {
   };
 
   const handleCreatePost = () => {
-    window.location.href = "/post";
+    navigate('/post');
   };
 
   const handleUserProfileClick = (user) => {
-    window.location.href = `/UserPage?userId=${user.id}&username=${user.username}`;
+    navigate(`/UserPage?userId=${user.id}&username=${user.username}`);
   };
 
   const handlePostAuthorClick = (author) => {
@@ -404,7 +487,7 @@ const CommunityPage = () => {
 
             {/* Main Content - Natural height without fixed height constraint */}
             <div className="col-span-12 md:col-span-6">
-              <div className="space-y-4 sm:space-y-6">
+              <div className={`space-y-4 sm:space-y-6 transition-opacity duration-200 ${dimFade || isFetching ? 'opacity-95' : 'opacity-100'}`}>
                 {/* Header Section (varies by view) */}
                 {currentView === "mypost" ? (
                   <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
@@ -461,6 +544,8 @@ const CommunityPage = () => {
                   onLike={handleLike}
                   onSave={handleSave}
                   onAuthorClick={handlePostAuthorClick}
+                  onDelete={handleDelete}
+                  showDelete={currentView === "mypost"}
                   icons={{ Heart, Bookmark }}
                 />
               </div>

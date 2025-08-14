@@ -173,16 +173,30 @@ const UserProfile = () => {
   // Handle multiple dietary plan selections
   const handleDietaryChange = (optionValue) => {
     setDietaryPlan(prev => {
-      const newSelection = prev.includes(optionValue)
-        ? prev.filter(item => item !== optionValue)
-        : [...prev, optionValue];
-      
+      // Start with current selection
+      let nextSelection = prev;
+
+      if (prev.includes(optionValue)) {
+        // If already selected, toggle off
+        nextSelection = prev.filter(item => item !== optionValue);
+      } else {
+        // If selecting veg/non-veg, enforce exclusivity between them
+        if (optionValue === 'vegetarian') {
+          nextSelection = [...prev.filter(item => item !== 'non-vegetarian'), 'vegetarian'];
+        } else if (optionValue === 'non-vegetarian') {
+          nextSelection = [...prev.filter(item => item !== 'vegetarian'), 'non-vegetarian'];
+        } else {
+          // Other options remain multi-select
+          nextSelection = [...prev, optionValue];
+        }
+      }
+
       setProfileData(prevData => ({
         ...prevData,
-        dietary_preference: newSelection
+        dietary_preference: nextSelection
       }));
-      
-      return newSelection;
+
+      return nextSelection;
     });
   };
 
