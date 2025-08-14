@@ -15,6 +15,29 @@ import { useNavigate, useLocation } from "react-router-dom";
 import PostFeed from "../components/PostFeed";
 
 const CommunityPage = () => {
+  // Helper to resolve author image across possible shapes
+  const getAuthorImage = (author) => {
+    if (!author) return "";
+    return (
+      author.profile_image ||
+      author.profileImage ||
+      author.avatar ||
+      author.profile?.profile_image ||
+      author.profile?.profileImage ||
+      author.user?.profile_image ||
+      author.user?.profileImage ||
+      author.user?.profile?.profile_image ||
+      author.user?.profile?.profileImage ||
+      ""
+    );
+  };
+  // Static suggested people (visible on all views)
+  const SUGGESTED_PEOPLE = [
+    { id: 'u1', name: 'Jennie Kim', avatar: '/Images/CommunityPage/jennie.jpg' },
+    { id: 'u2', name: 'Choi Soobin', avatar: '/Images/CommunityPage/soobin.jpg' },
+    { id: 'u3', name: 'Randy Orton', avatar: '/Images/CommunityPage/jennie.jpg' },
+    { id: 'u4', name: 'Lisa Manoban', avatar: '/Images/CommunityPage/jennie.jpg' },
+  ];
   // Ensure consistent fields across backend payloads
   const normalizePost = (p) => {
     const likeCount =
@@ -365,6 +388,7 @@ const CommunityPage = () => {
   </nav>
 </div>
           </div>
+          {/* Suggested People removed from mobile drawer; visible on desktop right sidebar only */}
         </div>
       </div>
     </div>
@@ -482,6 +506,8 @@ const CommunityPage = () => {
                     })}
                   </nav>
                 </div>
+
+
               </div>
             </div>
 
@@ -566,7 +592,7 @@ const CommunityPage = () => {
                 `}</style>
                 
                 {/* Navigation */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6 mt-0 mb-0">
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-4 sm:p-6 mt-0 mb-0">
                   <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
                     Navigation
                   </h3>
@@ -608,6 +634,37 @@ const CommunityPage = () => {
                       </span>
                     </button>
                   </nav>
+                </div>
+
+                {/* Suggested People */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-4 sm:p-6 mt-4">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6">Suggested People</h3>
+                  <div className="space-y-3">
+                    {SUGGESTED_PEOPLE.map((u) => (
+                      <div 
+                        key={u.id} 
+                        className="flex items-center gap-3 text-left hover:bg-gray-50 p-2 rounded-xl transition-colors cursor-pointer"
+                        onClick={() => handleUserProfileClick({
+                          id: u.id,
+                          name: u.name,
+                          username: `@${u.name.replace(/\s+/g, "").toLowerCase()}`,
+                          avatar: u.avatar,
+                          posts: 0
+                        })}
+                      >
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                          {u.avatar ? (
+                            <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                          ) : (
+                            <PersonIcon style={{ fontSize: 24, color: '#9ca3af' }} />
+                          )}
+                        </div>
+                        <div className="truncate">
+                          <div className="text-sm font-semibold text-gray-800 truncate">{u.name}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
               </div>

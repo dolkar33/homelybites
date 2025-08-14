@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import PersonIcon from "@mui/icons-material/Person";
 import {
   Heart,
   Bookmark,
@@ -198,143 +199,39 @@ const UserPage = () => {
 
       <div className="flex-1 px-4 sm:px-6 md:px-8 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto">
-         
           <div className="grid grid-cols-12 gap-4 sm:gap-6">
             {/* Left Sidebar - Fixed */}
-            <div className="col-span-3 space-y-4 sm:space-y-6">
-              <div className="sticky top-6 space-y-4 sm:space-y-6">
+            <div className="col-span-3 space-y-4 sm:space-y-6 hidden md:block">
+              <div className="sticky top-0 space-y-4 sm:space-y-6">
                 {/* Profile Section */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <div className="text-center mb-4 sm:mb-6">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md">
-                      <img
-                        src={currentUser.avatar}
-                        alt="Profile"
-                        className="w-full h-full object-cover"
-                      />
+                  <div className="text-center mb-0 sm:mb-0">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl sm:rounded-2xl overflow-hidden mb-3 sm:mb-4 shadow-md relative flex items-center justify-center bg-gray-100">
+                      {currentUser?.avatar || currentUser?.profile_image ? (
+                        <>
+                          <img
+                            src={currentUser.avatar || currentUser.profile_image}
+                            alt={currentUser?.name || "User"}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                              const fallback = e.currentTarget.nextElementSibling;
+                              if (fallback) fallback.style.display = "flex";
+                            }}
+                          />
+                          <div style={{ display: "none" }} className="items-center justify-center w-full h-full">
+                            <PersonIcon style={{ fontSize: 40, color: "#9ca3af" }} />
+                          </div>
+                        </>
+                      ) : (
+                        <PersonIcon style={{ fontSize: 40, color: "#9ca3af" }} />
+                      )}
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">
-                      {currentUser.name}
+                      {currentUser?.name}
                     </h3>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                      <div className="text-base sm:text-lg font-bold text-gray-800">
-                        {currentUser.posts}
-                      </div>
-                      <div className="text-xs text-gray-600 leading-tight">
-                        Posts
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                      <div className="text-base sm:text-lg font-bold text-gray-800">
-                        {currentUser.following}
-                      </div>
-                      <div className="text-xs text-gray-600 leading-tight">
-                        Following
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
-                      <div className="text-base sm:text-lg font-bold text-gray-800">
-                        {currentUser.followers}
-                      </div>
-                      <div className="text-xs text-gray-600 leading-tight">
-                        Followers
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Dietary Plan */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
-                    Dietary Plan
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label
-                      className={`p-3 rounded-xl border transition-all text-sm font-medium cursor-pointer flex items-center justify-center ${
-                        dietaryPlan === "veg"
-                          ? "border-green-500 bg-green-50 text-green-700"
-                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="diet"
-                        value="veg"
-                        checked={dietaryPlan === "veg"}
-                        onChange={() => handleSelectDiet("veg")}
-                        className="hidden"
-                      />
-                      Veg
-                    </label>
-                    <label
-                      className={`p-3 rounded-xl border transition-all text-sm font-medium cursor-pointer flex items-center justify-center ${
-                        dietaryPlan === "nonveg"
-                          ? "border-red-500 bg-red-50 text-red-700"
-                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="diet"
-                        value="nonveg"
-                        checked={dietaryPlan === "nonveg"}
-                        onChange={() => handleSelectDiet("nonveg")}
-                        className="hidden"
-                      />
-                      Non-Veg
-                    </label>
-                  </div>
-                  <p className="mt-3 text-xs text-gray-500">
-                    Select one. Choosing Veg disables Non-Veg, and vice-versa.
-                  </p>
-                </div>
-
-                {/* Navigation */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
-                    Navigation
-                  </h3>
-                  <nav className="space-y-3 sm:space-y-4">
-                    <a
-                      href="#"
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
-                    >
-                      <span className="text-lg sm:text-xl">🏠</span>
-                      <span className="text-sm sm:text-base font-medium">
-                        Home Page
-                      </span>
-                    </a>
-                    <a
-                      href="#"
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
-                    >
-                      <span className="text-lg sm:text-xl">⚡</span>
-                      <span className="text-sm sm:text-base font-medium">
-                        My Post
-                      </span>
-                    </a>
-                    <a
-                      href="#"
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
-                    >
-                      <Bookmark className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="text-sm sm:text-base font-medium">
-                        Saved Recipes
-                      </span>
-                    </a>
-                    <a
-                      href="#"
-                      className="flex items-center gap-2 sm:gap-3 text-gray-600 hover:text-red-500 transition-colors p-2 rounded-lg sm:rounded-xl hover:bg-gray-50"
-                    >
-                      <span className="text-lg sm:text-xl">📈</span>
-                      <span className="text-sm sm:text-base font-medium">
-                        Popular This week
-                      </span>
-                    </a>
-                  </nav>
+                  <div className="text-center mt-2 text-base sm:text-lg font-normal text-gray-800">Posts: {currentUser.posts}</div>
                 </div>
 
                 {/* Categories */}
@@ -361,10 +258,12 @@ const UserPage = () => {
               </div>
             </div>
 
-            {/* Main Content - Expanded to take more space */}
-            <div className="col-span-6">
+            {/* Main Content - Natural height without fixed height constraint */}
+            <div className="col-span-12 md:col-span-6">
               <div className="space-y-4 sm:space-y-6">
-                {/* Posts Feed - Now starts immediately without the story section */}
+
+
+                {/* Posts Feed */}
                 {posts.map((post) => (
                   <div
                     key={post.id}
@@ -463,77 +362,41 @@ const UserPage = () => {
             </div>
 
             {/* Right Sidebar - Fixed */}
-            <div className="col-span-3">
-              <div className="sticky top-6 space-y-4 sm:space-y-6">
-                {/* Search Bar */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <div className="relative">
-                    <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5 z-10" />
-                    <input
-                      type="text"
-                      placeholder="Search......"
-                      value={searchTerm}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-3 sm:py-4 border-2 border-gray-100 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base bg-white"
-                    />
-                  </div>
-                </div>
-
-                {/* Suggested People - Enhanced with full clickable area */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6">
-                    Suggested people
+            <div className="col-span-3 hidden md:block">
+              <div className="sticky top-0 h-screen overflow-y-auto pr-4 -mr-4"
+                style={{
+                  scrollbarWidth: 'none', /* Firefox */
+                  msOverflowStyle: 'none', /* IE and Edge */
+                }}
+              >
+                <style jsx>{`
+                  div::-webkit-scrollbar {
+                    display: none; /* Safari and Chrome */
+                  }
+                `}</style>
+                
+                {/* Navigation */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-4 sm:p-6 mt-0 mb-0">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">
+                    Navigation
                   </h3>
-                  <div className="flex items-center justify-between">
-                    <div 
-                      className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 rounded-lg p-2 -m-2 transition-colors flex-1"
-                      onClick={() => handleUserProfileClick(suggestedPeople[0])}
+                  <nav className="space-y-3 sm:space-y-4">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/community')}
+                      className="flex items-center gap-2 sm:gap-3 transition-colors p-2 rounded-lg sm:rounded-xl w-full text-left text-gray-600 hover:text-red-500 hover:bg-gray-50"
                     >
-                      <div className="w-10 h-10 rounded-full overflow-hidden hover:ring-2 hover:ring-red-500 hover:ring-offset-2 transition-all duration-200">
-                        <img
-                          src={suggestedPeople[0].avatar}
-                          alt={suggestedPeople[0].name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-800 text-sm hover:text-red-500 transition-colors">
-                          {suggestedPeople[0].name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {suggestedPeople[0].username}
-                        </p>
-                      </div>
-                    </div>
-                    <button 
-                      className="bg-red-500 text-white px-4 py-1 rounded-full text-xs font-medium hover:bg-red-400 transition-colors ml-2"
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent triggering profile click
-                        // Handle follow logic here
-                        console.log('Follow clicked for:', suggestedPeople[0].name);
-                      }}
-                    >
-                      Follow
+                      <span className="text-lg sm:text-xl">🏠</span>
+                      <span className="text-sm sm:text-base font-medium">
+                        Home Page
+                      </span>
                     </button>
-                  </div>
+                  </nav>
                 </div>
 
-                {/* You may also like */}
-                <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6">
-                    You may also like
-                  </h3>
-                  <div className="space-y-2 sm:space-y-3">
-                    {trendingHashtags.map((hashtag, index) => (
-                      <div
-                        key={index}
-                        className="text-sm text-gray-600 hover:text-red-500 cursor-pointer transition-colors"
-                      >
-                        {hashtag}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+
+
+
               </div>
             </div>
           </div>
