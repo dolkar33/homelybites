@@ -1,5 +1,6 @@
 import React from "react";
 import PersonIcon from "@mui/icons-material/Person";
+import { Frown } from "lucide-react";
 
 // Helper to resolve author image across possible shapes
 const getAuthorImage = (author) => {
@@ -56,7 +57,13 @@ const PostFeed = ({ posts, onLike, onSave, onAuthorClick, onDelete, showDelete, 
   const { Heart, Bookmark } = icons || {};
   if (!Array.isArray(posts) || posts.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-lg text-gray-400">No posts yet!</div>
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-10 flex flex-col items-center justify-center text-center">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+          <Frown className="w-8 h-8 text-gray-400" />
+        </div>
+        <h3 className="text-base sm:text-lg font-semibold text-gray-800">No posts available right now</h3>
+        <p className="text-sm text-gray-500 mt-1">Check back later or try a different category.</p>
+      </div>
     );
   }
 

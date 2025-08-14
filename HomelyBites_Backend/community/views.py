@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q, Count
 from django.shortcuts import get_object_or_404
-from recipes.models import CustomUser
 from .models import Post, Tag, Follow, Like, SavedPost, SuggestedUser
+from recipes.models import UserProfile, CustomUser
 from .serializers import (
     PostSerializer, TagSerializer, UserSerializer, FollowSerializer,
     LikeSerializer, SavedPostSerializer, SuggestedUserSerializer
@@ -44,10 +44,16 @@ class PostViewSet(viewsets.ModelViewSet):
         if tag:
             queryset = queryset.filter(tags__name__icontains=tag)
         
-        # Filter by author
+        # Filter by author (username) or author_id (numeric id)
         author = self.request.query_params.get('author')
         if author:
             queryset = queryset.filter(author__username=author)
+        author_id = self.request.query_params.get('author_id')
+        if author_id:
+            try:
+                queryset = queryset.filter(author__id=int(author_id))
+            except (TypeError, ValueError):
+                pass
         
         # Search in title and description
         search = self.request.query_params.get('search')
@@ -235,6 +241,13 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             )
         
         return queryset
+
+    @action(detail=False, methods=['get'], url_path=r'by-id/(?P<pk>\d+)')
+    def by_id(self, request, pk=None):
+        """Fetch a single user by numeric id (pk)."""
+        user = get_object_or_404(CustomUser, pk=pk)
+        serializer = UserSerializer(user, context={'request': request})
+        return Response(serializer.data)
     
     @action(detail=True, methods=['get'])
     def posts(self, request, username=None):
@@ -337,6 +350,70 @@ class SuggestedUserViewSet(viewsets.ReadOnlyModelViewSet):
         suggestion.is_dismissed = True
         suggestion.save()
         return Response({'message': 'Suggestion dismissed'}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='match')
+    def match(self, request):
+        """
+        Return suggested users based on shared dietary preferences and intolerances (allergies).
+        - Pagination supported via page and page_size.
+        - Excludes current user.
+        - Orders by a simple score: shared_prefs + 2*shared_allergies.
+        Response payload: { count, next, previous, results: [UserSerializer] }
+        """
+        # Get requesting user's profile
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+        except UserProfile.DoesNotExist:
+            profile = None
+
+        prefs = []
+        allergies = []
+        if profile:
+            if profile.dietary_preference:
+                prefs = [p.strip().lower() for p in profile.dietary_preference.split(',') if p.strip()]
+            if profile.allergies:
+                allergies = [a.strip().lower() for a in profile.allergies.split(',') if a.strip()]
+
+        # Base queryset of other users with profiles
+        qs = CustomUser.objects.exclude(id=request.user.id).select_related('profile')
+        # Exclude users the requester has dismissed from suggestions
+        dismissed_ids = SuggestedUser.objects.filter(user=request.user, is_dismissed=True).values_list('suggested_user_id', flat=True)
+        if dismissed_ids:
+            qs = qs.exclude(id__in=dismissed_ids)
+
+        # If no prefs/allergies, return empty list paginated
+        if not prefs and not allergies:
+            empty = []
+            page = self.paginator.paginate_queryset(empty, request, view=self)
+            return self.paginator.get_paginated_response([])
+
+        # Compute simple scores in Python for better overlap handling
+        candidates = []
+        for u in qs:
+            up = getattr(u, 'profile', None)
+            if not up:
+                continue
+            sprefs = []
+            sallergies = []
+            if up.dietary_preference:
+                sprefs = [p.strip().lower() for p in up.dietary_preference.split(',') if p.strip()]
+            if up.allergies:
+                sallergies = [a.strip().lower() for a in up.allergies.split(',') if a.strip()]
+
+            shared_prefs = len(set(prefs) & set(sprefs)) if prefs and sprefs else 0
+            shared_all = len(set(allergies) & set(sallergies)) if allergies and sallergies else 0
+            score = shared_prefs + (2 * shared_all)
+            if score > 0:
+                candidates.append((score, u))
+
+        # Order by score desc, then username for stability
+        candidates.sort(key=lambda t: (-t[0], getattr(t[1], 'username', '')))
+        users_sorted = [u for _, u in candidates]
+
+        page = self.paginator.paginate_queryset(users_sorted, request, view=self)
+        from .serializers import UserSerializer
+        serializer = UserSerializer(page, many=True, context={'request': request})
+        return self.paginator.get_paginated_response(serializer.data)
 
 
 class CategoryListView(APIView):
