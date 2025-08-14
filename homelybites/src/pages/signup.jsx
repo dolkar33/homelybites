@@ -180,6 +180,13 @@ const SignUp = () => {
           },
         });
 
+        // Persist email for ContactUs auto-populate
+        try {
+          if (data?.email) {
+            localStorage.setItem("userEmail", data.email);
+          }
+        } catch {}
+
         // Reset form
         reset();
 

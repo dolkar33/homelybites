@@ -71,7 +71,7 @@ const AboutUs = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 xl:gap-16 items-start">
             {/* Image */}
             <div className="order-1">
-              <div className="relative bg-gray-200 rounded-xl lg:rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[3/2] md:aspect-square lg:aspect-[4/3] shadow-lg hover:shadow-2xl transition-all duration-1000 transform hover:scale-[1.02] mt-[9rem] ">
+              <div className="relative bg-gray-200 rounded-xl lg:rounded-2xl overflow-hidden aspect-[4/3] sm:aspect-[3/2] md:aspect-square lg:aspect-[4/3] shadow-lg hover:shadow-2xl transition-all duration-1000 transform hover:scale-[1.02] mt-[100px]">
                 <div className="absolute inset-0">
                   {/* Community kitchen scene */}
                   <div className="w-full h-full flex items-center justify-center ">

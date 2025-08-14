@@ -62,10 +62,10 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
     setShowDropdown(false);
   };
 
-  const handleRecentRecipesClick = () => {
-    navigate("/recent");
-    setShowDropdown(false);
-  };
+  // const handleRecentRecipesClick = () => {
+  //   navigate("/recent");
+  //   setShowDropdown(false);
+  // };
 
   const handleFavouritesClick = () => {
     navigate("/FavPage");
@@ -225,7 +225,7 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
                     Profile
                   </button>
 
-                  <button
+                  {/* <button
                     onClick={handleRecentRecipesClick}
                     className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center gap-2 transition-colors duration-150"
                   >
@@ -240,7 +240,7 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                     </svg>
                     Recent Recipes
-                  </button>
+                  </button> */}
 
                   <button
                     onClick={handleFavouritesClick}

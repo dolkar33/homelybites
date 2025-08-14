@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   User,
   Phone,
@@ -10,11 +10,12 @@ import {
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import { useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import BackButton from "../components/BackButton";
 
-// Yup validation schema
+// Yup validation schema - email is now optional since it's auto-populated
 const validationSchema = yup.object({
   name: yup
     .string()
@@ -39,6 +40,7 @@ const validationSchema = yup.object({
 
 const ContactPage = () => {
   const [status, setStatus] = useState({ type: "", message: "" });
+  const location = useLocation();
 
   const {
     register,
@@ -46,6 +48,7 @@ const ContactPage = () => {
     formState: { errors, isSubmitting, touchedFields },
     reset,
     watch,
+    setValue,
   } = useForm({
     resolver: yupResolver(validationSchema),
     defaultValues: {
@@ -57,8 +60,24 @@ const ContactPage = () => {
     mode: "onBlur", // Validate on blur for better UX
   });
 
+  // Auto-populate email from navigation state or localStorage
+  useEffect(() => {
+    // Try to get email from navigation state first
+    const emailFromState = location.state?.userEmail;
+    
+    // If not in state, try to get from localStorage (for persistence)
+    const emailFromStorage = localStorage.getItem('userEmail');
+    
+    const emailToUse = emailFromState || emailFromStorage;
+    
+    if (emailToUse) {
+      setValue('email', emailToUse);
+    }
+  }, [location.state, setValue]);
+
   // Watch message field for character count
   const messageValue = watch("message", "");
+  const emailValue = watch("email", "");
 
   const handleInputChange = () => {
     // Clear status when user starts typing
@@ -96,8 +115,10 @@ const ContactPage = () => {
         message: "Message sent successfully! We'll get back to you soon.",
       });
 
-      // Reset form
+      // Reset form but keep email
+      const currentEmail = emailValue;
       reset();
+      setValue('email', currentEmail);
     } catch (error) {
       console.error("Error sending message:", error);
       setStatus({
@@ -112,10 +133,11 @@ const ContactPage = () => {
     return errors[fieldName] ? "error" : "success";
   };
 
-  const getInputClassName = (fieldName) => {
+  const getInputClassName = (fieldName, isReadOnly = false) => {
     const status = getFieldStatus(fieldName);
-    const baseClass =
-      "w-full border-b-2 border-gray-300 bg-transparent pb-2 sm:pb-3 text-sm sm:text-md focus:outline-none focus:border-red-400 transition-colors";
+    const baseClass = `w-full border-b-2 border-gray-300 bg-transparent pb-2 sm:pb-3 text-sm sm:text-md focus:outline-none focus:border-red-400 transition-colors ${
+      isReadOnly ? "cursor-not-allowed bg-gray-50 text-gray-600" : ""
+    }`;
 
     if (status === "error") {
       return baseClass
@@ -145,6 +167,9 @@ const ContactPage = () => {
     }
     return baseClass;
   };
+
+  // Check if email is auto-populated (read-only)
+  const isEmailAutoPopulated = Boolean(location.state?.userEmail || localStorage.getItem('userEmail'));
 
   return (
     <div className="min-h-screen bg-gradient-to-t from-red-50 from-60% to-white flex flex-col">
@@ -259,7 +284,9 @@ const ContactPage = () => {
                         {...register("email", {
                           onChange: handleInputChange,
                         })}
-                        className={getInputClassName("email")}
+                        readOnly={isEmailAutoPopulated}
+                        className={getInputClassName("email", isEmailAutoPopulated)}
+                        title={isEmailAutoPopulated ? "Email from your account registration" : ""}
                       />
                       {getFieldStatus("email") === "success" && (
                         <CheckCircle className="absolute right-0 top-1 w-4 h-4 text-green-500" />
