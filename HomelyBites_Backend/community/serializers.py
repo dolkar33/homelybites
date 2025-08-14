@@ -36,11 +36,27 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.username
     
     def get_avatar(self, obj):
-        """Return full URL for profile picture or null if none exists"""
-        if obj.profile_picture:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.profile_picture.url)
+        """Return full URL for user's avatar.
+        Prefer `obj.profile.profile_image` (from `UserProfile`).
+        Fallback to `obj.profile_picture` if it exists on `CustomUser`.
+        """
+        request = self.context.get('request')
+        # Primary: via related UserProfile.profile_image
+        try:
+            profile = getattr(obj, 'profile', None)
+            if profile and getattr(profile, 'profile_image', None):
+                url = profile.profile_image.url
+                return request.build_absolute_uri(url) if request else url
+        except Exception:
+            pass
+
+        # Fallback: direct field on CustomUser if present
+        if hasattr(obj, 'profile_picture') and getattr(obj, 'profile_picture'):
+            try:
+                url = obj.profile_picture.url
+                return request.build_absolute_uri(url) if request else url
+            except Exception:
+                pass
         return None
     
     def get_posts(self, obj):

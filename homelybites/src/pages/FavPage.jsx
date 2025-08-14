@@ -1,34 +1,49 @@
 import React, { useState, useEffect } from "react";
-import { Heart, Star, X } from "lucide-react";
+import { X, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import api, { baseURL } from "../config/axiosInstance";
 
 const FavPage = () => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Load favorites from localStorage on component mount
+  // Shared loader so we can call from multiple places
+  const fetchFavorites = async (isMountedRef = { current: true }) => {
+    setLoading(true);
+    try {
+      const res = await api.get("api/recipes/favorites/");
+      const data = res?.data;
+      const items = Array.isArray(data) ? data : data?.results;
+      if (isMountedRef.current) setFavorites(items || []);
+    } catch (error) {
+      console.error("Error fetching favorites:", error);
+      if (isMountedRef.current) setFavorites([]);
+    } finally {
+      if (isMountedRef.current) setLoading(false);
+    }
+  };
+
+  // Load favorites on mount and keep in sync across pages/tabs
   useEffect(() => {
-    const loadFavorites = () => {
-      try {
-        const savedFavorites = localStorage.getItem("favoriteRecipeDetails");
-        if (savedFavorites) {
-          const parsedFavorites = JSON.parse(savedFavorites);
-          setFavorites(parsedFavorites);
-        } else {
-          setFavorites([]);
-        }
-      } catch (error) {
-        console.error("Error loading favorites:", error);
-        setFavorites([]);
-      } finally {
-        setLoading(false);
-      }
+    const flag = { current: true };
+    fetchFavorites(flag);
+
+    const onFavsUpdated = () => fetchFavorites(flag);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchFavorites(flag);
     };
 
-    loadFavorites();
+    window.addEventListener("favorites:updated", onFavsUpdated);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      flag.current = false;
+      window.removeEventListener("favorites:updated", onFavsUpdated);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   // Function to navigate to recipe detail page (matching RecipeSearchPage)
@@ -41,47 +56,14 @@ const FavPage = () => {
     }
   };
 
-  // Function to remove from favorites
-  const removeFromFavorites = (recipeId) => {
+  // Function to remove from favorites (backend)
+  const removeFromFavorites = async (recipeSlug) => {
     try {
-      // Update state
-      const updatedFavorites = favorites.filter(
-        (recipe) => recipe.id !== recipeId
-      );
-      setFavorites(updatedFavorites);
-
-      // Update localStorage
-      localStorage.setItem(
-        "favoriteRecipeDetails",
-        JSON.stringify(updatedFavorites)
-      );
-
-      // Also update the favorites IDs list used by RecipeSearchPage
-      const savedFavoriteIds = localStorage.getItem("favoriteRecipes");
-      if (savedFavoriteIds) {
-        const favoriteIds = JSON.parse(savedFavoriteIds);
-        const updatedIds = favoriteIds.filter((id) => id !== recipeId);
-        localStorage.setItem("favoriteRecipes", JSON.stringify(updatedIds));
-      }
-
-      console.log("Recipe removed from favorites!");
+      await api.delete(`api/recipes/${recipeSlug}/favorite/`);
+      setFavorites((prev) => prev.filter((r) => r.slug !== recipeSlug));
     } catch (error) {
       console.error("Error removing from favorites:", error);
     }
-  };
-
-  const renderStars = (rating) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        size={16}
-        className={`${
-          i < Math.floor(rating)
-            ? "fill-yellow-400 text-yellow-400"
-            : "text-gray-300"
-        }`}
-      />
-    ));
   };
 
   if (loading) {
@@ -143,15 +125,21 @@ const FavPage = () => {
                 >
                   <div className="flex gap-4 sm:gap-5 lg:gap-6">
                     <div className="flex-shrink-0">
-                      <img
-                        src={recipe.image}
-                        alt={recipe.alt || recipe.name || recipe.title}
-                        className="w-20 sm:w-24 lg:w-32 h-20 sm:h-24 lg:h-32 object-cover rounded-lg"
-                        onError={(e) => {
-                          e.target.src =
-                            "https://via.placeholder.com/150x150?text=Recipe";
-                        }}
-                      />
+                      {(() => {
+                        const raw = recipe.image || recipe.image_url || "";
+                        const src = raw && (raw.startsWith("http") ? raw : `${baseURL}${raw}`);
+                        return (
+                          <img
+                            src={src}
+                            alt={recipe.alt || recipe.name || recipe.title}
+                            className="w-20 sm:w-24 lg:w-32 h-20 sm:h-24 lg:h-32 object-cover rounded-lg"
+                            onError={(e) => {
+                              e.target.src =
+                                "https://via.placeholder.com/150x150?text=Recipe";
+                            }}
+                          />
+                        );
+                      })()}
                     </div>
 
                     <div className="flex-1 flex flex-col justify-between min-h-0">
@@ -161,7 +149,7 @@ const FavPage = () => {
                             {recipe.name || recipe.title}
                           </h3>
                           <button
-                            onClick={() => removeFromFavorites(recipe.id)}
+                            onClick={() => removeFromFavorites(recipe.slug)}
                             className="flex-shrink-0 p-1 hover:bg-gray-50 rounded-full transition-colors"
                             title="Remove from favorites"
                           >
@@ -173,23 +161,14 @@ const FavPage = () => {
                         </div>
 
                         <div className="flex items-center mb-3 sm:mb-4">
-                          <div className="flex mr-2">
-                            {renderStars(recipe.rating)}
-                          </div>
-                          <span className="text-sm sm:text-base text-gray-600 mr-2">
-                            {recipe.rating}
-                          </span>
-                          <span className="text-sm sm:text-base text-gray-400">
-                            |
-                          </span>
-                          <span className="text-sm sm:text-base text-gray-600 ml-2">
+                          <span className="text-sm sm:text-base text-gray-600">
                             {recipe.difficulty}
                           </span>
                           <span className="text-sm sm:text-base text-gray-400 mx-2">
                             |
                           </span>
                           <span className="text-sm sm:text-base text-gray-600">
-                            {recipe.calories}
+                            {typeof recipe.calories === 'number' ? `${recipe.calories} cal` : (recipe.calories?.toString().includes('cal') ? recipe.calories : `${recipe.calories || ''} cal`)}
                           </span>
                           {recipe.cuisineType && (
                             <>
@@ -216,7 +195,7 @@ const FavPage = () => {
                           Go to Recipe
                         </button>
                         <button
-                          onClick={() => removeFromFavorites(recipe.id)}
+                          onClick={() => removeFromFavorites(recipe.slug)}
                           className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
                         >
                           Remove
