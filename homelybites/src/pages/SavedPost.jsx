@@ -16,6 +16,7 @@ const SavedPost = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [posts, setPosts] = useState([]);
+  const [activeCategory, setActiveCategory] = useState("");
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -87,6 +88,7 @@ const SavedPost = () => {
       const res = await axiosInstance.get(`/api/saved-posts/?category=${encodeURIComponent(category)}`);
       const list = res.data?.results || res.data || [];
       setPosts(Array.isArray(list) ? list : []);
+      setActiveCategory(category);
     } catch {}
   };
 
@@ -134,6 +136,12 @@ const SavedPost = () => {
                       {getUserAvatar()}
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">{currentUser?.name}</h3>
+                    <div className="grid grid-cols-1 gap-2 text-center">
+                      <div className="bg-gray-50 rounded-xl sm:rounded-2xl p-2">
+                        <div className="text-base sm:text-lg font-bold text-gray-800">{currentUser?.posts || 0}</div>
+                        <div className="text-xs text-gray-600 leading-tight">Posts</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -156,19 +164,24 @@ const SavedPost = () => {
                   </nav>
                 </div>
 
-                {/* Categories (optional filter for saved) */}
+                {/* Categories (match CommunityPage) */}
                 <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 p-4 sm:p-6">
                   <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-4 sm:mb-6 uppercase tracking-wide">Categories</h3>
                   <nav className="space-y-2 sm:space-y-3">
                     {(Array.isArray(categories) && categories.length > 0 ? categories : []).map((category, idx) => {
-                      const catName = category.name || category;
+                      const catLabel = category.label || category.name || category;
+                      const catValue = category.value || (category.name ? category.name.toLowerCase() : String(category).toLowerCase());
                       return (
                         <button
-                          key={category.id || catName || idx}
-                          onClick={() => handleCategoryChange(catName)}
-                          className="block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium text-gray-600 hover:text-red-500 hover:bg-gray-50"
+                          key={category.id || catValue || idx}
+                          onClick={() => handleCategoryChange(catValue)}
+                          className={`block w-full text-left p-2 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
+                            activeCategory === catValue
+                              ? "text-red-500 bg-red-50"
+                              : "text-gray-600 hover:text-red-500 hover:bg-gray-50"
+                          }`}
                         >
-                          • {catName}
+                          • {catLabel}
                         </button>
                       );
                     })}
