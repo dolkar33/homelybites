@@ -1,7 +1,12 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Recipe, Category, UserProfile, UserRecipeInteraction, CustomUser, ContactMessage, Cuisine
+from .models import (
+    Recipe, Category, UserProfile, CustomUser, 
+    UserRecipeInteraction, ContactMessage, Cuisine,
+    EmailVerification, EmailChangeRequest, PasswordResetRequest
+)
 from .utils import auto_assign_cuisines_for_recipe, _similarities_tfidf, _build_recipe_text, estimate_times_for_recipe
+
 from django.contrib.admin.sites import NotRegistered
 from django.db.models import Count
 
@@ -12,9 +17,39 @@ try:
 except admin.sites.NotRegistered:
     pass
 
-# Register your CustomUser with Django's built-in UserAdmin
-# DO NOT unregister if you never registered it before!
-admin.site.register(CustomUser, UserAdmin)
+# Custom UserAdmin for CustomUser
+class CustomUserAdmin(UserAdmin):
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_active', 'is_email_verified', 'date_joined')
+    list_filter = ('is_active', 'is_email_verified', 'is_staff', 'is_superuser', 'date_joined')
+    search_fields = ('username', 'email', 'first_name', 'last_name')
+    ordering = ('-date_joined',)
+    
+    fieldsets = UserAdmin.fieldsets + (
+        ('Email Verification', {
+            'fields': ('is_email_verified',)
+        }),
+    )
+
+# Register your CustomUser with custom UserAdmin
+admin.site.register(CustomUser, CustomUserAdmin)
+
+class HasCuisinesFilter(admin.SimpleListFilter):
+    title = 'has cuisines'
+    parameter_name = 'has_cuisines'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', 'Yes'),
+            ('no', 'No'),
+        )
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == 'yes':
+            return queryset.annotate(c_count=Count('cuisines')).filter(c_count__gt=0)
+        if value == 'no':
+            return queryset.annotate(c_count=Count('cuisines')).filter(c_count=0)
+        return queryset
 
 class HasCuisinesFilter(admin.SimpleListFilter):
     title = 'has cuisines'
@@ -192,4 +227,24 @@ class ContactMessageAdmin(admin.ModelAdmin):
     list_filter = ('created_at',)
     search_fields = ('name', 'email', 'subject', 'message')
     readonly_fields = ('created_at',)
+
+
+@admin.register(EmailVerification)
+class EmailVerificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'token', 'created_at', 'expires_at', 'is_used')
+    list_filter = ('is_used', 'created_at', 'expires_at')
+    search_fields = ('user__username', 'user__email', 'token')
+    readonly_fields = ('created_at',)
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user')
+
+
+@admin.register(EmailChangeRequest)
+class EmailChangeRequestAdmin(admin.ModelAdmin):
+    list_display = ['user', 'old_email', 'new_email', 'created_at', 'expires_at', 'is_used']
+    list_filter = ['is_used', 'created_at']
+    search_fields = ['user__username', 'user__email', 'old_email', 'new_email']
+    readonly_fields = ['created_at']
+    ordering = ['-created_at']
 

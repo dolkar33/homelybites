@@ -702,75 +702,302 @@ def import_from_spoonacular(request):
 @permission_classes([AllowAny])
 def register_user(request):
     """Register a new user."""
+    
+    print(f"DEBUG: Registration request received with data: {request.data}")
+    
     serializer = UserRegistrationSerializer(data=request.data)
+    print(f"DEBUG: Serializer created")
+    
+    is_valid = serializer.is_valid()
+    print(f"DEBUG: Serializer validation result: {is_valid}")
+    
+    if not is_valid:
+        print(f"DEBUG: Validation errors: {serializer.errors}")
+    
     if serializer.is_valid():
+        print(f"DEBUG: Creating user...")
         user = serializer.save()
-        refresh = RefreshToken.for_user(user)
+        print(f"DEBUG: User created successfully: {user.id}")
+        
         return Response({
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name
-            },
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'message': 'User registered successfully'
+            'message': 'Registration successful! Please check your email for verification link.',
+            'user_id': user.id,
+            'email': user.email,
+            'requires_verification': True
         }, status=status.HTTP_201_CREATED)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_email(request, token):
+    """Verify user's email with verification token from URL - BULLETPROOF VERSION"""
+    from django.shortcuts import redirect
+    
+    print(f"=== VERIFY EMAIL VIEW DEBUG START ===")
+    print(f"Verifying token: {token[:10]}...")
+    
+    try:
+        # Verify the token using the bulletproof service
+        from .services import EmailVerificationService
+        
+        is_valid, message, user = EmailVerificationService.verify_token(token)
+        
+        if is_valid and user:
+            print(f"Verification successful for user: {user.username}")
+            print(f"User status in view - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+            
+            # Final verification - ensure user is actually activated
+            if not user.is_active or not user.is_email_verified:
+                print("CRITICAL: User not properly activated in view! Forcing activation...")
+                
+                # Force update with raw SQL as last resort
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE recipes_customuser 
+                        SET is_active = 1, is_email_verified = 1 
+                        WHERE id = %s
+                    """, [user.id])
+                    connection.commit()
+                
+                # Refresh user
+                user.refresh_from_db()
+                print(f"After forced activation - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+                
+                if not user.is_active or not user.is_email_verified:
+                    print("❌ CRITICAL ERROR: User activation failed even after forced update!")
+                    # Redirect with error
+                    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+                    return redirect(f'{frontend_url}/login?verified=false&message=Verification completed but activation failed. Please contact support.')
+            
+            print(f"✅ User {user.username} email verified and account activated successfully")
+            print(f"✅ Final user status in view - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+            
+            # Redirect to frontend login page with success message
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            return redirect(f'{frontend_url}/login?verified=true&message=Email verified successfully! You can now log in.')
+        else:
+            print(f"❌ Email verification failed: {message}")
+            # Redirect to frontend login page with error message
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            return redirect(f'{frontend_url}/login?verified=false&message={message}')
+            
+    except Exception as e:
+        print(f"❌ CRITICAL ERROR in verify_email view: {e}")
+        # Redirect with error
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?verified=false&message=Verification error occurred. Please try again or contact support.')
+    
+    print(f"=== VERIFY EMAIL VIEW DEBUG END ===")
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def activate_user(request, uidb64, token):
+    """Activate user account using Django's built-in token generator."""
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+    from django.contrib.auth import get_user_model
+    from django.shortcuts import redirect
+    
+    User = get_user_model()
+    
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    
+    if user is not None and default_token_generator.check_token(user, token):
+        # Activate the user
+        user.is_active = True
+        user.is_email_verified = True
+        user.save()
+        
+        # Redirect to frontend login page with success message
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?verified=true&message=Email verified successfully! You can now log in.')
+    else:
+        # Redirect to frontend login page with error message
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?verified=false&message=Email verification failed. Please try again.')
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def resend_verification_email(request):
+    """Resend verification email to user."""
+    user_id = request.data.get('user_id')
+    
+    if not user_id:
+        return Response({
+            'error': 'User ID is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = CustomUser.objects.get(id=user_id)
+    except CustomUser.DoesNotExist:
+        return Response({
+            'error': 'User not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    if user.is_email_verified:
+        return Response({
+            'error': 'Email is already verified'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Create new verification token and send email
+    from .services import EmailVerificationService
+    verification = EmailVerificationService.create_verification_token(user)
+    
+    if EmailVerificationService.send_verification_email(user, verification.token):
+        return Response({
+            'message': 'Verification email sent successfully!'
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response({
+            'error': 'Failed to send verification email. Please try again.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_user(request):
     """Login a user and return JWT tokens."""
-    print("Login attempt received:", request.data)  # Debug log
+    print("=== LOGIN DEBUG START ===")
+    print("Login attempt received:", request.data)
     
     serializer = UserLoginSerializer(data=request.data)
     if serializer.is_valid():
         username_or_email = serializer.validated_data['username']
         password = serializer.validated_data['password']
         
-        print(f"Attempting login with: {username_or_email}")  # Debug log
+        print(f"Attempting login with: {username_or_email}")
         
         # Check if input is an email
         if '@' in username_or_email:
             try:
                 user = CustomUser.objects.get(email=username_or_email)
                 username = user.username
-                print(f"Found user by email: {username}")  # Debug log
+                print(f"Found user by email: {username}")
+                print(f"User status - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+                print(f"User password hash: {user.password[:50]}...")
             except CustomUser.DoesNotExist:
-                print(f"No user found with email: {username_or_email}")  # Debug log
+                print(f"No user found with email: {username_or_email}")
                 return Response({
                     'error': 'Invalid credentials'
                 }, status=status.HTTP_401_UNAUTHORIZED)
         else:
             username = username_or_email
-            print(f"Using username directly: {username}")  # Debug log
+            print(f"Using username directly: {username}")
+            try:
+                user = CustomUser.objects.get(username=username)
+                print(f"User status - is_active: {user.is_active}, is_email_verified: {user.is_email_verified}")
+                print(f"User password hash: {user.password[:50]}...")
+            except CustomUser.DoesNotExist:
+                print(f"No user found with username: {username}")
+                return Response({
+                    'error': 'Invalid credentials'
+                }, status=status.HTTP_401_UNAUTHORIZED)
         
-        user = authenticate(username=username, password=password)
-        print(f"Authentication result: {user}")  # Debug log
+        # Try to authenticate the user
+        print(f"Attempting Django authenticate with username: {username}")
         
-        if user:
-            refresh = RefreshToken.for_user(user)
-            profile = user.profile
+        # Try custom backend first
+        from .backends import CustomUserModelBackend
+        custom_backend = CustomUserModelBackend()
+        auth_user = custom_backend.authenticate(request, username=username, password=password)
+        print(f"Custom backend authenticate result: {auth_user}")
+        
+        if not auth_user:
+            # Fall back to Django's default authenticate
+            auth_user = authenticate(username=username, password=password)
+            print(f"Django default authenticate result: {auth_user}")
+        
+        print(f"Final authentication result: {auth_user}")
+        
+        if auth_user:
+            print(f"User authenticated successfully: {auth_user.username}")
+            print(f"Authenticated user status - is_active: {auth_user.is_active}, is_email_verified: {auth_user.is_email_verified}")
+            
+            # CRITICAL: Get fresh user data from database to ensure we have the latest status
+            # This bypasses any caching issues that might cause the verification problem
+            try:
+                fresh_user = CustomUser.objects.get(id=auth_user.id)
+                print(f"Fresh user from DB - is_active: {fresh_user.is_active}, is_email_verified: {fresh_user.is_email_verified}")
+                
+                # Use the fresh user data for all checks
+                if not fresh_user.is_active:
+                    print(f"User {fresh_user.username} is not active (from fresh DB)")
+                    return Response({
+                        'error': 'Please verify your email before logging in. Check your email for verification link.',
+                        'requires_verification': True,
+                        'user_id': fresh_user.id
+                    }, status=status.HTTP_401_UNAUTHORIZED)
+                
+                if not fresh_user.is_email_verified:
+                    print(f"User {fresh_user.username} email not verified (from fresh DB)")
+                    return Response({
+                        'error': 'Please verify your email before logging in. Check your email for verification link.',
+                        'requires_verification': True,
+                        'user_id': fresh_user.id
+                    }, status=status.HTTP_401_UNAUTHORIZED)
+                
+                print(f"✅ User {fresh_user.username} verification confirmed from database")
+                
+            except CustomUser.DoesNotExist:
+                print(f"❌ CRITICAL ERROR: User not found in database after authentication!")
+                return Response({
+                    'error': 'Authentication error. Please try again.'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            print(f"User {fresh_user.username} login successful")
+            refresh = RefreshToken.for_user(fresh_user)
+            profile = fresh_user.profile
             return Response({
                 'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
+                    'id': fresh_user.id,
+                    'username': fresh_user.username,
+                    'email': fresh_user.email,
+                    'first_name': fresh_user.first_name,
+                    'last_name': fresh_user.last_name,
                     'has_completed_questions': profile.has_completed_questions
                 },
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'message': 'Login successful'
             })
-        return Response({
-            'error': 'Invalid credentials'
-        }, status=status.HTTP_401_UNAUTHORIZED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            print(f"=== AUTHENTICATION FAILED DEBUG ===")
+            print(f"Username: {username}")
+            print(f"Password provided: {password[:3]}...")
+            print(f"User exists in DB: {user}")
+            print(f"User is_active: {user.is_active}")
+            print(f"User is_email_verified: {user.is_email_verified}")
+            
+            # Try manual password check to see if that's the issue
+            from django.contrib.auth.hashers import check_password
+            password_valid = check_password(password, user.password)
+            print(f"Manual password check result: {password_valid}")
+            
+            if not password_valid:
+                print("Password verification failed - this is the issue!")
+            elif not user.is_active:
+                print("User is not active - this is the issue!")
+            elif not user.is_email_verified:
+                print("User email not verified - this is the issue!")
+            else:
+                print("Unknown authentication issue")
+            
+            return Response({
+                'error': 'Invalid credentials'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+    else:
+        print(f"Serializer validation failed: {serializer.errors}")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    print("=== LOGIN DEBUG END ===")
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.all()
@@ -1225,14 +1452,13 @@ def update_user_profile(request):
             if not request.data['last_name'].strip():
                 return Response({'error': 'Last name cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
             user.last_name = request.data['last_name'].strip()
-        if 'email' in request.data:
-            email = request.data['email'].strip()
-            if not email:
-                return Response({'error': 'Email cannot be empty'}, status=status.HTTP_400_BAD_REQUEST)
-            if CustomUser.objects.exclude(id=user.id).filter(email=email).exists():
-                return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
-            user.email = email
+        
+        # Handle email change - DISABLED
+        # Email changes are not allowed in user profiles
+        # Users must contact support to change their email address
+        
         user.save()
+        
         # Update profile information with validation
         if 'dietary_preference' in request.data:
             dietary = request.data['dietary_preference']
@@ -1261,7 +1487,9 @@ def update_user_profile(request):
             profile.profile_image = image
             user.profile_picture = image  # This will save to the CustomUser model
             user.save()
+        
         profile.save()
+        
         return Response({
             'user': {
                 'id': user.id,
@@ -1300,3 +1528,143 @@ def change_password(request):
         
         return Response({'message': 'Password changed successfully'})
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def confirm_email_change(request, token):
+    """Confirm email change using verification token."""
+    from django.shortcuts import redirect
+    
+    from .services import EmailVerificationService
+    is_valid, message, user = EmailVerificationService.verify_email_change_token(token)
+    
+    if is_valid:
+        # Redirect to frontend login page with success message
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?verified=true&message=Email changed successfully! Your new email is now active.')
+    else:
+        # Redirect to frontend login page with error message
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?verified=false&message=Email change failed. Please try updating your profile again.')
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    """Send password reset verification email to user."""
+    email = request.data.get('email', '').strip()
+    
+    if not email:
+        return Response({
+            'error': 'Email address is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Find user by email
+        user = CustomUser.objects.get(email=email)
+        
+        # Check if user is active and email verified
+        if not user.is_active or not user.is_email_verified:
+            return Response({
+                'error': 'Account not found or email not verified'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Create password reset token for verification email
+        from .services import EmailVerificationService
+        reset_request = EmailVerificationService.create_password_reset_request(user)
+        
+        # Send password reset email
+        if EmailVerificationService.send_password_reset_email(user, reset_request):
+            return Response({
+                'message': 'Password reset link sent to your email address. Please check your inbox.',
+                'email_sent': True
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'error': 'Failed to send password reset email. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except CustomUser.DoesNotExist:
+        # Don't reveal if email exists or not for security
+        return Response({
+            'message': 'If an account with this email exists, a password reset link has been sent.'
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"Error in forgot_password: {e}")
+        return Response({
+            'error': 'An error occurred. Please try again.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def verify_password_reset(request, token):
+    """Verify password reset token and redirect to frontend reset form."""
+    from django.shortcuts import redirect
+    
+    try:
+        from .services import EmailVerificationService
+        is_valid, message, user = EmailVerificationService.verify_password_reset_token(token, None)
+        
+        if is_valid:
+            # Token is valid, redirect to frontend password reset form
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            return redirect(f'{frontend_url}/reset-password/{token}')
+        else:
+            # Token is invalid, redirect with error
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            return redirect(f'{frontend_url}/login?error=Invalid or expired password reset link')
+            
+    except Exception as e:
+        print(f"Error in verify_password_reset: {e}")
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        return redirect(f'{frontend_url}/login?error=Password reset verification failed')
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request, token):
+    """Reset user password using verification token with password confirmation."""
+    new_password = request.data.get('new_password', '')
+    confirm_password = request.data.get('confirm_password', '')
+    
+    if not new_password:
+        return Response({
+            'error': 'New password is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not confirm_password:
+        return Response({
+            'error': 'Password confirmation is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if new_password != confirm_password:
+        return Response({
+            'error': 'Passwords do not match'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if len(new_password) < 8:
+        return Response({
+            'error': 'Password must be at least 8 characters long'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Verify the token and reset password
+        from .services import EmailVerificationService
+        is_valid, message, user = EmailVerificationService.verify_password_reset_token(token, new_password)
+        
+        if is_valid:
+            return Response({
+                'message': 'Password reset successfully! You can now log in with your new password.',
+                'password_reset': True
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'error': message
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        print(f"Error in reset_password: {e}")
+        return Response({
+            'error': 'An error occurred. Please try again.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

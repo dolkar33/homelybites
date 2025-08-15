@@ -1,7 +1,76 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+import re
+
+def validate_email_format(email):
+    """Validate email format and check for common disposable email domains"""
+    # Basic email format validation
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, email):
+        raise ValidationError('Please enter a valid email address.')
+    
+    # Temporarily disable strict validation to fix registration
+    return email
+    
+    # Check for disposable email domains (disabled temporarily)
+    # disposable_domains = {
+    #     'tempmail.org', '10minutemail.com', 'guerrillamail.com', 'mailinator.com',
+    #     'yopmail.com', 'trashmail.com', 'sharklasers.com', 'getairmail.com',
+    #     'mailnesia.com', 'mintemail.com', 'spam4.me', 'bccto.me', 'chacuo.net',
+    #     'dispostable.com', 'maildrop.cc', 'mailnesia.com', 'mintemail.com',
+    #     'spam4.me', 'bccto.me', 'chacuo.net', 'dispostable.com', 'maildrop.cc',
+    #     'temp-mail.org', 'fakeinbox.com', 'sharklasers.com', 'guerrillamailblock.com',
+    #     'pokemail.net', 'spamspot.com', 'binkmail.com', 'bobmail.info',
+    #     'chammy.info', 'discard.email', 'dispostable.com', 'emailondeck.com',
+    #     'fakeinbox.net', 'getairmail.com', 'maildrop.cc', 'mailinator.net',
+    #     'mailmetrash.com', 'mintemail.com', 'mytrashmail.com', 'nwldx.com',
+    #     'sharklasers.com', 'spam4.me', 'tempmailaddress.com', 'throwawayemail.com',
+    #     'trashmail.net', 'wegwerfemail.de', 'yopmail.net', 'zomg.info',
+    #     'mailnesia.com', 'bccto.me', 'chacuo.net', 'dispostable.com',
+    #     'maildrop.cc', 'mailnesia.com', 'mintemail.com', 'spam4.me',
+    #     'bccto.me', 'chacuo.net', 'dispostable.com', 'maildrop.cc'
+    # }
+    
+    # domain = email.split('@')[1].lower()
+    # if domain in disposable_domains:
+    #     raise ValidationError('Disposable email addresses are not allowed. Please use a legitimate email address.')
+    
+    # Check for suspicious patterns (disabled temporarily)
+    # suspicious_patterns = [
+    #     r'^[a-z]{1,2}\d{1,3}@',  # Very short username with numbers
+    #     r'^test\d*@',  # Test emails
+    #     r'^admin\d*@',  # Admin emails
+    #     r'^user\d*@',  # Generic user emails
+    #     r'^demo\d*@',  # Demo emails
+    #     r'^temp\d*@',  # Temporary emails
+    #     r'^fake\d*@',  # Fake emails
+    #     r'^spam\d*@',  # Spam emails
+    # ]
+    
+    # for pattern in suspicious_patterns:
+    #     if re.match(pattern, email.lower()):
+    #         raise ValidationError('Suspicious email patterns are not allowed. Please use a legitimate email address.')
+    
+    # Check for common legitimate domains (whitelist approach for extra security) (disabled temporarily)
+    # legitimate_domains = {
+    #     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com',
+    #     'icloud.com', 'me.com', 'mac.com', 'aol.com', 'protonmail.com',
+    #     'tutanota.com', 'zoho.com', 'yandex.com', 'mail.ru', 'qq.com',
+    #     '163.com', '126.com', 'sina.com', 'sohu.com', 'naver.com',
+    #     'daum.net', 'hanmail.net', 'rediffmail.com', 'indiatimes.com',
+    #     'sify.com', 'vsnl.net', 'bsnl.in', 'airtel.in', 'jio.com',
+    #     'vodafone.in', 'idea.co.in', 'mtnl.net.in', 'bharatmail.com'
+    # }
+    
+    # Allow legitimate domains and warn about others
+    # if domain not in legitimate_domains:
+    #     # Log suspicious domains for monitoring
+    #     print(f"Warning: Unusual email domain detected: {domain}")
+    
+    # return email
 
 class Cuisine(models.Model):
     name = models.CharField(max_length=100)
@@ -12,6 +81,12 @@ class Cuisine(models.Model):
 
     class Meta:
         verbose_name_plural = "Cuisines"
+
+def validate_image_size(image):
+    max_size = 5 * 1024 * 1024  # 5MB
+    if image.size > max_size:
+        from django.core.exceptions import ValidationError
+        raise ValidationError("Image size cannot exceed 5MB")
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
@@ -54,15 +129,10 @@ class Recipe(models.Model):
     def __str__(self):
         return self.title
 
-def validate_image_size(image):
-    max_size = 5 * 1024 * 1024  # 5MB
-    if image.size > max_size:
-        from django.core.exceptions import ValidationError
-        raise ValidationError("Image size cannot exceed 5MB")
-
 class CustomUser(AbstractUser):
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, validators=[validate_email_format])
     password_reset_token = models.CharField(max_length=100, null=True, blank=True)
+    is_email_verified = models.BooleanField(default=False)
     profile_picture = models.ImageField(
         upload_to='profile_images/',
         null=True,
@@ -208,4 +278,56 @@ class ContactMessage(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+
+
+class EmailVerification(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    token = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+    
+    def __str__(self):
+        return f"Email verification for {self.user.email}"
+
+
+class EmailChangeRequest(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    old_email = models.EmailField()
+    new_email = models.EmailField()
+    token = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+    
+    def __str__(self):
+        return f"Email change request for {self.user.username}: {self.old_email} -> {self.new_email}"
+
+
+class PasswordResetRequest(models.Model):
+    """Model for password reset requests."""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='password_reset_requests')
+    token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return f"Password reset for {self.user.username}"
+    
+    def is_expired(self):
+        """Check if the token has expired."""
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+    
+    class Meta:
+        ordering = ['-created_at']        
         

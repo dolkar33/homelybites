@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { X, Heart } from "lucide-react";
+import { Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import api, { baseURL } from "../config/axiosInstance";
+import BackButton from "../components/BackButton";
 
 const FavPage = () => {
   const [favorites, setFavorites] = useState([]);
@@ -89,6 +90,7 @@ const FavPage = () => {
 
       <div className="flex-1 w-full px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         <div className="max-w-4xl mx-auto">
+          <BackButton />
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-6 sm:mb-8 lg:mb-10 text-center">
             My Favorite Recipes
           </h1>
@@ -121,87 +123,147 @@ const FavPage = () => {
               {favorites.map((recipe) => (
                 <div
                   key={recipe.id}
-                  className="bg-white rounded-lg shadow-md lg:shadow-lg p-4 sm:p-5 lg:p-6 hover:shadow-lg lg:hover:shadow-xl transition-shadow"
+                  className="bg-white rounded-lg shadow-md lg:shadow-lg p-3 sm:p-4 lg:p-5 xl:p-6 hover:shadow-lg lg:hover:shadow-xl transition-shadow flex gap-3 sm:gap-4 lg:gap-5 xl:gap-6"
                 >
-                  <div className="flex gap-4 sm:gap-5 lg:gap-6">
-                    <div className="flex-shrink-0">
-                      {(() => {
-                        const raw = recipe.image || recipe.image_url || "";
-                        const src = raw && (raw.startsWith("http") ? raw : `${baseURL}${raw}`);
-                        return (
-                          <img
-                            src={src}
-                            alt={recipe.alt || recipe.name || recipe.title}
-                            className="w-20 sm:w-24 lg:w-32 h-20 sm:h-24 lg:h-32 object-cover rounded-lg"
-                            onError={(e) => {
-                              e.target.src =
-                                "https://via.placeholder.com/150x150?text=Recipe";
-                            }}
-                          />
-                        );
-                      })()}
-                    </div>
+                  <div className="flex-shrink-0">
+                    {(() => {
+                      const raw = recipe.image || recipe.image_url || "";
+                      const src = raw && (raw.startsWith("http") ? raw : `${baseURL}${raw}`);
+                      return (
+                        <img
+                          src={src}
+                          alt={recipe.alt || recipe.name || recipe.title}
+                          className="w-16 sm:w-20 lg:w-24 xl:w-32 h-16 sm:h-20 lg:h-24 xl:h-32 object-cover rounded-lg"
+                          onError={(e) => {
+                            e.target.src = "https://via.placeholder.com/150x150?text=Recipe";
+                          }}
+                        />
+                      );
+                    })()}
+                  </div>
 
-                    <div className="flex-1 flex flex-col justify-between min-h-0">
-                      <div>
-                        <div className="flex items-start justify-between mb-2 sm:mb-3">
-                          <h3 className="font-bold text-lg sm:text-xl lg:text-2xl leading-tight pr-2">
-                            {recipe.name || recipe.title}
-                          </h3>
-                          <button
-                            onClick={() => removeFromFavorites(recipe.slug)}
-                            className="flex-shrink-0 p-1 hover:bg-gray-50 rounded-full transition-colors"
-                            title="Remove from favorites"
-                          >
-                            <X
-                              size={24}
-                              className="sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-400 hover:text-red-400 transition-colors"
-                            />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center mb-3 sm:mb-4">
-                          <span className="text-sm sm:text-base text-gray-600">
-                            {recipe.difficulty}
-                          </span>
-                          <span className="text-sm sm:text-base text-gray-400 mx-2">
-                            |
-                          </span>
-                          <span className="text-sm sm:text-base text-gray-600">
-                            {typeof recipe.calories === 'number' ? `${recipe.calories} cal` : (recipe.calories?.toString().includes('cal') ? recipe.calories : `${recipe.calories || ''} cal`)}
-                          </span>
-                          {recipe.cuisineType && (
-                            <>
-                              <span className="text-sm sm:text-base text-gray-400 mx-2">
-                                |
-                              </span>
-                              <span className="text-sm sm:text-base text-gray-600">
-                                {recipe.cuisineType}
-                              </span>
-                            </>
-                          )}
-                        </div>
-
-                        <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-5">
-                          {recipe.description}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-2 sm:gap-3">
-                        <button
-                          onClick={() => goToRecipe(recipe.slug)}
-                          className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 text-sm sm:text-base bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors"
-                        >
-                          Go to Recipe
-                        </button>
+                  <div className="flex-1 flex flex-col justify-between min-h-0">
+                    <div>
+                      <div className="flex items-start justify-between mb-1 sm:mb-2">
+                        <h3 className="font-bold text-sm sm:text-base lg:text-lg xl:text-xl leading-tight pr-2">
+                          {recipe.name || recipe.title}
+                        </h3>
                         <button
                           onClick={() => removeFromFavorites(recipe.slug)}
-                          className="px-4 sm:px-5 lg:px-6 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                          className="flex-shrink-0 p-1 hover:bg-gray-50 rounded-full transition-colors"
+                          title="Remove from favorites"
                         >
-                          Remove
+                          <Heart
+                            size={20}
+                            className="sm:w-6 sm:h-6 lg:w-7 lg:h-7 xl:w-8 xl:h-8 fill-red-500 text-red-500"
+                          />
                         </button>
                       </div>
+
+                      <div className="flex items-center mb-2 sm:mb-2 lg:mb-3">
+                        <span className="text-xs sm:text-sm lg:text-base text-gray-600 ml-2">
+                          {typeof recipe.difficulty === "string" && recipe.difficulty
+                            ? `${recipe.difficulty.charAt(0).toUpperCase()}${recipe.difficulty.slice(1)}`
+                            : ""}
+                        </span>
+                        <span className="text-xs sm:text-sm lg:text-base text-gray-400 mx-2">|</span>
+                        <span className="text-xs sm:text-sm lg:text-base text-gray-600">
+                          {(() => {
+                            const c = recipe?.calories;
+                            if (c === null || c === undefined || String(c).trim() === "") return "";
+                            const s = String(c).toLowerCase();
+                            return s.includes("cal") ? String(c) : `${c} cal`;
+                          })()}
+                        </span>
+                        {(() => {
+                          // Show Prep Time if available
+                          const t =
+                            recipe?.prepTime ??
+                            recipe?.prep_time ??
+                            recipe?.preparation_time ??
+                            recipe?.preptime;
+                          if (t === null || t === undefined || String(t).trim() === "") return null;
+                          const s = String(t).toLowerCase();
+                          const formatted = s.includes("min") ? String(t) : `${t} min`;
+                          return (
+                            <>
+                              <span className="text-xs sm:text-sm lg:text-base text-gray-400 mx-2">|</span>
+                              <span className="text-xs sm:text-sm lg:text-base text-gray-600">Prep: {formatted}</span>
+                            </>
+                          );
+                        })()}
+                        {(() => {
+                          // Show Cook Time if available
+                          const t =
+                            recipe?.cookTime ??
+                            recipe?.cook_time ??
+                            recipe?.cooking_time ??
+                            recipe?.cooktime;
+                          if (t === null || t === undefined || String(t).trim() === "") return null;
+                          const s = String(t).toLowerCase();
+                          const formatted = s.includes("min") ? String(t) : `${t} min`;
+                          return (
+                            <>
+                              <span className="text-xs sm:text-sm lg:text-base text-gray-400 mx-2">|</span>
+                              <span className="text-xs sm:text-sm lg:text-base text-gray-600">Cook: {formatted}</span>
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      <p className="text-xs sm:text-sm lg:text-base text-gray-600 mb-2 sm:mb-2 lg:mb-3">
+                        {(() => {
+                          // First try to get instructions for description (like SearchPage)
+                          const instructions = recipe.instructions;
+                          if (instructions && typeof instructions === "string") {
+                            return instructions.length > 100
+                              ? instructions.substring(0, 100) + "..."
+                              : instructions;
+                          }
+
+                          // Fallback to other description fields if instructions not available
+                          const desc =
+                            recipe.description ||
+                            recipe.summary ||
+                            recipe.short_description ||
+                            recipe.subtitle ||
+                            recipe.about;
+
+                          if (desc && typeof desc === "string") {
+                            return desc.length > 100
+                              ? desc.substring(0, 100) + "..."
+                              : desc;
+                          }
+
+                          // Final fallback
+                          return "Delicious recipe";
+                        })()}
+                      </p>
+
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {Array.isArray(recipe.cuisines) && recipe.cuisines.length > 0 ? (
+                          recipe.cuisines.map((cuisine) => (
+                            <span
+                              key={cuisine.id ?? cuisine.name}
+                              className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                            >
+                              {cuisine.name ?? String(cuisine)}
+                            </span>
+                          ))
+                        ) : recipe.cuisineType ? (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                            {recipe.cuisineType}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
+
+                    <button
+                      onClick={() => goToRecipe(recipe.slug)}
+                      className="self-start px-3 sm:px-4 lg:px-5 xl:px-6 py-1 sm:py-1.5 lg:py-2 text-xs sm:text-sm lg:text-base bg-red-400 text-white rounded-md hover:bg-red-500 transition-colors"
+                    >
+                      Go to Recipe
+                    </button>
                   </div>
                 </div>
               ))}
