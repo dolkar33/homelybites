@@ -9,6 +9,9 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from .services import SpoonacularService
 from .utils import auto_assign_cuisines_for_recipe
 
+
+
+
 # Spoonacular-compatible intolerance keys and mapper (keeps CSV model intact)
 SPOONACULAR_ALLERGY_SLUGS = {
     'dairy', 'egg', 'gluten', 'grain', 'peanut', 'seafood', 'sesame', 'shellfish', 'soy', 'sulfite', 'tree nut', 'wheat'
