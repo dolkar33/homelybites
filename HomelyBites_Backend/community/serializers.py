@@ -17,17 +17,14 @@ class UserSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()  # matches frontend 'name' field
     avatar = serializers.SerializerMethodField()  # matches frontend 'avatar' field
     posts = serializers.SerializerMethodField()  # matches frontend 'posts' field
-    followers = serializers.SerializerMethodField()  # matches frontend 'followers' field
-    following = serializers.SerializerMethodField()  # matches frontend 'following' field
-    is_following = serializers.SerializerMethodField()
     
     class Meta:
         model = CustomUser
         fields = [
-            'id', 'username', 'name', 'avatar', 'bio', 
-            'posts', 'followers', 'following', 'is_following'
+            'id', 'username', 'name', 'avatar', 'bio',
+            'posts'
         ]
-        read_only_fields = ['id', 'posts', 'followers', 'following', 'is_following']
+        read_only_fields = ['id', 'posts']
     
     def get_name(self, obj):
         """Return full name or username if no first/last name"""
@@ -62,20 +59,6 @@ class UserSerializer(serializers.ModelSerializer):
     def get_posts(self, obj):
         """Return posts count"""
         return obj.posts.count()
-    
-    def get_followers(self, obj):
-        """Return followers count"""
-        return obj.followers.count()
-    
-    def get_following(self, obj):
-        """Return following count"""
-        return obj.following.count()
-    
-    def get_is_following(self, obj):
-        request = self.context.get('request')
-        if request and hasattr(request, 'user') and request.user.is_authenticated:
-            return Follow.objects.filter(follower=request.user, following=obj).exists()
-        return False
 
 
 class PostSerializer(serializers.ModelSerializer):
