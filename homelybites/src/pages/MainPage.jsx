@@ -214,7 +214,7 @@ const MainPage = () => {
         <Navbar />
 
         {/* Hero Section */}
-        <div className="max-w-5xl mx-auto w-full px-4 mt-[4.5vh]">
+        <div className="w-full px-[100px] mt-[4.5vh]">
           <div className="rounded-3xl overflow-hidden w-full h-[30vh] md:h-[40vh] flex items-center justify-center bg-[#FDEBED] relative mb-[5vh]">
             <img
               src="/Images/HomePageImage/salad.jpg"

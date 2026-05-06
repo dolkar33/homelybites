@@ -11,7 +11,7 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
   useEffect(() => {
     const checkLoginStatus = () => {
       const currentUser = JSON.parse(
-        localStorage.getItem("currentUser") || "{}"
+        localStorage.getItem("currentUser") || "{}",
       );
       setIsLoggedIn(currentUser.isLoggedIn || false);
     };
@@ -100,7 +100,7 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
   };
 
   return (
-    <nav className="w-full flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 sm:py-5 lg:py-6 relative">
+    <nav className="w-full flex items-center justify-between px-[100px] py-4 sm:py-5 lg:py-6 relative">
       {/* Logo Section - Made responsive */}
       <Link to="/" className="flex items-center flex-shrink-0">
         <img
@@ -109,10 +109,9 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
           className="h-8 sm:h-9 md:h-10 lg:h-11 hover:scale-105 transition-all duration-300 ease-in-out"
         />
       </Link>
-
-      {/* Desktop Menu - Centered with responsive spacing */}
-      <div className="hidden xl:flex md:flex flex-1 justify-center mx-4 lg:mx-8">
-        <ul className="flex items-center gap-6 lg:gap-8 xl:gap-10 text-sm lg:text-base font-medium">
+      {/* Desktop Menu - Always centered */}
+      <div className="hidden md:flex absolute left-1/2 -translate-x-1/2">
+        <ul className="flex items-center gap-6 lg:gap-10 text-sm lg:text-base font-medium">
           <li>
             <Link
               to="/Home"
@@ -126,7 +125,7 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
               to="/aboutus"
               className="hover:text-accent hover:underline hover:underline-offset-8 transition-all duration-200"
             >
-              About
+              About Us
             </Link>
           </li>
           <li>
@@ -155,7 +154,6 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
           </li>
         </ul>
       </div>
-
       {/* Right side container for hamburger menu and user profile */}
       <div className="flex items-center gap-3 sm:gap-4">
         {/* Hamburger Menu Button - Moved closer to user profile */}
@@ -285,7 +283,6 @@ const Navbar = ({ showLoginButtons = false, showUserProfile = true }) => {
           </div>
         )}
       </div>
-
       {/* Mobile Menu - Improved positioning and transitions */}
       <div
         className={`absolute xl:hidden md:hidden top-full left-0 right-0 bg-white/95 backdrop-blur-md flex flex-col items-center gap-2 font-semibold text-base transform transition-all duration-300 ease-in-out shadow-lg z-40 border-t border-gray-100 ${

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Heart, ChevronLeft, X, User } from "lucide-react";
+import { Heart, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import Navbar from "../components/Navbar";
@@ -446,15 +446,16 @@ const RecipeSearchPage = () => {
       <Navbar />
 
       {/* Back Button at the top */}
-      <div className="w-full px-3 sm:px-4 lg:px-6 py-2">
-        <div className="max-w-7xl mx-auto">
-          <BackButton />
-        </div>
+      <div className="w-full px-[100px] py-2">
+        <BackButton />
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 w-full px-3 sm:px-4 lg:px-6 py-2">
-        <div className="max-w-7xl mx-auto">
+      <div className="flex-1 w-full px-[100px] py-2">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 lg:mb-6 text-center">
+          Smart Recipe Search by Ingredients
+        </h1>
+        <div>
           <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 xl:gap-6">
             {/* Filter Section */}
             <div className="w-full lg:w-64 xl:w-72 flex-shrink-0 mb-4">
@@ -549,11 +550,6 @@ const RecipeSearchPage = () => {
 
             {/* Recipe Search Section */}
             <div className="flex-1 max-w-none lg:max-w-3xl">
-              {/* Title outside the search box */}
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-4 sm:mb-5 lg:mb-6 text-center">
-                Smart Recipe Search by Ingredients
-              </h1>
-
               <div className="mb-4 sm:mb-5 lg:mb-6">
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 mb-3 sm:mb-4">
                   <input

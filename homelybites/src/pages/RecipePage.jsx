@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowLeft, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useNavigate } from "react-router-dom"; // Add this import
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -100,7 +100,7 @@ const RecipePage = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-3 sm:p-4 lg:p-8">
+        <div className="flex-1 px-[100px] py-8">
           {/* Mobile Header with Menu Button */}
           <div className="flex items-center justify-between mb-4 lg:hidden">
             <button
