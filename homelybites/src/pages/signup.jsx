@@ -28,7 +28,7 @@ const validationSchema = yup.object({
     .max(20, "Username must not exceed 20 characters")
     .matches(
       /^[a-zA-Z0-9_]+$/,
-      "Username can only contain letters, numbers, and underscores"
+      "Username can only contain letters, numbers, and underscores",
     )
     .matches(/^[a-zA-Z]/, "Username must start with a letter"),
 
@@ -46,7 +46,7 @@ const validationSchema = yup.object({
     .matches(/\d/, "Password must contain at least one number")
     .matches(
       /[!@#$%^&*(),.?":{}|<>]/,
-      "Password must contain at least one special character"
+      "Password must contain at least one special character",
     ),
 
   password2: yup
@@ -160,10 +160,15 @@ const SignUp = () => {
           if (requires_verification && user_id) {
             localStorage.setItem(
               "pendingVerification",
-              JSON.stringify({ user_id, email })
+              JSON.stringify({ user_id, email }),
             );
           }
-        } catch {}
+        } catch (cacheError) {
+          console.warn(
+            "Could not cache pending verification info:",
+            cacheError,
+          );
+        }
 
         // Reset form
         reset();
@@ -171,7 +176,10 @@ const SignUp = () => {
         // Navigate to login with success parameter
         setTimeout(() => {
           // If verification is required, hint login to show resend UI
-          const q = (response.data && response.data.requires_verification) ? "&pendingVerification=true" : "";
+          const q =
+            response.data && response.data.requires_verification
+              ? "&pendingVerification=true"
+              : "";
           navigate(`/login?registered=true${q}`);
         }, 2000);
       }
@@ -180,45 +188,32 @@ const SignUp = () => {
 
       // Handle different error scenarios
       if (error.response) {
-        // Server responded with error status
-        const errorMessage =
-          error.response?.data?.message ||
-          error.response?.data?.error ||
-          error.response?.data?.detail ||
-          "Registration failed. Please try again";
+        const data = error.response?.data;
+
+        // Handle nested field errors like { username: ["already exists"] }
+        // or flat errors like { message: "..." } or { detail: "..." }
+        let errorMessage = "";
+
+        if (typeof data === "string") {
+          errorMessage = data;
+        } else if (data?.message) {
+          errorMessage = data.message;
+        } else if (data?.detail) {
+          errorMessage = data.detail;
+        } else if (data?.error) {
+          errorMessage = data.error;
+        } else if (typeof data === "object") {
+          const fieldErrors = Object.values(data)
+            .map((msgs) => (Array.isArray(msgs) ? msgs[0] : msgs))
+            .join("\n");
+          errorMessage =
+            fieldErrors || "Registration failed. Please try again.";
+        } else {
+          errorMessage = "Registration failed. Please try again.";
+        }
+
         setGeneralError(errorMessage);
         toast.error(errorMessage, {
-          duration: 4000,
-          position: "top-right",
-          style: {
-            background: "#fff",
-            color: "#333",
-            border: "1px solid #ef4444",
-            borderRadius: "8px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-          },
-        });
-      } else if (error.request) {
-        // Request was made but no response received
-        const networkError =
-          "Network error. Please check your connection and try again.";
-        setGeneralError(networkError);
-        toast.error(networkError, {
-          duration: 4000,
-          position: "top-right",
-          style: {
-            background: "#fff",
-            color: "#333",
-            border: "1px solid #ef4444",
-            borderRadius: "8px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-          },
-        });
-      } else {
-        // Something else happened
-        const generalError = "Registration failed. Please try again.";
-        setGeneralError(generalError);
-        toast.error(generalError, {
           duration: 4000,
           position: "top-right",
           style: {
@@ -254,7 +249,9 @@ const SignUp = () => {
 
           {generalError && (
             <div className="mb-[2vh] p-3 bg-red-100 text-red-700 rounded-lg">
-              {generalError}
+              {generalError.split("\n").map((line, i) => (
+                <p key={i}>{line}</p>
+              ))}
             </div>
           )}
 
